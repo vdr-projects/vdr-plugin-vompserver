@@ -40,6 +40,9 @@ int Config::init(char* takeFileName)
   }
 
   strcpy(fileName, takeFileName);
+  strcpy(fileNameTemp, takeFileName);
+  strcat(fileNameTemp, ".tmp");
+
   file = fopen(fileName, "r");
   if (!file)
   {
@@ -118,9 +121,7 @@ int Config::readLine()
 
 FILE* Config::copyToHere(long position)
 {
-  strcpy(fileNameTemp, "/tmp/configXXXXXX");
-  int newFileDes = mkstemp(fileNameTemp);
-  FILE* newFile = fdopen(newFileDes, "w");
+  FILE* newFile = fopen(fileNameTemp, "w");
 
   if (!newFile) return NULL;
 
