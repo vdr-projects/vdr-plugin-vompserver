@@ -228,14 +228,15 @@ void MVPClient::processLogin(unsigned char* buffer, int length)
 {
   time_t timeNow = time(NULL);
   struct tm* timeStruct = localtime(&timeNow);
-  timeOffset = timeStruct->tm_gmtoff;
+  int timeOffset = timeStruct->tm_gmtoff;
 
-  // seems dhcp is sending timezone out to mvp
-  // so just supply utc timestamp
-  timeOffset = 0;
+  unsigned char sendBuffer[12];
+  *(unsigned long*)&sendBuffer[0] = htonl(8);
+  *(unsigned long*)&sendBuffer[4] = htonl(timeNow);
+  *(signed int*)&sendBuffer[8] = htonl(timeOffset);
 
-  sendULONG(timeNow + timeOffset);
-  printf("written time\n");
+  tcp.sendPacket(sendBuffer, 12);
+  printf("written login reply\n");
 }
 
 void MVPClient::processGetRecordingsList(unsigned char* data, int length)
@@ -263,7 +264,7 @@ void MVPClient::processGetRecordingsList(unsigned char* data, int length)
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
   {
     if (count > 49000) break; // just how big is that hard disk?!
-    *(unsigned long*)&sendBuffer[count] = htonl(recording->start + timeOffset);
+    *(unsigned long*)&sendBuffer[count] = htonl(recording->start);// + timeOffset);
     count += 4;
 
     point = (char*)recording->Name();

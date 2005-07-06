@@ -56,7 +56,6 @@ class MVPClient
     cMediamvpTransceiver* cm;
     cRecordings* recordingManager;
     RecPlayer* rp;
-    int timeOffset;
 
     void processLogin(unsigned char* buffer, int length);
     void processGetRecordingsList(unsigned char* data, int length);
