@@ -97,8 +97,11 @@ cChannel* MVPClient::channelFromNumber(unsigned long channelNumber)
       if (channel->Number() == (int)channelNumber)
       {
         int vpid = channel->Vpid();
+#if VDRVERSNUM < 10300
         int apid1 = channel->Apid1();
-
+#else
+        int apid1 = channel->Apid(0);
+#endif
         printf("Found channel number %lu, vpid = %i, apid1 = %i\n", channelNumber, vpid, apid1);
         return channel;
       }
@@ -315,7 +318,7 @@ void MVPClient::processGetSummary(unsigned char* data, int length)
   cRecordings Recordings;
   Recordings.Load(); // probably have to do this
 
-  cRecording* recording = Recordings.GetByName((char*)data);
+  cRecording *recording = Recordings.GetByName((char*)data);
 
   printf("recording pointer %p\n", recording);
 
@@ -325,8 +328,11 @@ void MVPClient::processGetSummary(unsigned char* data, int length)
     int count = 4; // leave space for the packet length
 
     char* point;
-
+#if VDRVERSNUM < 10300
     point = (char*)recording->Summary();
+#else
+    point = (char*)recording->Info()->ShortText();
+#endif
     strcpy((char*)&sendBuffer[count], point);
     count += strlen(point) + 1;
     *(unsigned long*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
@@ -503,9 +509,13 @@ void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
     return;
   }
 
+#if VDRVERSNUM < 10300
   cMutexLock MutexLock;
-  const cSchedules* Schedules = cSIProcessor::Schedules(MutexLock);
-//  const cSchedules* Schedules = cSchedules::Schedules(MutexLock);
+  const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
+#else
+  cSchedulesLock MutexLock;
+  const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
+#endif
   if (!Schedules)
   {
     unsigned char sendBuffer[8];
@@ -529,9 +539,13 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
 {
   FILE* f = fopen("/tmp/s.txt", "w");
 
+#if VDRVERSNUM < 10300
   cMutexLock MutexLock;
-  const cSchedules* Schedules = cSIProcessor::Schedules(MutexLock);
-//  const cSchedules* Schedules = cSchedules::Schedules(MutexLock);
+  const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
+#else
+  cSchedulesLock MutexLock;
+  const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
+#endif
   if (!Schedules)
   {
     fprintf(f, "Schedules = NULL\n");
@@ -549,8 +563,12 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
   tChannelID tchid;
   cChannel *thisChannel;
 
-  const cEventInfo* event;
+#if VDRVERSNUM < 10300
+  const cEventInfo *event;
   int eventNumber = 0;
+#else
+  const cEvent *event;
+#endif
 
 //    Schedule = Schedules->GetSchedule(channel->GetChannelID());
 //    Schedule = Schedules->GetSchedule();
@@ -567,9 +585,17 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
     fprintf(f, "Schedule #%i\n", scheduleNumber);
     fprintf(f, "-------------\n\n");
 
+#if VDRVERSNUM < 10300
     tchid = Schedule->GetChannelID();
+#else
+    tchid = Schedule->ChannelID();
+#endif
+#if VDRVERSNUM < 10300
     fprintf(f, "ChannelID.ToString() = %s\n", tchid.ToString());
     fprintf(f, "NumEvents() = %i\n", Schedule->NumEvents());
+#else
+//	put the count at the end.
+#endif
     thisChannel = Channels.GetByChannelID(tchid, true);
     if (thisChannel)
     {
@@ -580,6 +606,7 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
       fprintf(f, "thisChannel = NULL for tchid\n");
     }
 
+#if VDRVERSNUM < 10300
     for (eventNumber = 0; eventNumber < Schedule->NumEvents(); eventNumber++)
     {
       event = Schedule->GetEventNumber(eventNumber);
@@ -592,7 +619,13 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
       event->Dump(f);
       fprintf(f, "\n\n");
     }
-
+#else
+//	This whole section needs rewriting to walk the list.
+    event = Schedule->Events()->First();
+    while (event) {
+      event = Schedule->Events()->Next(event);
+    }
+#endif
 
 
     fprintf(f, "\nDump from object:\n");

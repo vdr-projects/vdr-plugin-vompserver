@@ -38,11 +38,17 @@
 #define BUFOVERTIME  5000
 #define BUFOVERCOUNT 100
 
+#if VDRVERSNUM < 10300
 cMediamvpTransceiver::cMediamvpTransceiver(const cChannel *Channel, int Priority, int Socket, cDevice *Device) :
                 cReceiver(Channel->Ca(), Priority, 7, Channel->Vpid(), Channel->Ppid(),
                                 Channel->Apid1(), Channel->Apid2(), Channel->Dpid1(), Channel->Dpid2(),
                                 Channel->Tpid()) {
-        m_Active = false;
+#else
+cMediamvpTransceiver::cMediamvpTransceiver(const cChannel *Channel, int Priority, int Socket, cDevice *Device) :
+                cReceiver(Channel->Ca(), Priority, Channel->Vpid(),
+                                Channel->Apids(), Channel->Dpids(), Channel->Spids()) {
+#endif        
+	m_Active = false;
         m_Socket = Socket;
         m_Remux = NULL;
         m_Device = Device;
@@ -51,11 +57,19 @@ cMediamvpTransceiver::cMediamvpTransceiver(const cChannel *Channel, int Priority
 //        m_RingBuffer = new cRingBufferLinear(VIDEOBUFSIZE, TS_SIZE * 20, true);
 
     /* Select the correct Muxing depending on whether it's video or not */
+#if VDRVERSNUM < 10300
     if ( Channel->Vpid() == 0 || Channel->Vpid() == 1 || Channel->Vpid() == 0x1FFF ) {
         m_Remux = new cTS2ESRemux(Channel->Apid1());
     } else {
                 m_Remux = new cTS2PSRemux(Channel->Vpid(), Channel->Apid1(), 0, 0, 0, 0);
     }
+#else
+    if ( Channel->Vpid() == 0 || Channel->Vpid() == 1 || Channel->Vpid() == 0x1FFF ) {
+        m_Remux = new cTS2ESRemux(Channel->Apid(0));
+    } else {
+                m_Remux = new cTS2PSRemux(Channel->Vpid(), Channel->Apid(0), 0, 0, 0, 0);
+    }
+#endif
     printf("Created transceiver at %p, remux @%p ringbuffer %p\n",this,m_Remux,m_RingBuffer);
 
     /* Suggested by Peter Wagner to assist single DVB card systems */
@@ -113,7 +127,8 @@ void cMediamvpTransceiver::Receive(uchar *Data, int Length)
                 int p = m_RingBuffer->Put(Data, Length);
                 if (p != Length) {
                         ++errcnt;
-                        if (showerr) {
+#if VDRVERSNUM < 10300
+			if (showerr) {
                                 if (firsterr == 0)
                                         firsterr = time_ms();
                                 else if (firsterr + BUFOVERTIME > time_ms() && errcnt > BUFOVERCOUNT) {
@@ -131,6 +146,27 @@ void cMediamvpTransceiver::Receive(uchar *Data, int Length)
                                 esyslog("ERROR: ring buffer overflow (%d bytes dropped)", Length - p);
                         else
                                 firsterr = time_ms();
+#else
+			if (showerr) {
+                                if (firsterr == 0) {
+                                        firsterr = 1;
+					lastTime.Set();
+				}
+                                else if (lastTime.Elapsed() > BUFOVERTIME && errcnt > BUFOVERCOUNT) {
+                                        esyslog("ERROR: too many buffer overflows, logging stopped");
+                                        showerr = false;
+                                }
+                        } else if (lastTime.Elapsed() < BUFOVERTIME) {
+                                showerr = true;
+                                firsterr = 0;
+                                errcnt = 0;
+                        }
+
+                        if (showerr)
+                                esyslog("ERROR: ring buffer overflow (%d bytes dropped)", Length - p);
+                        else
+                                firsterr = 1;
+#endif
                 }
         }
 }

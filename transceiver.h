@@ -42,7 +42,9 @@ private:
     int       m_Socket;
 
         bool m_Active;
-
+#if VDRVERSNUM >= 10300
+	cTimeMs lastTime;
+#endif
         // CJT
         Ringbuffer rb;
         pthread_mutex_t ringLock;
