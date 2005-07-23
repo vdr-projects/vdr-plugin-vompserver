@@ -594,7 +594,7 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
     fprintf(f, "ChannelID.ToString() = %s\n", tchid.ToString());
     fprintf(f, "NumEvents() = %i\n", Schedule->NumEvents());
 #else
-//	put the count at the end.
+//  put the count at the end.
 #endif
     thisChannel = Channels.GetByChannelID(tchid, true);
     if (thisChannel)
@@ -620,7 +620,7 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
       fprintf(f, "\n\n");
     }
 #else
-//	This whole section needs rewriting to walk the list.
+//  This whole section needs rewriting to walk the list.
     event = Schedule->Events()->First();
     while (event) {
       event = Schedule->Events()->Next(event);
@@ -740,7 +740,7 @@ void MVPClient::processConfigLoad(unsigned char* buffer, int length)
   else
   {
     unsigned char sendBuffer[8];
-    *(unsigned long*)&sendBuffer[0] = htonl(0);
+    *(unsigned long*)&sendBuffer[0] = htonl(4);
     *(unsigned long*)&sendBuffer[4] = htonl(0);
     tcp.sendPacket(sendBuffer, 8);
 
