@@ -331,7 +331,14 @@ void MVPClient::processGetSummary(unsigned char* data, int length)
 #if VDRVERSNUM < 10300
     point = (char*)recording->Summary();
 #else
-    point = (char*)recording->Info()->ShortText();
+    const cRecordingInfo *Info = recording->Info();
+    point = (char*)Info->ShortText();
+    printf("info pointer %p\nsummary pointer %p\n", Info, point);
+    if (isempty(point))
+    {
+      point = (char*)Info->Description();
+      printf("description pointer %p\n", point);
+    }
 #endif
     strcpy((char*)&sendBuffer[count], point);
     count += strlen(point) + 1;
