@@ -360,16 +360,25 @@ void MVPClient::processGetChannelsList(unsigned char* data, int length)
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
-    if (!channel->GroupSep())
+#if VDRVERSNUM < 10300
+    if (!channel->GroupSep() && !channel->Ca())
+#else
+    if (!channel->GroupSep() && !channel->Ca(0))
+#endif
     {
       printf("name: '%s'\n", channel->Name());
+
+      if (channel->Vpid()) type = 1;
+#if VDRVERSNUM < 10300
+      else type = 2;
+#else
+      else if (channel->Apid(0)) type = 2;
+      else continue;
+#endif
 
       if (count > 49000) break;
       *(unsigned long*)&sendBuffer[count] = htonl(channel->Number());
       count += 4;
-
-      if (channel->Vpid()) type = 1;
-      else type = 2;
 
       *(unsigned long*)&sendBuffer[count] = htonl(type);
       count += 4;
