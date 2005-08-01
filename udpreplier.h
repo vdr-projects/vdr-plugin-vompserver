@@ -25,6 +25,7 @@
 #include <pthread.h>
 #include <signal.h>
 
+#include "log.h"
 #include "dsock.h"
 
 class UDPReplier

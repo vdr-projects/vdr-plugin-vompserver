@@ -48,7 +48,7 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 OBJS = $(PLUGIN).o dsock.o mvpserver.o udpreplier.o mvpclient.o tcp.o \
                    transceiver.o remux/ts2ps.o remux/ts2es.o remux/tsremux.o ringbuffer.o \
-                   recplayer.o config.o
+                   recplayer.o config.o log.o
 
 
 libdvbmpeg/libdvbmpegtools.a: libdvbmpeg/*.c libdvbmpeg/*.cc libdvbmpeg/*.h libdvbmpeg/*.hh
@@ -59,7 +59,7 @@ libdvbmpeg/libdvbmpegtools.a: libdvbmpeg/*.c libdvbmpeg/*.cc libdvbmpeg/*.h libd
 
 %.o: %.c
 	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) -o $@ $<
-        
+
 # Dependencies:
 
 MAKEDEP = g++ -MM -MG

@@ -43,6 +43,7 @@ int MVPServer::stop()
 {
   if (!running) return 0;
 
+  log.shutdown();
   udpr.stop();
 
   pthread_cancel(runThread);
@@ -57,12 +58,12 @@ int MVPServer::run()
 {
   if (running) return 1;
 
-//  logger.init(Log::DEBUG, "/tmp/vompserver.log");
+  log.init(Log::DEBUG, "/tmp/vompserver.log", 0);
 
   if (udpr.run() == 0) return 0;
 
   if (pthread_create(&runThread, NULL, (void*(*)(void*))MVPServerStartThread, (void *)this) == -1) return 0;
-  printf("MVPServer run success\n");
+  log.log("MVPServer", Log::DEBUG, "MVPServer run success");
   return 1;
 }
 
@@ -85,7 +86,7 @@ void MVPServer::run2()
   listeningSocket = socket(AF_INET, SOCK_STREAM, 0);
   if (listeningSocket < 0)
   {
-    printf("Could not get TCP socket in vompserver\n");
+    log.log("MVPServer", Log::DEBUG, "Could not get TCP socket in vompserver");
     return;
   }
 
@@ -94,7 +95,7 @@ void MVPServer::run2()
 
   if (bind(listeningSocket,(struct sockaddr *)&address,sizeof(address)) < 0)
   {
-    printf("Could not bind to socket in vompserver\n");
+    log.log("MVPServer", Log::DEBUG, "Could not bind to socket in vompserver");
     close(listeningSocket);
     return;
   }

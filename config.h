@@ -28,6 +28,8 @@
 #include <pthread.h>
 #include <ctype.h>
 
+#include "log.h"
+
 #define MAX_FILENAME_LENGTH 500
 #define BUFFER_LENGTH 1500
 
@@ -57,6 +59,7 @@ class Config
     pthread_mutex_t fileLock;
     int initted;
     int lastLineLength;
+    Log* log;
 
     char fileName[MAX_FILENAME_LENGTH];
     char fileNameTemp[MAX_FILENAME_LENGTH];

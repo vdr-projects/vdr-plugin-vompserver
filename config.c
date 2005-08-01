@@ -25,6 +25,7 @@ Config::Config()
 {
   initted = 0;
   lastLineLength = 0;
+  log = Log::getInstance();
 }
 
 int Config::init(char* takeFileName)
@@ -35,7 +36,7 @@ int Config::init(char* takeFileName)
 
   if (strlen(takeFileName) > (MAX_FILENAME_LENGTH - 1))
   {
-    printf("Config error: Config filename too long\n");
+    log->log("Config", Log::DEBUG, "Config error: Config filename too long");
     return 0;
   }
 
@@ -49,7 +50,7 @@ int Config::init(char* takeFileName)
     file = fopen(fileName, "w");
     if (!file)
     {
-      printf("Config error: Could not access config file\n");
+      log->log("Config", Log::DEBUG, "Config error: Could not access config file");
       return 0;
     }
   }
@@ -77,12 +78,12 @@ int Config::openFile()
   if (!initted) return 0;
   if (pthread_mutex_lock(&fileLock))
   {
-    printf("Config error: Could not get lock\n");
+    log->log("Config", Log::DEBUG, "Config error: Could not get lock");
     return 0;
   }
   if (!initted)
   {
-    printf("Config error: Initted 0 after lock\n");
+    log->log("Config", Log::DEBUG, "Config error: Initted 0 after lock");
     pthread_mutex_unlock(&fileLock);
     return 0;
   }
@@ -90,7 +91,7 @@ int Config::openFile()
   file = fopen(fileName, "r");
   if (!file)
   {
-    printf("Config error: Could not open config file\n");
+    log->log("Config", Log::DEBUG, "Config error: Could not open config file");
     pthread_mutex_unlock(&fileLock);
     return 0;
   }
@@ -108,12 +109,12 @@ void Config::closeFile()
 
 int Config::readLine()
 {
-  if (!initted || !file) { printf("1\n"); return 0; }
-  if (!fgets(buffer, BUFFER_LENGTH-1, file)) { printf("2\n"); return 0; }
+  if (!initted || !file) { log->log("Config", Log::DEBUG, "1"); return 0; }
+  if (!fgets(buffer, BUFFER_LENGTH-1, file)) { log->log("Config", Log::DEBUG, "2"); return 0; }
   lastLineLength = strlen(buffer);
-  printf("buffer before trim: '%s'\n", buffer);
+  log->log("Config", Log::DEBUG, "buffer before trim: '%s'", buffer);
   trim(buffer);
-  printf("buffer after trim: '%s'\n", buffer);
+  log->log("Config", Log::DEBUG, "buffer after trim: '%s'", buffer);
   return 1;
 }
 
@@ -165,13 +166,13 @@ int Config::deleteValue(char* section, char* key)
   if (!findSection(section))
   {
     closeFile();
-    printf("Config error: Section %s not found\n", section);
+    log->log("Config", Log::DEBUG, "Config error: Section %s not found", section);
     return 0;
   }
   if (!findKey(key))
   {
     closeFile();
-    printf("Config error: Key %s not found\n", key);
+    log->log("Config", Log::DEBUG, "Config error: Key %s not found", key);
     return 0;
   }
 
@@ -215,7 +216,7 @@ int Config::setValueString(char* section, char* key, char* newValue)
       if (!newFile)
       {
         closeFile();
-        printf("Config error: Could not write temp config file\n");
+        log->log("Config", Log::DEBUG, "Config error: Could not write temp config file");
         return 0;
       }
 
@@ -231,7 +232,7 @@ int Config::setValueString(char* section, char* key, char* newValue)
       if (!newFile)
       {
         closeFile();
-        printf("Config error: Could not write temp config file\n");
+        log->log("Config", Log::DEBUG, "Config error: Could not write temp config file");
         return 0;
       }
 
@@ -247,7 +248,7 @@ int Config::setValueString(char* section, char* key, char* newValue)
     if (!newFile)
     {
       closeFile();
-      printf("Config error: Could not write temp config file\n");
+      log->log("Config", Log::DEBUG, "Config error: Could not write temp config file");
       return 0;
     }
 
@@ -303,7 +304,7 @@ int Config::findSection(char* section)
   if (!initted || !file) return 0;
   if (strlen(section) > (BUFFER_LENGTH-2))
   {
-    printf("Config error: Section given exceeds max length\n");
+    log->log("Config", Log::DEBUG, "Config error: Section given exceeds max length");
     return 0;
   }
 
@@ -315,7 +316,7 @@ int Config::findSection(char* section)
 
   while(readLine())
   {
-    printf("to find '%s' this line '%s'\n", toFind, buffer);
+    log->log("Config", Log::DEBUG, "to find '%s' this line '%s'", toFind, buffer);
     if (!strcmp(toFind, buffer)) return 1;
   }
   return 0;
@@ -327,7 +328,7 @@ int Config::findKey(char* key)
 
   if (strlen(key) > (BUFFER_LENGTH-1))
   {
-    printf("Config error: Key given exceeds max length\n");
+    log->log("Config", Log::DEBUG, "Config error: Key given exceeds max length");
     return 0;
   }
 
@@ -370,13 +371,13 @@ char* Config::getValueString(char* section, char* key)
   if (!findSection(section))
   {
     closeFile();
-    printf("Config error: Section %s not found\n", section);
+    log->log("Config", Log::DEBUG, "Config error: Section %s not found", section);
     return 0;
   }
   if (!findKey(key))
   {
     closeFile();
-    printf("Config error: Key %s not found\n", key);
+    log->log("Config", Log::DEBUG, "Config error: Key %s not found", key);
     return 0;
   }
 
@@ -397,13 +398,13 @@ long Config::getValueLong(char* section, char* key, int* failure)
   if (!findSection(section))
   {
     closeFile();
-    printf("Config error: Section %s not found\n", section);
+    log->log("Config", Log::DEBUG, "Config error: Section %s not found", section);
     return 0;
   }
   if (!findKey(key))
   {
     closeFile();
-    printf("Config error: Key %s not found\n", key);
+    log->log("Config", Log::DEBUG, "Config error: Key %s not found", key);
     return 0;
   }
   *failure = 0;
@@ -425,13 +426,13 @@ long long Config::getValueLongLong(char* section, char* key, int* failure)
   if (!findSection(section))
   {
     closeFile();
-    printf("Config error: Section %s not found\n", section);
+    log->log("Config", Log::DEBUG, "Config error: Section %s not found", section);
     return 0;
   }
   if (!findKey(key))
   {
     closeFile();
-    printf("Config error: Key %s not found\n", key);
+    log->log("Config", Log::DEBUG, "Config error: Key %s not found", key);
     return 0;
   }
   *failure = 0;
@@ -453,13 +454,13 @@ double Config::getValueDouble(char* section, char* key, int* failure)
   if (!findSection(section))
   {
     closeFile();
-    printf("Config error: Section %s not found\n", section);
+    log->log("Config", Log::DEBUG, "Config error: Section %s not found", section);
     return 0;
   }
   if (!findKey(key))
   {
     closeFile();
-    printf("Config error: Key %s not found\n", key);
+    log->log("Config", Log::DEBUG, "Config error: Key %s not found", key);
     return 0;
   }
 

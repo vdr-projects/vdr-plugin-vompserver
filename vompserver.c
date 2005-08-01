@@ -80,15 +80,12 @@ bool cPluginVompserver::ProcessArgs(int argc, char *argv[])
 bool cPluginVompserver::Initialize(void)
 {
   // Initialize any background activities the plugin shall perform.
-  printf("VOMP Plugin init\n");
   return true;
 }
 
 bool cPluginVompserver::Start(void)
 {
   // Start any background activities the plugin shall perform.
-  printf("VOMP Plugin start\n");
-
   int success = mvpserver.run();
   if (success) return true;
   else return false;

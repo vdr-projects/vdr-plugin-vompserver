@@ -25,6 +25,7 @@
 #include <vdr/recording.h>
 
 #include "defines.h"
+#include "log.h"
 
 class Segment
 {
@@ -45,6 +46,7 @@ class RecPlayer
     cRecording* getCurrentRecording();
 
   private:
+    Log* log;
     cRecording* recording;
     FILE* file;
     int fileOpen;

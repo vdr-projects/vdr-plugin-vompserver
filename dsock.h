@@ -32,8 +32,10 @@
 #include <string.h>
 #include <errno.h>
 
+#include "log.h"
+
 #define MAXBUFLEN 2000
-const char DSOCKDEBUG = 1;
+const char DSOCKDEBUG = 0;
 typedef unsigned char uchar;
 
 class DatagramSocket
@@ -49,6 +51,8 @@ class DatagramSocket
     void send(char *, short, char *, int); // send wants: IP Address ddn style, port,
                                            // data, length of data
   private:
+    Log* log;
+    int initted;
     int socketnum;                  // Socket descriptor
     short myPort;                   // My port number
     struct sockaddr_in myAddr;      // My address

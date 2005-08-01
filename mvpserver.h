@@ -46,6 +46,7 @@ class MVPServer
     pthread_t runThread;
     int running;
 
+    Log log;
     UDPReplier udpr;
     int listeningSocket;
 };

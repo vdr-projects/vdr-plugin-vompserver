@@ -1,6 +1,8 @@
 /*
      Edited for VOMP by Chris Tallon
      Edits Copyright 2004-2005 Chris Tallon
+
+     This class will be replaced soon.
 */
 
 /*
@@ -32,6 +34,7 @@ class cChannel;
 
 #include <pthread.h>
 #include "ringbuffer.h"
+#include "log.h"
 
 class cMediamvpTransceiver: public cReceiver, public cThread {
 //    friend class cMediamvpVdrURL;
@@ -43,11 +46,12 @@ private:
 
         bool m_Active;
 #if VDRVERSNUM >= 10300
-	cTimeMs lastTime;
+  cTimeMs lastTime;
 #endif
         // CJT
         Ringbuffer rb;
         pthread_mutex_t ringLock;
+        Log* log;
 
 
 protected:

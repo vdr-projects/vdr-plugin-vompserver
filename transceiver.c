@@ -47,11 +47,14 @@ cMediamvpTransceiver::cMediamvpTransceiver(const cChannel *Channel, int Priority
 cMediamvpTransceiver::cMediamvpTransceiver(const cChannel *Channel, int Priority, int Socket, cDevice *Device) :
                 cReceiver(Channel->Ca(), Priority, Channel->Vpid(),
                                 Channel->Apids(), Channel->Dpids(), Channel->Spids()) {
-#endif        
-	m_Active = false;
+#endif
+  m_Active = false;
         m_Socket = Socket;
         m_Remux = NULL;
         m_Device = Device;
+
+//cjt
+  log = Log::getInstance();
 
         m_RingBuffer = new cRingBufferLinear(VIDEOBUFSIZE, TS_SIZE * 2, true);
 //        m_RingBuffer = new cRingBufferLinear(VIDEOBUFSIZE, TS_SIZE * 20, true);
@@ -70,7 +73,7 @@ cMediamvpTransceiver::cMediamvpTransceiver(const cChannel *Channel, int Priority
                 m_Remux = new cTS2PSRemux(Channel->Vpid(), Channel->Apid(0), 0, 0, 0, 0);
     }
 #endif
-    printf("Created transceiver at %p, remux @%p ringbuffer %p\n",this,m_Remux,m_RingBuffer);
+    log->log("Transciever", Log::DEBUG, "Created transceiver at %p, remux @%p ringbuffer %p",this,m_Remux,m_RingBuffer);
 
     /* Suggested by Peter Wagner to assist single DVB card systems */
 #ifdef SINGLE_DEVICE
@@ -89,7 +92,7 @@ cMediamvpTransceiver::cMediamvpTransceiver(const cChannel *Channel, int Priority
 
 cMediamvpTransceiver::~cMediamvpTransceiver(void)
 {
-    printf("Deleting transceiver at %p, remux @%p ringbuffer %p\n",this,m_Remux,m_RingBuffer);
+    log->log("Transciever", Log::DEBUG, "Deleting transceiver at %p, remux @%p ringbuffer %p",this,m_Remux,m_RingBuffer);
 
         Detach();
         if (m_Remux)
@@ -128,7 +131,7 @@ void cMediamvpTransceiver::Receive(uchar *Data, int Length)
                 if (p != Length) {
                         ++errcnt;
 #if VDRVERSNUM < 10300
-			if (showerr) {
+      if (showerr) {
                                 if (firsterr == 0)
                                         firsterr = time_ms();
                                 else if (firsterr + BUFOVERTIME > time_ms() && errcnt > BUFOVERCOUNT) {
@@ -147,11 +150,11 @@ void cMediamvpTransceiver::Receive(uchar *Data, int Length)
                         else
                                 firsterr = time_ms();
 #else
-			if (showerr) {
+      if (showerr) {
                                 if (firsterr == 0) {
                                         firsterr = 1;
-					lastTime.Set();
-				}
+          lastTime.Set();
+        }
                                 else if (lastTime.Elapsed() > BUFOVERTIME && errcnt > BUFOVERCOUNT) {
                                         esyslog("ERROR: too many buffer overflows, logging stopped");
                                         showerr = false;
@@ -176,7 +179,7 @@ void cMediamvpTransceiver::Action(void)
         int max = 0;
 
 
-        printf("Mediamvp: Transceiver thread started (pid=%d)", getpid());
+    log->log("Transciever", Log::DEBUG, "Mediamvp: Transceiver thread started (pid=%d)", getpid());
 
 
         m_Active = true;
@@ -213,7 +216,7 @@ void cMediamvpTransceiver::Action(void)
         }
 
 
-        printf("Mediamvp: Transceiver thread ended");
+    log->log("Transciever", Log::DEBUG, "Mediamvp: Transceiver thread ended");
 }
 
 unsigned long cMediamvpTransceiver::getBlock(unsigned char* buffer, unsigned long amount)

@@ -24,16 +24,26 @@ DatagramSocket::DatagramSocket(short port)
 {
   myPort = port;
   addrlen = sizeof(struct sockaddr);
+  log = Log::getInstance();
+  initted = 0;
 
   if ((socketnum = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
-  { perror("socket"); exit(1); }
+  {
+    log->log("UDP", Log::CRIT, "Socket error");
+    return;
+  }
 
   myAddr.sin_family = AF_INET;         // host byte order
   myAddr.sin_port = htons(myPort);     // short, network byte order
   myAddr.sin_addr.s_addr = INADDR_ANY; // auto-fill with my IP
   memset(&(myAddr.sin_zero), 0, 8);    // zero the rest of the struct
   if (bind(socketnum, (struct sockaddr *)&myAddr, addrlen) == -1)
-  { perror("bind"); printf(" %s ", strerror(errno)); exit(1); }
+  {
+    log->log("UDP", Log::CRIT, "Bind error");
+    close(socketnum);
+    return;
+  }
+  initted = 1;
 
   FD_ZERO(&readfds);
   FD_SET(socketnum, &readfds);
@@ -43,11 +53,14 @@ DatagramSocket::DatagramSocket(short port)
 
 DatagramSocket::~DatagramSocket()
 {
-  close(socketnum);
+  if (initted) close(socketnum);
+  initted = 0;
 }
 
 unsigned char DatagramSocket::waitforMessage(unsigned char how)
 {
+  if (!initted) return 0;
+
   /* how = 0 - block
      how = 1 - start new wait
      how = 2 - continue wait
@@ -78,26 +91,19 @@ unsigned char DatagramSocket::waitforMessage(unsigned char how)
   FD_ZERO(&readfds);
   FD_SET(socketnum, &readfds);
 
-  if (select(socketnum + 1, &readfds, NULL, NULL, passToSelect) <= 0)
-  {  return 1;  }
+  if (select(socketnum + 1, &readfds, NULL, NULL, passToSelect) <= 0) return 1;
 
-  if ((mlength = recvfrom(socketnum, buf, MAXBUFLEN, 0,
-      (struct sockaddr *)&theirAddr, &addrlen)) == -1)
-  { perror("recvfrom"); return 0; }
+  if ((mlength = recvfrom(socketnum, buf, MAXBUFLEN, 0, (struct sockaddr *)&theirAddr, &addrlen)) == -1)
+  {
+    log->log("UDP", Log::DEBUG, "recvfrom error");
+    return 0;
+  }
   else
   {
     memset(&buf[mlength], 0, MAXBUFLEN - mlength);
     strcpy(fromIPA, inet_ntoa(theirAddr.sin_addr));
     fromPort = ntohs(theirAddr.sin_port);
-
-    if (DSOCKDEBUG)
-    {
-      printf("%s:%i\tIN  %i\t", fromIPA, fromPort, mlength);
-      int k;
-      for(k = 0; k < mlength; k++)
-        printf("%u ", (unsigned char)buf[k]);
-      printf("\n");
-    }
+    log->log("UDP", Log::DEBUG, "%s:%i received length %i", fromIPA, fromPort, mlength);
     return 2;
   }
 
@@ -118,15 +124,6 @@ short DatagramSocket::getFromPort(void) const   {  return fromPort; }
 
 void DatagramSocket::send(char *ipa, short port, char *message, int length)
 {
-  if (DSOCKDEBUG)
-  {
-    printf("%s:%i\tOUT %i\t", ipa, port, length);
-    int k;
-    uchar l;
-    for (k = 0; k < length; k++)
-      { l = (uchar)message[k]; printf("%u ", l); }
-  }
-
   int sentLength = 0;
 
   theirAddr.sin_family = AF_INET;      // host byte order
@@ -136,39 +133,22 @@ void DatagramSocket::send(char *ipa, short port, char *message, int length)
   theirAddr.sin_addr = tad;            // address
   memset(&(theirAddr.sin_zero), 0, 8); // zero the rest of the struct
 
-  unsigned char crypt[MAXBUFLEN];
-  memcpy(crypt, message, length);
-
-  sentLength = sendto(socketnum, crypt, length, 0, (struct sockaddr *)&theirAddr, addrlen);
+  sentLength = sendto(socketnum, message, length, 0, (struct sockaddr *)&theirAddr, addrlen);
   if (sentLength == length)
   {
-    printf(" GOOD\n");
+    log->log("UDP", Log::DEBUG, "%s:%i sent length %i", ipa, port, length);
+    return;
   }
-  else
-  {
-    printf(" --BAD--");  fflush(stdout);
-    sentLength = sendto(socketnum, crypt, length, 0, (struct sockaddr *)&theirAddr, addrlen);
-    if (sentLength == length)
-      printf(" GOOD\n");
-    else
-    {
-      printf(" -#-FAILED-#-\n");
 
-      if (DSOCKDEBUG && (sentLength != length))
-      {
-        printf("--------------\n");
-        printf("Sendto failure\n");
-        printf("--------------\n");
-        printf("%s:%i\tOUT %i %i ...\n", ipa, port, length, sentLength);
-        perror("Perror reports");
-        printf("errno value: %d\n", errno);
-        printf("errno translated: %s\n", strerror(errno));
-      //  printf("h_errno value: %d\n", h_errno);
-      //  printf("\nActual address: %s\n", inet_ntoa(tad));
-      //  printf("Actual port: %i\n", ntohs(theirAddr.sin_port));
-        printf("continuing...\n\n");
-      }
-    }
+  log->log("UDP", Log::DEBUG, "%s:%i send failed %i", ipa, port, length);
+
+  sentLength = sendto(socketnum, message, length, 0, (struct sockaddr *)&theirAddr, addrlen);
+  if (sentLength == length)
+  {
+    log->log("UDP", Log::DEBUG, "%s:%i sent length %i 2nd try", ipa, port, length);
+    return;
   }
+
+  log->log("UDP", Log::DEBUG, "%s:%i send failed %i 2nd try", ipa, port, length);
 }
 

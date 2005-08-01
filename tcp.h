@@ -37,6 +37,8 @@
 #include <fcntl.h>
 #include <ctype.h>
 
+#include "log.h"
+
 
 typedef unsigned char UCHAR;
 typedef unsigned short USHORT;
@@ -66,6 +68,7 @@ class TCP
     static UCHAR dcc(UCHAR c);
 
   private:
+    Log* log;
     int sock;
     int connected;
     int readTimeoutEnabled;

@@ -25,6 +25,7 @@ RecPlayer::RecPlayer(cRecording* rec)
   file = NULL;
   totalLength = 0;
   lastPosition = 0;
+  log = Log::getInstance();
   recording = rec;
 
   // FIXME find out max file path / name lengths
@@ -34,7 +35,7 @@ RecPlayer::RecPlayer(cRecording* rec)
   for(int i = 1; i < 1001; i++)
   {
     snprintf(fileName, 2047, "%s/%03i.vdr", rec->FileName(), i);
-    printf("FILENAME: %s\n", fileName);
+    log->log("RecPlayer", Log::DEBUG, "FILENAME: %s", fileName);
     file = fopen(fileName, "r");
     if (file)
     {
@@ -43,7 +44,7 @@ RecPlayer::RecPlayer(cRecording* rec)
 
       fseek(file, 0, SEEK_END);
       totalLength += ftell(file);
-      printf("File %i found, totalLength now %llu\n", i, totalLength);
+      log->log("RecPlayer", Log::DEBUG, "File %i found, totalLength now %llu", i, totalLength);
       segments[i]->end = totalLength;
       fclose(file);
     }
@@ -58,7 +59,7 @@ RecPlayer::RecPlayer(cRecording* rec)
 
 RecPlayer::~RecPlayer()
 {
-  printf("RecPlayer destructor\n");
+  log->log("RecPlayer", Log::DEBUG, "destructor");
   int i = 1;
   while(segments[i++]) delete segments[i];
   if (file) fclose(file);
@@ -70,12 +71,12 @@ int RecPlayer::openFile(int index)
 
   char fileName[2048];
   snprintf(fileName, 2047, "%s/%03i.vdr", recording->FileName(), index);
-  printf("openFile called for index %i string:%s\n", index, fileName);
+  log->log("RecPlayer", Log::DEBUG, "openFile called for index %i string:%s", index, fileName);
 
   file = fopen(fileName, "r");
   if (!file)
   {
-    printf("file failed to open\n");
+    log->log("RecPlayer", Log::DEBUG, "file failed to open");
     fileOpen = 0;
     return 0;
   }
@@ -92,19 +93,19 @@ unsigned long RecPlayer::getBlock(unsigned char* buffer, ULLONG position, unsign
 {
   if ((amount > totalLength) || (amount > 100000))
   {
-    printf("Amount %lu requested and rejected\n", amount);
+    log->log("RecPlayer", Log::DEBUG, "Amount %lu requested and rejected", amount);
     return 0;
   }
 
   if (position >= totalLength)
   {
-    printf("Client asked for data starting past end of recording!\n");
+    log->log("RecPlayer", Log::DEBUG, "Client asked for data starting past end of recording!");
     return 0;
   }
 
   if ((position + amount) > totalLength)
   {
-    printf("Client asked for some data past the end of recording, adjusting amount\n");
+    log->log("RecPlayer", Log::DEBUG, "Client asked for some data past the end of recording, adjusting amount");
     amount = totalLength - position;
   }
 

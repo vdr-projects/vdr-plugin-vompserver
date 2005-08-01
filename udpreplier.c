@@ -56,7 +56,7 @@ int UDPReplier::run()
   if (running) return 1;
   running = 1;
   if (pthread_create(&runThread, NULL, (void*(*)(void*))UDPReplierStartThread, (void *)this) == -1) return 0;
-  printf("UDPReplier run success\n");
+  Log::getInstance()->log("UDP", Log::DEBUG, "UDP replier started");
   return 1;
 }
 

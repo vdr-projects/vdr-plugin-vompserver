@@ -23,6 +23,7 @@
 
 TCP::TCP(int tsocket)
 {
+  log = Log::getInstance();
   sock = -1;
   connected = 0;
   readTimeoutEnabled = 1;
@@ -44,7 +45,7 @@ void TCP::cleanup()
   close(sock);
   sock = -1;
   connected = 0;
-  printf("TCP has closed socket\n");
+  log->log("TCP", Log::DEBUG, "TCP has closed socket");
 }
 
 
@@ -95,18 +96,18 @@ int TCP::setSoKeepTime(int timeOut)
 
   option = 1;
   s1 = setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &option, sizeof(option));
-  printf("SO_KEEPALIVE = %i\n", s1);
+  log->log("TCP", Log::DEBUG, "SO_KEEPALIVE = %i", s1);
 
   option = timeOut;
   s2 = setsockopt(sock, SOL_TCP, TCP_KEEPIDLE, &option, sizeof(option));
-  printf("TCP_KEEPIDLE = %i\n", s2);
+  log->log("TCP", Log::DEBUG, "TCP_KEEPIDLE = %i", s2);
 
   s3 = setsockopt(sock, SOL_TCP, TCP_KEEPINTVL, &option, sizeof(option));
-  printf("TCP_KEEPINTVL = %i\n", s3);
+  log->log("TCP", Log::DEBUG, "TCP_KEEPINTVL = %i", s3);
 
   option = 2;
   s4 = setsockopt(sock, SOL_TCP, TCP_KEEPCNT, &option, sizeof(option));
-  printf("TCP_KEEPCNT = %i\n", s4);
+  log->log("TCP", Log::DEBUG, "TCP_KEEPCNT = %i", s4);
 
   if (s1 || s2 || s3 || s4) return 0;
   return 1;
@@ -150,7 +151,7 @@ UCHAR* TCP::receivePacket()
     return NULL;
   }
 
-  dump((unsigned char*)buffer, packetLength);
+//  dump((unsigned char*)buffer, packetLength);
 
   dataLength = packetLength;
   return buffer;
@@ -186,7 +187,7 @@ int TCP::readData(UCHAR* buffer, int totalBytes)
     if (success < 1)
     {
       cleanup();
-      printf("TCP: error or timeout\n");
+      log->log("TCP", Log::DEBUG, "TCP: error or timeout");
       return 0;  // error, or timeout
     }
 
@@ -201,7 +202,7 @@ int TCP::readData(UCHAR* buffer, int totalBytes)
     }
     bytesRead += thisRead;
 
-    printf("Bytes read now: %u\n", bytesRead);
+//    log->log("TCP", Log::DEBUG, "Bytes read now: %u", bytesRead);
     if (bytesRead == totalBytes)
     {
       return 1;
@@ -211,7 +212,7 @@ int TCP::readData(UCHAR* buffer, int totalBytes)
       if (++readTries == 100)
       {
         cleanup();
-        printf("too many reads\n");
+        log->log("TCP", Log::DEBUG, "too many reads");
         return 0;
       }
     }
@@ -239,7 +240,7 @@ int TCP::sendPacket(UCHAR* buf, size_t count)
     if (success < 1)
     {
       cleanup();
-      printf("TCP: error or timeout\n");
+      log->log("TCP", Log::DEBUG, "TCP: error or timeout");
       return 0;  // error, or timeout
     }
 
@@ -250,12 +251,12 @@ int TCP::sendPacket(UCHAR* buf, size_t count)
       // in non-blocking mode if read is called with no data available, it returns -1
       // and sets errno to EGAGAIN. but we use select so it wouldn't do that anyway.
       cleanup();
-      printf("Detected connection closed\n");
+      log->log("TCP", Log::DEBUG, "Detected connection closed");
       return 0;
     }
     bytesWritten += thisWrite;
 
-    printf("Bytes written now: %u\n", bytesWritten);
+//    log->log("TCP", Log::DEBUG, "Bytes written now: %u", bytesWritten);
     if (bytesWritten == count)
     {
       return 1;
@@ -265,7 +266,7 @@ int TCP::sendPacket(UCHAR* buf, size_t count)
       if (++writeTries == 100)
       {
         cleanup();
-        printf("too many writes\n");
+        log->log("TCP", Log::DEBUG, "too many writes");
         return 0;
       }
     }

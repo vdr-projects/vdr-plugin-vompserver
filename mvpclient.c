@@ -26,6 +26,7 @@ MVPClient::MVPClient(int tsocket)
   cm = NULL;
   rp = NULL;
   recordingManager = NULL;
+  log = Log::getInstance();
 
   // Get IP address of client for config module
 
@@ -39,13 +40,13 @@ MVPClient::MVPClient(int tsocket)
   else
   {
     ipa[0] = '\0';
-    printf("Cannot get peer name!\n");
+    log->log("Client", Log::DEBUG, "Cannot get peer name!");
   }
 
   const char* configDir = cPlugin::ConfigDirectory();
   if (!configDir)
   {
-    printf("No config dir!\n");
+    log->log("Client", Log::DEBUG, "No config dir!");
     return;
   }
 
@@ -53,18 +54,17 @@ MVPClient::MVPClient(int tsocket)
   snprintf(configFileName, PATH_MAX - strlen(configDir) - strlen(ipa) - 20, "%s/vomp-%s.conf", configDir, ipa);
   config.init(configFileName);
 
-  printf("Config file name: %s\n", configFileName);
+  log->log("Client", Log::DEBUG, "Config file name: %s", configFileName);
 
 //  processGetChannelSchedule(NULL, 0);
 
-//  printf("here\n");
 //test();
 
 }
 
 MVPClient::~MVPClient()
 {
-  printf("MVP client destructor\n");
+  log->log("Client", Log::DEBUG, "MVP client destructor");
   if (cm)
   {
     cm->Stop();
@@ -92,7 +92,7 @@ cChannel* MVPClient::channelFromNumber(unsigned long channelNumber)
   {
     if (!channel->GroupSep())
     {
-      printf("Looking for channel %lu::: number: %i name: '%s'\n", channelNumber, channel->Number(), channel->Name());
+      log->log("Client", Log::DEBUG, "Looking for channel %lu::: number: %i name: '%s'", channelNumber, channel->Number(), channel->Name());
 
       if (channel->Number() == (int)channelNumber)
       {
@@ -102,7 +102,7 @@ cChannel* MVPClient::channelFromNumber(unsigned long channelNumber)
 #else
         int apid1 = channel->Apid(0);
 #endif
-        printf("Found channel number %lu, vpid = %i, apid1 = %i\n", channelNumber, vpid, apid1);
+        log->log("Client", Log::DEBUG, "Found channel number %lu, vpid = %i, apid1 = %i", channelNumber, vpid, apid1);
         return channel;
       }
     }
@@ -110,7 +110,7 @@ cChannel* MVPClient::channelFromNumber(unsigned long channelNumber)
 
   if (!channel)
   {
-    printf("Channel not found\n");
+    log->log("Client", Log::DEBUG, "Channel not found");
   }
 
   return channel;
@@ -129,7 +129,7 @@ void MVPClient::sendULONG(ULONG ul)
   *(unsigned long*)&sendBuffer[4] = htonl(ul);
 
   tcp.sendPacket(sendBuffer, 8);
-  printf("written ULONG %lu\n", ul);
+  log->log("Client", Log::DEBUG, "written ULONG %lu", ul);
 }
 
 void MVPClientStartThread(void* arg)
@@ -145,7 +145,7 @@ void MVPClientStartThread(void* arg)
 int MVPClient::run()
 {
   if (pthread_create(&runThread, NULL, (void*(*)(void*))MVPClientStartThread, (void *)this) == -1) return 0;
-  printf("MVPClient run success\n");
+  log->log("Client", Log::DEBUG, "MVPClient run success");
   return 1;
 }
 
@@ -169,12 +169,12 @@ void MVPClient::run2()
 
   while(1)
   {
-    printf("starting wait\n");
+    log->log("Client", Log::DEBUG, "Waiting");
     buffer = (unsigned char*)tcp.receivePacket();
-    printf("back from wait\n");
+    log->log("Client", Log::DEBUG, "Received packet, length = %u", tcp.getDataLength());
     if (buffer == NULL)
     {
-      printf("Detected connection closed\n");
+      log->log("Client", Log::DEBUG, "Detected connection closed");
       break;
     }
 
@@ -239,7 +239,7 @@ void MVPClient::processLogin(unsigned char* buffer, int length)
   *(signed int*)&sendBuffer[8] = htonl(timeOffset);
 
   tcp.sendPacket(sendBuffer, 12);
-  printf("written login reply\n");
+  log->log("Client", Log::DEBUG, "written login reply");
 }
 
 void MVPClient::processGetRecordingsList(unsigned char* data, int length)
@@ -281,11 +281,11 @@ void MVPClient::processGetRecordingsList(unsigned char* data, int length)
 
   *(unsigned long*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
 
-  printf("recorded size as %u\n", ntohl(*(unsigned long*)&sendBuffer[0]));
+  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(unsigned long*)&sendBuffer[0]));
 
   tcp.sendPacket(sendBuffer, count);
   delete[] sendBuffer;
-  printf("Written list\n");
+  log->log("Client", Log::DEBUG, "Written list");
 }
 
 void MVPClient::processDeleteRecording(unsigned char* data, int length)
@@ -297,11 +297,11 @@ void MVPClient::processDeleteRecording(unsigned char* data, int length)
 
   cRecording* recording = Recordings.GetByName((char*)data);
 
-  printf("recording pointer %p\n", recording);
+  log->log("Client", Log::DEBUG, "recording pointer %p", recording);
 
   if (recording)
   {
-    printf("deleting recording: %s\n", recording->Name());
+    log->log("Client", Log::DEBUG, "deleting recording: %s", recording->Name());
     recording->Delete();
     sendULONG(1);
   }
@@ -320,7 +320,7 @@ void MVPClient::processGetSummary(unsigned char* data, int length)
 
   cRecording *recording = Recordings.GetByName((char*)data);
 
-  printf("recording pointer %p\n", recording);
+  log->log("Client", Log::DEBUG, "recording pointer %p", recording);
 
   if (recording)
   {
@@ -333,22 +333,22 @@ void MVPClient::processGetSummary(unsigned char* data, int length)
 #else
     const cRecordingInfo *Info = recording->Info();
     point = (char*)Info->ShortText();
-    printf("info pointer %p\nsummary pointer %p\n", Info, point);
+    log->log("Client", Log::DEBUG, "info pointer %p summary pointer %p", Info, point);
     if (isempty(point))
     {
       point = (char*)Info->Description();
-      printf("description pointer %p\n", point);
+      log->log("Client", Log::DEBUG, "description pointer %p", point);
     }
 #endif
     strcpy((char*)&sendBuffer[count], point);
     count += strlen(point) + 1;
     *(unsigned long*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
 
-    printf("recorded size as %u\n", ntohl(*(unsigned long*)&sendBuffer[0]));
+    log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(unsigned long*)&sendBuffer[0]));
 
     tcp.sendPacket(sendBuffer, count);
     delete[] sendBuffer;
-    printf("Written summary\n");
+    log->log("Client", Log::DEBUG, "Written summary");
 
 
   }
@@ -373,7 +373,7 @@ void MVPClient::processGetChannelsList(unsigned char* data, int length)
     if (!channel->GroupSep() && !channel->Ca(0))
 #endif
     {
-      printf("name: '%s'\n", channel->Name());
+      log->log("Client", Log::DEBUG, "name: '%s'", channel->Name());
 
       if (channel->Vpid()) type = 1;
 #if VDRVERSNUM < 10300
@@ -398,16 +398,16 @@ void MVPClient::processGetChannelsList(unsigned char* data, int length)
 
   *(unsigned long*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
 
-  printf("recorded size as %u\n", ntohl(*(unsigned long*)&sendBuffer[0]));
+  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(unsigned long*)&sendBuffer[0]));
 
   tcp.sendPacket(sendBuffer, count);
   delete[] sendBuffer;
-  printf("Written channels list\n");
+  log->log("Client", Log::DEBUG, "Written channels list");
 }
 
 void MVPClient::processStartStreamingChannel(unsigned char* data, int length)
 {
-  printf("length = %i\n", length);
+  log->log("Client", Log::DEBUG, "length = %i", length);
   unsigned long channelNumber = ntohl(*(unsigned long*)data);
 
   cChannel* channel = channelFromNumber(channelNumber);
@@ -417,17 +417,45 @@ void MVPClient::processStartStreamingChannel(unsigned char* data, int length)
     return;
   }
 
-//  MVPReceiver* m = new MVPReceiver(channel->Vpid(), channel->Apid1());
-  cm = new cMediamvpTransceiver(channel, 0, 0, cDevice::ActualDevice());
-  cDevice::ActualDevice()->AttachReceiver(cm);
-  //cDevice::ActualDevice()->SwitchChannel(channel, false);
 
-  sendULONG(1);
+//  static cDevice *GetDevice(const cChannel *Channel, int Priority = -1, bool *NeedsDetachReceivers = NULL);
+         ///< Returns a device that is able to receive the given Channel at the
+         ///< given Priority.
+         ///< See ProvidesChannel() for more information on how
+         ///< priorities are handled, and the meaning of NeedsDetachReceivers.
+
+  bool NeedsDetachReceivers;
+  cDevice* device = cDevice::GetDevice(channel, 0, &NeedsDetachReceivers);
+  if (!device)
+  {
+    log->log("Client", Log::DEBUG, "No device found to receive this channel at this priority");
+    sendULONG(0);
+  }
+  else if (NeedsDetachReceivers)
+  {
+    // can't really happen since we stream with priority zero. if a rec has pri zero maybe
+    log->log("Client", Log::DEBUG, "Needs detach receivers");
+    sendULONG(0);
+  }
+  else
+  {
+    cm = new cMediamvpTransceiver(channel, 0, 0, device);
+    device->AttachReceiver(cm);
+    sendULONG(1);
+  }
+
+
+//////  MVPReceiver* m = new MVPReceiver(channel->Vpid(), channel->Apid1());
+//  cm = new cMediamvpTransceiver(channel, 0, 0, cDevice::ActualDevice());
+//  cDevice::ActualDevice()->AttachReceiver(cm);
+////  //cDevice::ActualDevice()->SwitchChannel(channel, false);
+
+//  sendULONG(1);
 }
 
 void MVPClient::processStopStreaming(unsigned char* data, int length)
 {
-  printf("STOP STREAMING RECEIVED\n");
+  log->log("Client", Log::DEBUG, "STOP STREAMING RECEIVED");
   if (cm)
   {
     delete cm;
@@ -450,35 +478,32 @@ void MVPClient::processGetBlock(unsigned char* data, int length)
 {
   if (!cm && !rp)
   {
-    printf("Get block called when no streaming happening!\n");
+    log->log("Client", Log::DEBUG, "Get block called when no streaming happening!");
     return;
   }
 
   ULLONG position = ntohll(*(ULLONG*)data);
-  printf("getblock called for position = %llu\n", position);
-
   data += sizeof(ULLONG);
-
   unsigned long amount = ntohl(*(unsigned long*)data);
-  printf("getblock called for length = %lu\n", amount);
+
+  log->log("Client", Log::DEBUG, "getblock pos = %llu length = %lu", position, amount);
 
   unsigned char sendBuffer[amount + 4];
   unsigned long amountReceived = 0; // compiler moan.
   if (cm)
   {
-    printf("getting from live\n");
+    log->log("Client", Log::DEBUG, "getting from live");
     amountReceived = cm->getBlock(&sendBuffer[4], amount);
   }
   else if (rp)
   {
-    printf("getting from recording\n");
+    log->log("Client", Log::DEBUG, "getting from recording");
     amountReceived = rp->getBlock(&sendBuffer[4], position, amount);
   }
 
   *(unsigned long*)&sendBuffer[0] = htonl(amountReceived);
-  printf("sendpacket go\n");
   tcp.sendPacket(sendBuffer, amountReceived + 4);
-  printf("written ok %lu\n", amountReceived);
+  log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
 }
 
 void MVPClient::processStartStreamingRecording(unsigned char* data, int length)
@@ -490,7 +515,7 @@ void MVPClient::processStartStreamingRecording(unsigned char* data, int length)
 
   cRecording* recording = recordingManager->GetByName((char*)data);
 
-  printf("recording pointer %p\n", recording);
+  log->log("Client", Log::DEBUG, "recording pointer %p", recording);
 
   if (recording)
   {
@@ -501,7 +526,7 @@ void MVPClient::processStartStreamingRecording(unsigned char* data, int length)
     *(ULLONG*)&sendBuffer[4] = htonll(rp->getTotalLength());
 
     tcp.sendPacket(sendBuffer, 12);
-    printf("written totalLength\n");
+    log->log("Client", Log::DEBUG, "written totalLength");
   }
   else
   {
@@ -513,7 +538,7 @@ void MVPClient::processStartStreamingRecording(unsigned char* data, int length)
 void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
 {
   ULONG channelNumber = ntohl(*(ULLONG*)data);
-  printf("get schedule called for channel %lu\n", channelNumber);
+  log->log("Client", Log::DEBUG, "get schedule called for channel %lu", channelNumber);
 
   cChannel* channel = channelFromNumber(channelNumber);
   if (!channel)
@@ -521,7 +546,7 @@ void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
     unsigned char sendBuffer[4];
     *(unsigned long*)&sendBuffer[0] = htonl(0);
     tcp.sendPacket(sendBuffer, 4);
-    printf("written null\n");
+    log->log("Client", Log::DEBUG, "written null");
     return;
   }
 
@@ -538,7 +563,7 @@ void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
     *(unsigned long*)&sendBuffer[0] = htonl(4);
     *(unsigned long*)&sendBuffer[4] = htonl(0);
     tcp.sendPacket(sendBuffer, 8);
-    printf("written 0\n");
+    log->log("Client", Log::DEBUG, "written 0");
     return;
   }
 
@@ -546,7 +571,7 @@ void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
   *(unsigned long*)&sendBuffer[0] = htonl(4);
   *(unsigned long*)&sendBuffer[4] = htonl(1);
   tcp.sendPacket(sendBuffer, 8);
-  printf("written 1\n");
+  log->log("Client", Log::DEBUG, "written 1");
 
 
 }
@@ -716,7 +741,7 @@ void MVPClient::processConfigSave(unsigned char* buffer, int length)
   // if the last string (value) doesnt have null terminator, give up
   if (buffer[length - 1] != '\0') return;
 
-  printf("Config save:\n%s\n%s\n%s\n", section, key, value);
+  log->log("Client", Log::DEBUG, "Config save: %s %s %s", section, key, value);
   if (config.setValueString(section, key, value))
   {
     sendULONG(1);
@@ -750,7 +775,7 @@ void MVPClient::processConfigLoad(unsigned char* buffer, int length)
     strcpy((char*)&sendBuffer[4], value);
     tcp.sendPacket(sendBuffer, 4 + strlen(value) + 1);
 
-    printf("Written config load packet\n");
+    log->log("Client", Log::DEBUG, "Written config load packet");
     delete[] value;
   }
   else
@@ -760,13 +785,13 @@ void MVPClient::processConfigLoad(unsigned char* buffer, int length)
     *(unsigned long*)&sendBuffer[4] = htonl(0);
     tcp.sendPacket(sendBuffer, 8);
 
-    printf("Written config load failed packet\n");
+    log->log("Client", Log::DEBUG, "Written config load failed packet");
   }
 }
 
 void MVPClient::cleanConfig()
 {
-  printf("Clean config\n");
+  log->log("Client", Log::DEBUG, "Clean config");
 
   cRecordings Recordings;
   Recordings.Load();
@@ -777,18 +802,18 @@ void MVPClient::cleanConfig()
   char* position = resumes;
   for(int k = 0; k < numReturns; k++)
   {
-    printf("EXAMINING: %i %i %p %s\n", k, numReturns, position, position);
+    log->log("Client", Log::DEBUG, "EXAMINING: %i %i %p %s", k, numReturns, position, position);
 
     cRecording* recording = Recordings.GetByName(position);
     if (!recording)
     {
       // doesn't exist anymore
-      printf("Found a recording that doesn't exist anymore\n");
+      log->log("Client", Log::DEBUG, "Found a recording that doesn't exist anymore");
       config.deleteValue("ResumeData", position);
     }
     else
     {
-      printf("This recording still exists\n");
+      log->log("Client", Log::DEBUG, "This recording still exists");
     }
 
     position += strlen(position) + 1;
