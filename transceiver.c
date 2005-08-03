@@ -1,6 +1,8 @@
 /*
      Edited for VOMP by Chris Tallon
      Edits Copyright 2004-2005 Chris Tallon
+
+     This class will be replaced soon.
 */
 
 /*
@@ -223,9 +225,16 @@ unsigned long cMediamvpTransceiver::getBlock(unsigned char* buffer, unsigned lon
 {
   pthread_mutex_lock(&ringLock);
 
+  int numTries = 0;
+
   while ((unsigned long)rb.getContent() < amount)
   {
     pthread_mutex_unlock(&ringLock);
+    if (++numTries == 10) // 5s
+    {
+      log->log("Transciever", Log::DEBUG, "getBlock timeout");
+      return 0;
+    }
     usleep(500000);
     pthread_mutex_lock(&ringLock);
   }
