@@ -29,22 +29,19 @@
 #include "defines.h"
 #include "udpreplier.h"
 #include "mvpclient.h"
+#include "thread.h"
 
-class MVPServer
+class MVPServer : public Thread
 {
   public:
     MVPServer();
-    ~MVPServer();
+    virtual ~MVPServer();
 
     int run();
     int stop();
 
-    // not for external use
-    void run2();
-
   private:
-    pthread_t runThread;
-    int running;
+    void threadMethod();
 
     Log log;
     UDPReplier udpr;

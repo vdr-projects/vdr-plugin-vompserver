@@ -34,7 +34,7 @@
 #include <vdr/plugin.h>
 
 #include "tcp.h"
-#include "transceiver.h"
+#include "mvpreceiver.h"
 #include "recplayer.h"
 #include "config.h"
 
@@ -53,7 +53,9 @@ class MVPClient
     int initted;
     TCP tcp;
     Config config;
-    cMediamvpTransceiver* cm;
+    MVPReceiver* lp;
+
+
     cRecordings* recordingManager;
     RecPlayer* rp;
     Log* log;
@@ -74,7 +76,6 @@ class MVPClient
     cChannel* channelFromNumber(unsigned long channelNumber);
     void writeResumeData();
     void cleanConfig();
-
     void sendULONG(ULONG ul);
 
     void testChannelSchedule(unsigned char* data, int length);

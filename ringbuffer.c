@@ -31,10 +31,10 @@ Ringbuffer::Ringbuffer()
 
 Ringbuffer::~Ringbuffer()
 {
-  free(buffer);
+  if (buffer) free(buffer);
+  buffer = NULL;
   capacity = 0;
   content = 0;
-  buffer = NULL;
   start = NULL;
   end = NULL;
 }

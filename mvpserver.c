@@ -20,34 +20,24 @@
 
 #include "mvpserver.h"
 
-// undeclared function
-void MVPServerStartThread(void *arg)
-{
-  MVPServer *m = (MVPServer *)arg;
-  m->run2();
-}
-
-
 MVPServer::MVPServer()
 {
-  runThread = 0;
-  running = 0;
 }
 
 MVPServer::~MVPServer()
 {
-  if (running) stop();
+  if (threadIsActive()) stop();
 }
 
 int MVPServer::stop()
 {
-  if (!running) return 0;
+  if (!threadIsActive()) return 0;
 
-  log.shutdown();
+  threadCancel();
+  log.log("MVPServer", Log::INFO, "Stopped MVPServer thread");
+
   udpr.stop();
-
-  pthread_cancel(runThread);
-  pthread_join(runThread, NULL);
+  log.shutdown();
 
   close(listeningSocket);
 
@@ -56,24 +46,32 @@ int MVPServer::stop()
 
 int MVPServer::run()
 {
-  if (running) return 1;
+  if (threadIsActive()) return 1;
 
-  log.init(Log::DEBUG, "/tmp/vompserver.log", 0);
+  log.init(Log::DEBUG, "/tmp/vompserver.log", 1);
+  if (!udpr.run())
+  {
+    log.log("MVPServer", Log::CRIT, "Could not start UDP replier");
+    log.shutdown();
+    return 0;
+  }
 
-  if (udpr.run() == 0) return 0;
+  // start thread here
+  if (!threadStart())
+  {
+    log.log("MVPServer", Log::CRIT, "Could not start MVPServer thread");
+    udpr.stop();
+    log.shutdown();
+    return 0;
+  }
 
-  if (pthread_create(&runThread, NULL, (void*(*)(void*))MVPServerStartThread, (void *)this) == -1) return 0;
   log.log("MVPServer", Log::DEBUG, "MVPServer run success");
   return 1;
 }
 
-void MVPServer::run2()
+void MVPServer::threadMethod()
 {
-  // Thread stuff
-  // I don't want signals and I want to die as soon as I am cancelled because I'll be in accept()
-  sigset_t sigset;
-  sigfillset(&sigset);
-  pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+  // I want to die as soon as I am cancelled because I'll be in accept()
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
@@ -86,7 +84,7 @@ void MVPServer::run2()
   listeningSocket = socket(AF_INET, SOCK_STREAM, 0);
   if (listeningSocket < 0)
   {
-    log.log("MVPServer", Log::DEBUG, "Could not get TCP socket in vompserver");
+    log.log("MVPServer", Log::CRIT, "Could not get TCP socket in vompserver");
     return;
   }
 
@@ -95,7 +93,7 @@ void MVPServer::run2()
 
   if (bind(listeningSocket,(struct sockaddr *)&address,sizeof(address)) < 0)
   {
-    log.log("MVPServer", Log::DEBUG, "Could not bind to socket in vompserver");
+    log.log("MVPServer", Log::CRIT, "Could not bind to socket in vompserver");
     close(listeningSocket);
     return;
   }

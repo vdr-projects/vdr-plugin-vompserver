@@ -23,7 +23,7 @@
 MVPClient::MVPClient(int tsocket)
  : tcp(tsocket)
 {
-  cm = NULL;
+  lp = NULL;
   rp = NULL;
   recordingManager = NULL;
   log = Log::getInstance();
@@ -65,11 +65,10 @@ MVPClient::MVPClient(int tsocket)
 MVPClient::~MVPClient()
 {
   log->log("Client", Log::DEBUG, "MVP client destructor");
-  if (cm)
+  if (lp)
   {
-    cm->Stop();
-    delete cm;
-    cm = NULL;
+    delete lp;
+    lp = NULL;
   }
   else if (rp)
   {
@@ -417,49 +416,32 @@ void MVPClient::processStartStreamingChannel(unsigned char* data, int length)
     return;
   }
 
+  lp = MVPReceiver::create(channel);
 
-//  static cDevice *GetDevice(const cChannel *Channel, int Priority = -1, bool *NeedsDetachReceivers = NULL);
-         ///< Returns a device that is able to receive the given Channel at the
-         ///< given Priority.
-         ///< See ProvidesChannel() for more information on how
-         ///< priorities are handled, and the meaning of NeedsDetachReceivers.
-
-  bool NeedsDetachReceivers;
-  cDevice* device = cDevice::GetDevice(channel, 0, &NeedsDetachReceivers);
-  if (!device)
+  if (!lp)
   {
-    log->log("Client", Log::DEBUG, "No device found to receive this channel at this priority");
     sendULONG(0);
+    return;
   }
-  else if (NeedsDetachReceivers)
+
+  if (!lp->init())
   {
-    // can't really happen since we stream with priority zero. if a rec has pri zero maybe
-    log->log("Client", Log::DEBUG, "Needs detach receivers");
+    delete lp;
+    lp = NULL;
     sendULONG(0);
-  }
-  else
-  {
-    cm = new cMediamvpTransceiver(channel, 0, 0, device);
-    device->AttachReceiver(cm);
-    sendULONG(1);
+    return;
   }
 
-
-//////  MVPReceiver* m = new MVPReceiver(channel->Vpid(), channel->Apid1());
-//  cm = new cMediamvpTransceiver(channel, 0, 0, cDevice::ActualDevice());
-//  cDevice::ActualDevice()->AttachReceiver(cm);
-////  //cDevice::ActualDevice()->SwitchChannel(channel, false);
-
-//  sendULONG(1);
+  sendULONG(1);
 }
 
 void MVPClient::processStopStreaming(unsigned char* data, int length)
 {
   log->log("Client", Log::DEBUG, "STOP STREAMING RECEIVED");
-  if (cm)
+  if (lp)
   {
-    delete cm;
-    cm = NULL;
+    delete lp;
+    lp = NULL;
   }
   else if (rp)
   {
@@ -476,7 +458,7 @@ void MVPClient::processStopStreaming(unsigned char* data, int length)
 
 void MVPClient::processGetBlock(unsigned char* data, int length)
 {
-  if (!cm && !rp)
+  if (!lp && !rp)
   {
     log->log("Client", Log::DEBUG, "Get block called when no streaming happening!");
     return;
@@ -490,10 +472,18 @@ void MVPClient::processGetBlock(unsigned char* data, int length)
 
   unsigned char sendBuffer[amount + 4];
   unsigned long amountReceived = 0; // compiler moan.
-  if (cm)
+  if (lp)
   {
     log->log("Client", Log::DEBUG, "getting from live");
-    amountReceived = cm->getBlock(&sendBuffer[4], amount);
+    amountReceived = lp->getBlock(&sendBuffer[4], amount);
+
+    if (!amountReceived)
+    {
+      // vdr has possibly disconnected the receiver
+      log->log("Client", Log::DEBUG, "VDR has disconnected the live receiver");
+      delete lp;
+      lp = NULL;
+    }
   }
   else if (rp)
   {

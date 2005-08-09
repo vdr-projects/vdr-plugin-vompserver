@@ -22,27 +22,23 @@
 #define UDPREPLIER_H
 
 #include <stdio.h>
-#include <pthread.h>
 #include <signal.h>
 
 #include "log.h"
 #include "dsock.h"
+#include "thread.h"
 
-class UDPReplier
+class UDPReplier : public Thread
 {
   public:
     UDPReplier();
-    ~UDPReplier();
+    virtual ~UDPReplier();
 
     int run();
     int stop();
 
-    // not for external use
-    void run2();
-
   private:
-    pthread_t runThread;
-    int running;
+    void threadMethod();
 
     DatagramSocket ds;
 };

@@ -20,53 +20,35 @@
 
 #include "udpreplier.h"
 
-// undeclared function
-void UDPReplierStartThread(void *arg)
-{
-  UDPReplier *m = (UDPReplier *)arg;
-  m->run2();
-}
-
-
 UDPReplier::UDPReplier()
  : ds(3024)
 {
-  runThread = 0;
-  running = 0;
 }
 
 UDPReplier::~UDPReplier()
 {
-  if (running) stop();
+  if (threadIsActive()) stop();
 }
 
 int UDPReplier::stop()
 {
-  if (!running) return 0;
-
-  running = 0;
-  pthread_cancel(runThread);
-  pthread_join(runThread, NULL);
-
+  if (!threadIsActive()) return 0;
+  threadCancel();
   return 1;
 }
 
 int UDPReplier::run()
 {
-  if (running) return 1;
-  running = 1;
-  if (pthread_create(&runThread, NULL, (void*(*)(void*))UDPReplierStartThread, (void *)this) == -1) return 0;
+  if (threadIsActive()) return 1;
+
+  if (!threadStart()) return 0;
+
   Log::getInstance()->log("UDP", Log::DEBUG, "UDP replier started");
   return 1;
 }
 
-void UDPReplier::run2()
+void UDPReplier::threadMethod()
 {
-  // I don't want signals
-  sigset_t sigset;
-  sigfillset(&sigset);
-  pthread_sigmask(SIG_BLOCK, &sigset, NULL);
-
   int retval;
   while(1)
   {
