@@ -69,6 +69,7 @@ class MVPClient
     void processGetBlock(unsigned char* data, int length);
     void processStopStreaming(unsigned char* data, int length);
     void processStartStreamingRecording(unsigned char* data, int length);
+    void processReScanRecording(unsigned char* data, int length);
     void processGetChannelSchedule(unsigned char* data, int length);
     void processConfigSave(unsigned char* data, int length);
     void processConfigLoad(unsigned char* data, int length);

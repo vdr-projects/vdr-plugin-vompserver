@@ -44,13 +44,14 @@ class RecPlayer
     int openFile(int index);
     ULLONG getLastPosition();
     cRecording* getCurrentRecording();
+    void scan();
 
   private:
     Log* log;
     cRecording* recording;
     FILE* file;
     int fileOpen;
-    Segment* segments[1001];
+    Segment* segments[1000];
     ULLONG totalLength;
     ULLONG lastPosition;
 };

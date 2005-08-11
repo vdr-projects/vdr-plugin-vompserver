@@ -22,39 +22,45 @@
 
 RecPlayer::RecPlayer(cRecording* rec)
 {
-  file = NULL;
-  totalLength = 0;
-  lastPosition = 0;
   log = Log::getInstance();
+  file = NULL;
+  fileOpen = 0;
+  lastPosition = 0;
   recording = rec;
+  for(int i = 1; i < 1000; i++) segments[i] = NULL;
 
   // FIXME find out max file path / name lengths
 
+  scan();
+}
+
+void RecPlayer::scan()
+{
+  if (file) fclose(file);
+  totalLength = 0;
+  fileOpen = 0;
+
+  int i = 1;
+  while(segments[i++]) delete segments[i];
 
   char fileName[2048];
-  for(int i = 1; i < 1001; i++)
+  for(i = 1; i < 1000; i++)
   {
-    snprintf(fileName, 2047, "%s/%03i.vdr", rec->FileName(), i);
+    snprintf(fileName, 2047, "%s/%03i.vdr", recording->FileName(), i);
     log->log("RecPlayer", Log::DEBUG, "FILENAME: %s", fileName);
     file = fopen(fileName, "r");
-    if (file)
-    {
-      segments[i] = new Segment();
-      segments[i]->start = totalLength;
+    if (!file) break;
 
-      fseek(file, 0, SEEK_END);
-      totalLength += ftell(file);
-      log->log("RecPlayer", Log::DEBUG, "File %i found, totalLength now %llu", i, totalLength);
-      segments[i]->end = totalLength;
-      fclose(file);
-    }
-    else
-    {
-      segments[i] = NULL;
-      break;
-    }
+    segments[i] = new Segment();
+    segments[i]->start = totalLength;
+    fseek(file, 0, SEEK_END);
+    totalLength += ftell(file);
+    log->log("RecPlayer", Log::DEBUG, "File %i found, totalLength now %llu", i, totalLength);
+    segments[i]->end = totalLength;
+    fclose(file);
   }
-  openFile(1);
+
+  file = NULL;
 }
 
 RecPlayer::~RecPlayer()

@@ -220,6 +220,9 @@ void MVPClient::run2()
       case 12:
         processConfigLoad(data, packetLength);
         break;
+      case 13:
+        processReScanRecording(data, packetLength);
+        break;
     }
 
     free(buffer);
@@ -523,6 +526,28 @@ void MVPClient::processStartStreamingRecording(unsigned char* data, int length)
     delete recordingManager;
     recordingManager = NULL;
   }
+}
+
+void MVPClient::processReScanRecording(unsigned char* data, int length)
+{
+  ULLONG retval = 0;
+
+  if (!rp)
+  {
+    log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
+  }
+  else
+  {
+    rp->scan();
+    retval = rp->getTotalLength();
+  }
+
+  unsigned char sendBuffer[12];
+  *(unsigned long*)&sendBuffer[0] = htonl(8);
+  *(ULLONG*)&sendBuffer[4] = htonll(retval);
+
+  tcp.sendPacket(sendBuffer, 12);
+  log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
 }
 
 void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
