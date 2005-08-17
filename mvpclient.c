@@ -369,11 +369,16 @@ void MVPClient::processGetChannelsList(unsigned char* data, int length)
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
-#if VDRVERSNUM < 10300
-    if (!channel->GroupSep() && !channel->Ca())
-#else
-    if (!channel->GroupSep() && !channel->Ca(0))
-#endif
+
+// Re-enable later with some client side option
+//#if VDRVERSNUM < 10300
+//    if (!channel->GroupSep() && !channel->Ca())
+//#else
+//    if (!channel->GroupSep() && !channel->Ca(0))
+//#endif
+//    {
+
+    if (!channel->GroupSep())
     {
       log->log("Client", Log::DEBUG, "name: '%s'", channel->Name());
 
