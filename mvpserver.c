@@ -48,7 +48,7 @@ int MVPServer::run()
 {
   if (threadIsActive()) return 1;
 
-  log.init(Log::DEBUG, "/tmp/vompserver.log", 1);
+  log.init(Log::DEBUG, "/tmp/vompserver.log", 0);
   
   if (!udpr.run())
   {
