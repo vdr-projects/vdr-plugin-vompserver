@@ -49,7 +49,7 @@ int MVPServer::run()
   if (threadIsActive()) return 1;
 
   log.init(Log::DEBUG, "/tmp/vompserver.log", 0);
-  
+
   if (!udpr.run())
   {
     log.log("MVPServer", Log::CRIT, "Could not start UDP replier");

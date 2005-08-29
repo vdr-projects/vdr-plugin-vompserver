@@ -33,6 +33,7 @@
 #include <vdr/videodir.h>
 #include <vdr/plugin.h>
 
+#include "defines.h"
 #include "tcp.h"
 #include "mvpreceiver.h"
 #include "recplayer.h"
@@ -60,26 +61,27 @@ class MVPClient
     RecPlayer* rp;
     Log* log;
 
-    void processLogin(unsigned char* buffer, int length);
-    void processGetRecordingsList(unsigned char* data, int length);
-    void processDeleteRecording(unsigned char* data, int length);
-    void processGetSummary(unsigned char* data, int length);
-    void processGetChannelsList(unsigned char* data, int length);
-    void processStartStreamingChannel(unsigned char* data, int length);
-    void processGetBlock(unsigned char* data, int length);
-    void processStopStreaming(unsigned char* data, int length);
-    void processStartStreamingRecording(unsigned char* data, int length);
-    void processReScanRecording(unsigned char* data, int length);
-    void processGetChannelSchedule(unsigned char* data, int length);
-    void processConfigSave(unsigned char* data, int length);
-    void processConfigLoad(unsigned char* data, int length);
+    void processLogin(UCHAR* buffer, int length);
+    void processGetRecordingsList(UCHAR* data, int length);
+    void processDeleteRecording(UCHAR* data, int length);
+    void processGetSummary(UCHAR* data, int length);
+    void processGetChannelsList(UCHAR* data, int length);
+    void processStartStreamingChannel(UCHAR* data, int length);
+    void processGetBlock(UCHAR* data, int length);
+    void processStopStreaming(UCHAR* data, int length);
+    void processStartStreamingRecording(UCHAR* data, int length);
+    void processReScanRecording(UCHAR* data, int length);
+    void processGetChannelSchedule(UCHAR* data, int length);
+    void processConfigSave(UCHAR* data, int length);
+    void processConfigLoad(UCHAR* data, int length);
 
-    cChannel* channelFromNumber(unsigned long channelNumber);
+    cChannel* channelFromNumber(ULONG channelNumber);
     void writeResumeData();
     void cleanConfig();
     void sendULONG(ULONG ul);
 
-    void testChannelSchedule(unsigned char* data, int length);
+    void test(int num);
+    void test2();
 };
 
 #endif

@@ -56,9 +56,8 @@ MVPClient::MVPClient(int tsocket)
 
   log->log("Client", Log::DEBUG, "Config file name: %s", configFileName);
 
-//  processGetChannelSchedule(NULL, 0);
 
-//test();
+//test(14);
 
 }
 
@@ -83,7 +82,7 @@ MVPClient::~MVPClient()
   cleanConfig();
 }
 
-cChannel* MVPClient::channelFromNumber(unsigned long channelNumber)
+cChannel* MVPClient::channelFromNumber(ULONG channelNumber)
 {
   cChannel* channel = NULL;
 
@@ -123,9 +122,9 @@ void MVPClient::writeResumeData()
 
 void MVPClient::sendULONG(ULONG ul)
 {
-  unsigned char sendBuffer[8];
-  *(unsigned long*)&sendBuffer[0] = htonl(4);
-  *(unsigned long*)&sendBuffer[4] = htonl(ul);
+  UCHAR sendBuffer[8];
+  *(ULONG*)&sendBuffer[0] = htonl(4);
+  *(ULONG*)&sendBuffer[4] = htonl(ul);
 
   tcp.sendPacket(sendBuffer, 8);
   log->log("Client", Log::DEBUG, "written ULONG %lu", ul);
@@ -161,15 +160,15 @@ void MVPClient::run2()
   tcp.setSoKeepTime(3);
   tcp.setNonBlocking();
 
-  unsigned char* buffer;
-  unsigned char* data;
+  UCHAR* buffer;
+  UCHAR* data;
   int packetLength;
-  unsigned long opcode;
+  ULONG opcode;
 
   while(1)
   {
     log->log("Client", Log::DEBUG, "Waiting");
-    buffer = (unsigned char*)tcp.receivePacket();
+    buffer = (UCHAR*)tcp.receivePacket();
     log->log("Client", Log::DEBUG, "Received packet, length = %u", tcp.getDataLength());
     if (buffer == NULL)
     {
@@ -178,7 +177,7 @@ void MVPClient::run2()
     }
 
     packetLength = tcp.getDataLength() - 4;
-    opcode = ntohl(*(unsigned long*)buffer);
+    opcode = ntohl(*(ULONG*)buffer);
     data = buffer + 4;
 
 
@@ -229,24 +228,24 @@ void MVPClient::run2()
   }
 }
 
-void MVPClient::processLogin(unsigned char* buffer, int length)
+void MVPClient::processLogin(UCHAR* buffer, int length)
 {
   time_t timeNow = time(NULL);
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset = timeStruct->tm_gmtoff;
 
-  unsigned char sendBuffer[12];
-  *(unsigned long*)&sendBuffer[0] = htonl(8);
-  *(unsigned long*)&sendBuffer[4] = htonl(timeNow);
+  UCHAR sendBuffer[12];
+  *(ULONG*)&sendBuffer[0] = htonl(8);
+  *(ULONG*)&sendBuffer[4] = htonl(timeNow);
   *(signed int*)&sendBuffer[8] = htonl(timeOffset);
 
   tcp.sendPacket(sendBuffer, 12);
   log->log("Client", Log::DEBUG, "written login reply");
 }
 
-void MVPClient::processGetRecordingsList(unsigned char* data, int length)
+void MVPClient::processGetRecordingsList(UCHAR* data, int length)
 {
-  unsigned char* sendBuffer = new unsigned char[50000]; // hope this is enough
+  UCHAR* sendBuffer = new UCHAR[50000]; // hope this is enough
   int count = 4; // leave space for the packet length
   char* point;
 
@@ -255,12 +254,12 @@ void MVPClient::processGetRecordingsList(unsigned char* data, int length)
   int Percent = VideoDiskSpace(&FreeMB);
   int Total = (FreeMB / (100 - Percent)) * 100;
 
-  *(unsigned long*)&sendBuffer[count] = htonl(Total);
-  count += sizeof(unsigned long);
-  *(unsigned long*)&sendBuffer[count] = htonl(FreeMB);
-  count += sizeof(unsigned long);
-  *(unsigned long*)&sendBuffer[count] = htonl(Percent);
-  count += sizeof(unsigned long);
+  *(ULONG*)&sendBuffer[count] = htonl(Total);
+  count += sizeof(ULONG);
+  *(ULONG*)&sendBuffer[count] = htonl(FreeMB);
+  count += sizeof(ULONG);
+  *(ULONG*)&sendBuffer[count] = htonl(Percent);
+  count += sizeof(ULONG);
 
 
   cRecordings Recordings;
@@ -269,7 +268,7 @@ void MVPClient::processGetRecordingsList(unsigned char* data, int length)
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
   {
     if (count > 49000) break; // just how big is that hard disk?!
-    *(unsigned long*)&sendBuffer[count] = htonl(recording->start);// + timeOffset);
+    *(ULONG*)&sendBuffer[count] = htonl(recording->start);// + timeOffset);
     count += 4;
 
     point = (char*)recording->Name();
@@ -281,16 +280,16 @@ void MVPClient::processGetRecordingsList(unsigned char* data, int length)
     count += strlen(point) + 1;
   }
 
-  *(unsigned long*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
+  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
 
-  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(unsigned long*)&sendBuffer[0]));
+  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
 
   tcp.sendPacket(sendBuffer, count);
   delete[] sendBuffer;
   log->log("Client", Log::DEBUG, "Written list");
 }
 
-void MVPClient::processDeleteRecording(unsigned char* data, int length)
+void MVPClient::processDeleteRecording(UCHAR* data, int length)
 {
   // data is a pointer to the fileName string
 
@@ -313,7 +312,7 @@ void MVPClient::processDeleteRecording(unsigned char* data, int length)
   }
 }
 
-void MVPClient::processGetSummary(unsigned char* data, int length)
+void MVPClient::processGetSummary(UCHAR* data, int length)
 {
   // data is a pointer to the fileName string
 
@@ -326,7 +325,7 @@ void MVPClient::processGetSummary(unsigned char* data, int length)
 
   if (recording)
   {
-    unsigned char* sendBuffer = new unsigned char[50000]; // hope this is enough
+    UCHAR* sendBuffer = new UCHAR[50000]; // hope this is enough
     int count = 4; // leave space for the packet length
 
     char* point;
@@ -344,9 +343,9 @@ void MVPClient::processGetSummary(unsigned char* data, int length)
 #endif
     strcpy((char*)&sendBuffer[count], point);
     count += strlen(point) + 1;
-    *(unsigned long*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
+    *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
 
-    log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(unsigned long*)&sendBuffer[0]));
+    log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
 
     tcp.sendPacket(sendBuffer, count);
     delete[] sendBuffer;
@@ -360,12 +359,12 @@ void MVPClient::processGetSummary(unsigned char* data, int length)
   }
 }
 
-void MVPClient::processGetChannelsList(unsigned char* data, int length)
+void MVPClient::processGetChannelsList(UCHAR* data, int length)
 {
-  unsigned char* sendBuffer = new unsigned char[50000]; // FIXME hope this is enough
+  UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
   int count = 4; // leave space for the packet length
   char* point;
-  unsigned long type;
+  ULONG type;
 
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
@@ -391,10 +390,10 @@ void MVPClient::processGetChannelsList(unsigned char* data, int length)
 #endif
 
       if (count > 49000) break;
-      *(unsigned long*)&sendBuffer[count] = htonl(channel->Number());
+      *(ULONG*)&sendBuffer[count] = htonl(channel->Number());
       count += 4;
 
-      *(unsigned long*)&sendBuffer[count] = htonl(type);
+      *(ULONG*)&sendBuffer[count] = htonl(type);
       count += 4;
 
       point = (char*)channel->Name();
@@ -403,19 +402,19 @@ void MVPClient::processGetChannelsList(unsigned char* data, int length)
     }
   }
 
-  *(unsigned long*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
+  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
 
-  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(unsigned long*)&sendBuffer[0]));
+  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
 
   tcp.sendPacket(sendBuffer, count);
   delete[] sendBuffer;
   log->log("Client", Log::DEBUG, "Written channels list");
 }
 
-void MVPClient::processStartStreamingChannel(unsigned char* data, int length)
+void MVPClient::processStartStreamingChannel(UCHAR* data, int length)
 {
   log->log("Client", Log::DEBUG, "length = %i", length);
-  unsigned long channelNumber = ntohl(*(unsigned long*)data);
+  ULONG channelNumber = ntohl(*(ULONG*)data);
 
   cChannel* channel = channelFromNumber(channelNumber);
   if (!channel)
@@ -443,7 +442,7 @@ void MVPClient::processStartStreamingChannel(unsigned char* data, int length)
   sendULONG(1);
 }
 
-void MVPClient::processStopStreaming(unsigned char* data, int length)
+void MVPClient::processStopStreaming(UCHAR* data, int length)
 {
   log->log("Client", Log::DEBUG, "STOP STREAMING RECEIVED");
   if (lp)
@@ -464,7 +463,7 @@ void MVPClient::processStopStreaming(unsigned char* data, int length)
   sendULONG(1);
 }
 
-void MVPClient::processGetBlock(unsigned char* data, int length)
+void MVPClient::processGetBlock(UCHAR* data, int length)
 {
   if (!lp && !rp)
   {
@@ -474,12 +473,12 @@ void MVPClient::processGetBlock(unsigned char* data, int length)
 
   ULLONG position = ntohll(*(ULLONG*)data);
   data += sizeof(ULLONG);
-  unsigned long amount = ntohl(*(unsigned long*)data);
+  ULONG amount = ntohl(*(ULONG*)data);
 
   log->log("Client", Log::DEBUG, "getblock pos = %llu length = %lu", position, amount);
 
-  unsigned char sendBuffer[amount + 4];
-  unsigned long amountReceived = 0; // compiler moan.
+  UCHAR sendBuffer[amount + 4];
+  ULONG amountReceived = 0; // compiler moan.
   if (lp)
   {
     log->log("Client", Log::DEBUG, "getting from live");
@@ -499,12 +498,12 @@ void MVPClient::processGetBlock(unsigned char* data, int length)
     amountReceived = rp->getBlock(&sendBuffer[4], position, amount);
   }
 
-  *(unsigned long*)&sendBuffer[0] = htonl(amountReceived);
+  *(ULONG*)&sendBuffer[0] = htonl(amountReceived);
   tcp.sendPacket(sendBuffer, amountReceived + 4);
   log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
 }
 
-void MVPClient::processStartStreamingRecording(unsigned char* data, int length)
+void MVPClient::processStartStreamingRecording(UCHAR* data, int length)
 {
   // data is a pointer to the fileName string
 
@@ -519,8 +518,8 @@ void MVPClient::processStartStreamingRecording(unsigned char* data, int length)
   {
     rp = new RecPlayer(recording);
 
-    unsigned char sendBuffer[12];
-    *(unsigned long*)&sendBuffer[0] = htonl(8);
+    UCHAR sendBuffer[12];
+    *(ULONG*)&sendBuffer[0] = htonl(8);
     *(ULLONG*)&sendBuffer[4] = htonll(rp->getTotalLength());
 
     tcp.sendPacket(sendBuffer, 12);
@@ -533,7 +532,7 @@ void MVPClient::processStartStreamingRecording(unsigned char* data, int length)
   }
 }
 
-void MVPClient::processReScanRecording(unsigned char* data, int length)
+void MVPClient::processReScanRecording(UCHAR* data, int length)
 {
   ULLONG retval = 0;
 
@@ -547,15 +546,15 @@ void MVPClient::processReScanRecording(unsigned char* data, int length)
     retval = rp->getTotalLength();
   }
 
-  unsigned char sendBuffer[12];
-  *(unsigned long*)&sendBuffer[0] = htonl(8);
+  UCHAR sendBuffer[12];
+  *(ULONG*)&sendBuffer[0] = htonl(8);
   *(ULLONG*)&sendBuffer[4] = htonll(retval);
 
   tcp.sendPacket(sendBuffer, 12);
   log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
 }
 
-void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
+void MVPClient::processGetChannelSchedule(UCHAR* data, int length)
 {
   ULONG channelNumber = ntohl(*(ULLONG*)data);
   log->log("Client", Log::DEBUG, "get schedule called for channel %lu", channelNumber);
@@ -563,12 +562,15 @@ void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
   cChannel* channel = channelFromNumber(channelNumber);
   if (!channel)
   {
-    unsigned char sendBuffer[4];
-    *(unsigned long*)&sendBuffer[0] = htonl(0);
-    tcp.sendPacket(sendBuffer, 4);
-    log->log("Client", Log::DEBUG, "written null");
+    UCHAR sendBuffer[4];
+    *(ULONG*)&sendBuffer[0] = htonl(4);
+    *(ULONG*)&sendBuffer[4] = htonl(0);
+    tcp.sendPacket(sendBuffer, 8);
+    log->log("Client", Log::DEBUG, "written 0 because channel = NULL");
     return;
   }
+
+  log->log("Client", Log::DEBUG, "Got channel");
 
 #if VDRVERSNUM < 10300
   cMutexLock MutexLock;
@@ -579,24 +581,280 @@ void MVPClient::processGetChannelSchedule(unsigned char* data, int length)
 #endif
   if (!Schedules)
   {
-    unsigned char sendBuffer[8];
-    *(unsigned long*)&sendBuffer[0] = htonl(4);
-    *(unsigned long*)&sendBuffer[4] = htonl(0);
+    UCHAR sendBuffer[8];
+    *(ULONG*)&sendBuffer[0] = htonl(4);
+    *(ULONG*)&sendBuffer[4] = htonl(0);
     tcp.sendPacket(sendBuffer, 8);
-    log->log("Client", Log::DEBUG, "written 0");
+    log->log("Client", Log::DEBUG, "written 0 because Schedule!s! = NULL");
     return;
   }
 
-  unsigned char sendBuffer[8];
-  *(unsigned long*)&sendBuffer[0] = htonl(4);
-  *(unsigned long*)&sendBuffer[4] = htonl(1);
-  tcp.sendPacket(sendBuffer, 8);
-  log->log("Client", Log::DEBUG, "written 1");
+  log->log("Client", Log::DEBUG, "Got schedule!s! object");
 
+  const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
+  if (!Schedule)
+  {
+    UCHAR sendBuffer[8];
+    *(ULONG*)&sendBuffer[0] = htonl(4);
+    *(ULONG*)&sendBuffer[4] = htonl(0);
+    tcp.sendPacket(sendBuffer, 8);
+    log->log("Client", Log::DEBUG, "written 0 because Schedule = NULL");
+    return;
+  }
 
+  log->log("Client", Log::DEBUG, "Got schedule object");
+
+  UCHAR* sendBuffer = (UCHAR*)malloc(100000);
+  ULONG sendBufferLength = 100000;
+  ULONG sendBufferUsed = sizeof(ULONG); // leave a hole for the entire packet length
+
+  char* empty = "";
+
+  // assign all the event info to temp vars then we know exactly what size they are
+  ULONG thisEventID;
+  ULONG thisEventTime;
+  ULONG thisEventDuration;
+  const char* thisEventTitle;
+  const char* thisEventSubTitle;
+  const char* thisEventDescription;
+
+  ULONG constEventLength = sizeof(thisEventID) + sizeof(thisEventTime) + sizeof(thisEventDuration);
+  ULONG thisEventLength;
+
+#if VDRVERSNUM < 10300
+
+  const cEventInfo *event;
+  for (int eventNumber = 0; eventNumber < Schedule->NumEvents(); eventNumber++)
+  {
+    event = Schedule->GetEventNumber(eventNumber);
+
+    thisEventID = event->GetEventID();
+    thisEventTime = event->GetTime();
+    thisEventDuration = event->GetDuration();
+    thisEventTitle = event->GetTitle();
+    thisEventSubTitle = event->GetSubtitle();
+    thisEventDescription = event->GetExtendedDescription();
+
+#else
+
+  for (const cEvent* event = Schedule->Events()->First(); event; event = Schedule->Events()->Next(event))
+  {
+    thisEventID = event->EventID();
+    thisEventTime = event->StartTime();
+    thisEventDuration = event->Duration();
+    thisEventTitle = event->Title();
+    thisEventSubTitle = NULL;
+    thisEventDescription = event->Description();
+
+#endif
+
+    log->log("Client", Log::DEBUG, "Got an event object %p", event);
+
+    //in the past filter
+    if ((thisEventTime + thisEventDuration) < (ULONG)time(NULL)) continue;
+
+    //24 hour filter
+    if (thisEventTime > ((ULONG)time(NULL) + 86400)) continue;
+
+    if (!thisEventTitle) thisEventTitle = empty;
+    if (!thisEventSubTitle) thisEventSubTitle = empty;
+    if (!thisEventDescription) thisEventDescription = empty;
+
+    thisEventLength = constEventLength + strlen(thisEventTitle) + 1 + strlen(thisEventSubTitle) + 1 + strlen(thisEventDescription) + 1;
+
+    log->log("Client", Log::DEBUG, "Done s1");
+
+    // now extend the buffer if necessary
+    if ((sendBufferUsed + thisEventLength) > sendBufferLength)
+    {
+      log->log("Client", Log::DEBUG, "Extending buffer");
+      sendBufferLength += 100000;
+      UCHAR* temp = (UCHAR*)realloc(sendBuffer, sendBufferLength);
+      if (temp == NULL)
+      {
+        free(sendBuffer);
+        UCHAR sendBuffer2[8];
+        *(ULONG*)&sendBuffer2[0] = htonl(4);
+        *(ULONG*)&sendBuffer2[4] = htonl(0);
+        tcp.sendPacket(sendBuffer2, 8);
+        log->log("Client", Log::DEBUG, "written 0 because failed to realloc packet");
+        return;
+      }
+      sendBuffer = temp;
+    }
+
+    log->log("Client", Log::DEBUG, "Done s2");
+
+    *(ULONG*)&sendBuffer[sendBufferUsed] = htonl(thisEventID);       sendBufferUsed += sizeof(ULONG);
+    *(ULONG*)&sendBuffer[sendBufferUsed] = htonl(thisEventTime);     sendBufferUsed += sizeof(ULONG);
+    *(ULONG*)&sendBuffer[sendBufferUsed] = htonl(thisEventDuration); sendBufferUsed += sizeof(ULONG);
+
+    strcpy((char*)&sendBuffer[sendBufferUsed], thisEventTitle);       sendBufferUsed += strlen(thisEventTitle) + 1;
+    strcpy((char*)&sendBuffer[sendBufferUsed], thisEventSubTitle);    sendBufferUsed += strlen(thisEventSubTitle) + 1;
+    strcpy((char*)&sendBuffer[sendBufferUsed], thisEventDescription); sendBufferUsed += strlen(thisEventDescription) + 1;
+
+    log->log("Client", Log::DEBUG, "Done s3 %lu", sendBufferUsed);
+  }
+
+  log->log("Client", Log::DEBUG, "Got all event data");
+
+  // Write the length into the first 4 bytes. It's sendBufferUsed - 4 because of the hole!
+  *(ULONG*)&sendBuffer[0] = htonl(sendBufferUsed - sizeof(ULONG));
+
+  tcp.sendPacket(sendBuffer, sendBufferUsed);
+  log->log("Client", Log::DEBUG, "written %lu schedules packet", sendBufferUsed);
+
+  free(sendBuffer);
+
+  return;
 }
 
-void MVPClient::testChannelSchedule(unsigned char* data, int length)
+void MVPClient::processConfigSave(UCHAR* buffer, int length)
+{
+  char* section = (char*)buffer;
+  char* key = NULL;
+  char* value = NULL;
+
+  for (int k = 0; k < length; k++)
+  {
+    if (buffer[k] == '\0')
+    {
+      if (!key)
+      {
+        key = (char*)&buffer[k+1];
+      }
+      else
+      {
+        value = (char*)&buffer[k+1];
+        break;
+      }
+    }
+  }
+
+  // if the last string (value) doesnt have null terminator, give up
+  if (buffer[length - 1] != '\0') return;
+
+  log->log("Client", Log::DEBUG, "Config save: %s %s %s", section, key, value);
+  if (config.setValueString(section, key, value))
+  {
+    sendULONG(1);
+  }
+  else
+  {
+    sendULONG(0);
+  }
+}
+
+void MVPClient::processConfigLoad(UCHAR* buffer, int length)
+{
+  char* section = (char*)buffer;
+  char* key = NULL;
+
+  for (int k = 0; k < length; k++)
+  {
+    if (buffer[k] == '\0')
+    {
+      key = (char*)&buffer[k+1];
+      break;
+    }
+  }
+
+  char* value = config.getValueString(section, key);
+
+  if (value)
+  {
+    UCHAR sendBuffer[4 + strlen(value) + 1];
+    *(ULONG*)&sendBuffer[0] = htonl(strlen(value) + 1);
+    strcpy((char*)&sendBuffer[4], value);
+    tcp.sendPacket(sendBuffer, 4 + strlen(value) + 1);
+
+    log->log("Client", Log::DEBUG, "Written config load packet");
+    delete[] value;
+  }
+  else
+  {
+    UCHAR sendBuffer[8];
+    *(ULONG*)&sendBuffer[0] = htonl(4);
+    *(ULONG*)&sendBuffer[4] = htonl(0);
+    tcp.sendPacket(sendBuffer, 8);
+
+    log->log("Client", Log::DEBUG, "Written config load failed packet");
+  }
+}
+
+void MVPClient::cleanConfig()
+{
+  log->log("Client", Log::DEBUG, "Clean config");
+
+  cRecordings Recordings;
+  Recordings.Load();
+
+  int numReturns;
+  int length;
+  char* resumes = config.getSectionKeyNames("ResumeData", numReturns, length);
+  char* position = resumes;
+  for(int k = 0; k < numReturns; k++)
+  {
+    log->log("Client", Log::DEBUG, "EXAMINING: %i %i %p %s", k, numReturns, position, position);
+
+    cRecording* recording = Recordings.GetByName(position);
+    if (!recording)
+    {
+      // doesn't exist anymore
+      log->log("Client", Log::DEBUG, "Found a recording that doesn't exist anymore");
+      config.deleteValue("ResumeData", position);
+    }
+    else
+    {
+      log->log("Client", Log::DEBUG, "This recording still exists");
+    }
+
+    position += strlen(position) + 1;
+  }
+
+  delete[] resumes;
+}
+
+
+
+
+
+
+/*
+    event = Schedule->GetPresentEvent();
+
+    fprintf(f, "\n\nCurrent event\n\n");
+
+    fprintf(f, "Event %i eventid = %u time = %lu duration = %li\n", 0, event->GetEventID(), event->GetTime(), event->GetDuration());
+    fprintf(f, "Event %i title = %s subtitle = %s\n", 0, event->GetTitle(), event->GetSubtitle());
+    fprintf(f, "Event %i extendeddescription = %s\n", 0, event->GetExtendedDescription());
+    fprintf(f, "Event %i isFollowing = %i, isPresent = %i\n", 0, event->IsFollowing(), event->IsPresent());
+
+    event = Schedule->GetFollowingEvent();
+
+    fprintf(f, "\n\nFollowing event\n\n");
+
+    fprintf(f, "Event %i eventid = %u time = %lu duration = %li\n", 0, event->GetEventID(), event->GetTime(), event->GetDuration());
+    fprintf(f, "Event %i title = %s subtitle = %s\n", 0, event->GetTitle(), event->GetSubtitle());
+    fprintf(f, "Event %i extendeddescription = %s\n", 0, event->GetExtendedDescription());
+    fprintf(f, "Event %i isFollowing = %i, isPresent = %i\n", 0, event->IsFollowing(), event->IsPresent());
+
+    fprintf(f, "\n\n");
+*/
+
+/*
+    fprintf(f, "Event %i eventid = %u time = %lu duration = %li\n", eventNumber, event->GetEventID(), event->GetTime(), event->GetDuration());
+    fprintf(f, "Event %i title = %s subtitle = %s\n", eventNumber, event->GetTitle(), event->GetSubtitle());
+    fprintf(f, "Event %i extendeddescription = %s\n", eventNumber, event->GetExtendedDescription());
+    fprintf(f, "Event %i isFollowing = %i, isPresent = %i\n", eventNumber, event->IsFollowing(), event->IsPresent());
+
+    fprintf(f, "\n\n");
+*/
+
+/*
+
+
+void MVPClient::test2()
 {
   FILE* f = fopen("/tmp/s.txt", "w");
 
@@ -607,6 +865,7 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
   cSchedulesLock MutexLock;
   const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
 #endif
+
   if (!Schedules)
   {
     fprintf(f, "Schedules = NULL\n");
@@ -651,12 +910,14 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
 #else
     tchid = Schedule->ChannelID();
 #endif
+
 #if VDRVERSNUM < 10300
     fprintf(f, "ChannelID.ToString() = %s\n", tchid.ToString());
     fprintf(f, "NumEvents() = %i\n", Schedule->NumEvents());
 #else
 //  put the count at the end.
 #endif
+
     thisChannel = Channels.GetByChannelID(tchid, true);
     if (thisChannel)
     {
@@ -696,6 +957,26 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
 
 
 
+
+
+
+
+
+    fprintf(f, "End of current Schedule\n\n\n");
+
+    Schedule = (const cSchedule *)Schedules->Next(Schedule);
+    scheduleNumber++;
+  }
+
+  fclose(f);
+}
+
+
+
+*/
+
+
+
 /*
   const cEventInfo *GetPresentEvent(void) const;
   const cEventInfo *GetFollowingEvent(void) const;
@@ -724,122 +1005,92 @@ void MVPClient::testChannelSchedule(unsigned char* data, int length)
 */
 
 
+/*
+void MVPClient::test(int channelNumber)
+{
+  FILE* f = fopen("/tmp/test.txt", "w");
 
+  cMutexLock MutexLock;
+  const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
 
-
-    fprintf(f, "End of current Schedule\n\n\n");
-
-    Schedule = (const cSchedule *)Schedules->Next(Schedule);
-    scheduleNumber++;
+  if (!Schedules)
+  {
+    fprintf(f, "Schedules = NULL\n");
+    fclose(f);
+    return;
   }
+
+  fprintf(f, "Schedules dump:\n");
+//  Schedules->Dump(f);
+
+  const cSchedule *Schedule;
+  cChannel *thisChannel;
+  const cEventInfo *event;
+
+  thisChannel = channelFromNumber(channelNumber);
+  if (!thisChannel)
+  {
+    fprintf(f, "thisChannel = NULL\n");
+    fclose(f);
+    return;
+  }
+
+  Schedule = Schedules->GetSchedule(thisChannel->GetChannelID());
+//    Schedule = Schedules->GetSchedule();
+//  Schedule = Schedules->First();
+  if (!Schedule)
+  {
+    fprintf(f, "First Schedule = NULL\n");
+    fclose(f);
+    return;
+  }
+
+  fprintf(f, "NumEvents() = %i\n\n", Schedule->NumEvents());
+
+  // For some channels VDR seems to pick a random point in time to
+  // start dishing out events, but they are in order
+  // at some point in the list the time snaps to the current event
+
+
+
+
+  for (int eventNumber = 0; eventNumber < Schedule->NumEvents(); eventNumber++)
+  {
+    event = Schedule->GetEventNumber(eventNumber);
+    fprintf(f, "Event %i eventid = %u time = %lu duration = %li\n", eventNumber, event->GetEventID(), event->GetTime(), event->GetDuration());
+    fprintf(f, "Event %i title = %s subtitle = %s\n", eventNumber, event->GetTitle(), event->GetSubtitle());
+    fprintf(f, "Event %i extendeddescription = %s\n", eventNumber, event->GetExtendedDescription());
+    fprintf(f, "\n\n");
+  }
+
+  fprintf(f, "\nEND\n");
 
   fclose(f);
 }
 
-void MVPClient::processConfigSave(unsigned char* buffer, int length)
-{
-  char* section = (char*)buffer;
-  char* key = NULL;
-  char* value = NULL;
-
-  for (int k = 0; k < length; k++)
-  {
-    if (buffer[k] == '\0')
-    {
-      if (!key)
-      {
-        key = (char*)&buffer[k+1];
-      }
-      else
-      {
-        value = (char*)&buffer[k+1];
-        break;
-      }
-    }
-  }
-
-  // if the last string (value) doesnt have null terminator, give up
-  if (buffer[length - 1] != '\0') return;
-
-  log->log("Client", Log::DEBUG, "Config save: %s %s %s", section, key, value);
-  if (config.setValueString(section, key, value))
-  {
-    sendULONG(1);
-  }
-  else
-  {
-    sendULONG(0);
-  }
-}
-
-void MVPClient::processConfigLoad(unsigned char* buffer, int length)
-{
-  char* section = (char*)buffer;
-  char* key = NULL;
-
-  for (int k = 0; k < length; k++)
-  {
-    if (buffer[k] == '\0')
-    {
-      key = (char*)&buffer[k+1];
-      break;
-    }
-  }
-
-  char* value = config.getValueString(section, key);
-
-  if (value)
-  {
-    unsigned char sendBuffer[4 + strlen(value) + 1];
-    *(unsigned long*)&sendBuffer[0] = htonl(strlen(value) + 1);
-    strcpy((char*)&sendBuffer[4], value);
-    tcp.sendPacket(sendBuffer, 4 + strlen(value) + 1);
-
-    log->log("Client", Log::DEBUG, "Written config load packet");
-    delete[] value;
-  }
-  else
-  {
-    unsigned char sendBuffer[8];
-    *(unsigned long*)&sendBuffer[0] = htonl(4);
-    *(unsigned long*)&sendBuffer[4] = htonl(0);
-    tcp.sendPacket(sendBuffer, 8);
-
-    log->log("Client", Log::DEBUG, "Written config load failed packet");
-  }
-}
-
-void MVPClient::cleanConfig()
-{
-  log->log("Client", Log::DEBUG, "Clean config");
-
-  cRecordings Recordings;
-  Recordings.Load();
-
-  int numReturns;
-  int length;
-  char* resumes = config.getSectionKeyNames("ResumeData", numReturns, length);
-  char* position = resumes;
-  for(int k = 0; k < numReturns; k++)
-  {
-    log->log("Client", Log::DEBUG, "EXAMINING: %i %i %p %s", k, numReturns, position, position);
-
-    cRecording* recording = Recordings.GetByName(position);
-    if (!recording)
-    {
-      // doesn't exist anymore
-      log->log("Client", Log::DEBUG, "Found a recording that doesn't exist anymore");
-      config.deleteValue("ResumeData", position);
-    }
-    else
-    {
-      log->log("Client", Log::DEBUG, "This recording still exists");
-    }
-
-    position += strlen(position) + 1;
-  }
-
-  delete[] resumes;
-}
+*/
 
 
+
+/*
+
+
+Right, so
+
+Schedules = the collection of all the Schedule objects
+Schedule  = One schedule, contants all the events for a channel
+Event     = One programme
+
+
+Want:
+
+Event ID
+Time
+Duration
+Title
+Subtitle (used for "Programmes resume at ...")
+Description
+
+IsPresent ? easy to work out tho. Oh it doesn't always work
+
+*/

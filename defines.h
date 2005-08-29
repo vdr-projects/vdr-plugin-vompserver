@@ -23,6 +23,7 @@
 
 typedef unsigned char UCHAR;
 typedef unsigned short USHORT;
+typedef unsigned int UINT;
 typedef unsigned long ULONG;
 typedef unsigned long long ULLONG;
 
