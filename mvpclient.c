@@ -366,18 +366,17 @@ void MVPClient::processGetChannelsList(UCHAR* data, int length)
   char* point;
   ULONG type;
 
+  char* chanConfig = config.getValueString("General", "Channels");
+  int allChans = 1;
+  if (chanConfig) allChans = strcasecmp(chanConfig, "FTA only");
+
   for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
   {
-
-// Re-enable later with some client side option
-//#if VDRVERSNUM < 10300
-//    if (!channel->GroupSep() && !channel->Ca())
-//#else
-//    if (!channel->GroupSep() && !channel->Ca(0))
-//#endif
-//    {
-
-    if (!channel->GroupSep())
+#if VDRVERSNUM < 10300
+    if (!channel->GroupSep() && (!channel->Ca() || allChans))
+#else
+    if (!channel->GroupSep() && (!channel->Ca(0) || allChans))
+#endif
     {
       log->log("Client", Log::DEBUG, "name: '%s'", channel->Name());
 
