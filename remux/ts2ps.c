@@ -73,13 +73,18 @@ void cTS2PS::PutTSPacket(const uint8_t *Buffer) {
 }
 
 cTS2PSRemux::cTS2PSRemux(int VPid, int APid1, int APid2, int DPid1,
-                int DPid2, bool PS) {
-        m_VPid  = VPid;
-        m_APid1 = APid1;
-        m_APid2 = APid2;
-        m_DPid1 = DPid1;
-        m_DPid2 = DPid2;
-  m_VRemux  =         new cTS2PS(m_ResultBuffer, &m_ResultCount, 0x00, PS);
+                int DPid2, bool PS)
+{
+  m_VPid  = VPid;
+  m_APid1 = APid1;
+  m_APid2 = APid2;
+  m_DPid1 = DPid1;
+  m_DPid2 = DPid2;
+
+  if (!m_VPid) m_Sync = 0; // CJT
+
+  m_VRemux  = VPid  ? new cTS2PS(m_ResultBuffer, &m_ResultCount, 0x00, PS)
+                          : NULL;  // CJT edit to allow 0 APid
   m_ARemux1 =         new cTS2PS(m_ResultBuffer, &m_ResultCount, 0xC0, PS);
   m_ARemux2 = APid2 ? new cTS2PS(m_ResultBuffer, &m_ResultCount, 0xC1, PS)
                           : NULL;
@@ -93,14 +98,15 @@ cTS2PSRemux::cTS2PSRemux(int VPid, int APid1, int APid2, int DPid1,
 cTS2PSRemux::~cTS2PSRemux() {
         if (m_DRemux2) delete m_DRemux2;
         if (m_DRemux1) delete m_DRemux1;
+        if (m_VRemux) delete m_VRemux; // CJT
         if (m_ARemux2) delete m_ARemux2;
         delete m_ARemux1;
-        delete m_VRemux;
+//        delete m_VRemux;
 }
 
 void cTS2PSRemux::PutTSPacket(int Pid, const uint8_t *Data) {
-        if      (Pid == m_VPid)               m_VRemux->PutTSPacket(Data);
-        else if (Pid == m_APid1)              m_ARemux1->PutTSPacket(Data);
+        if      (Pid == m_VPid && m_VRemux /* CJT */ ) m_VRemux->PutTSPacket(Data);
+        else if (Pid == m_APid1) m_ARemux1->PutTSPacket(Data);
         else if (Pid == m_APid2 && m_ARemux2) m_ARemux2->PutTSPacket(Data);
         else if (Pid == m_DPid1 && m_DRemux1) m_DRemux1->PutTSPacket(Data);
         else if (Pid == m_DPid2 && m_DRemux2) m_DRemux2->PutTSPacket(Data);

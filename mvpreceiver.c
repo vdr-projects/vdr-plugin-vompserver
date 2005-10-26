@@ -40,16 +40,16 @@ MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
   // Get the remuxer for audio or video
 
 #if VDRVERSNUM < 10300
-  if ((channel->Vpid() == 0) || (channel->Vpid() == 1) || (channel->Vpid() == 0x1FFF))
-  {
-    remuxer = new cTS2ESRemux(channel->Apid1());
-    logger->log("MVPReceiver", Log::DEBUG, "Created new < 1.3 TS->ES");
-  }
-  else
-  {
+//  if ((channel->Vpid() == 0) || (channel->Vpid() == 1) || (channel->Vpid() == 0x1FFF))
+//  {
+//    remuxer = new cTS2ESRemux(channel->Apid1());
+//    logger->log("MVPReceiver", Log::DEBUG, "Created new < 1.3 TS->ES");
+//  }
+//  else
+//  {
     remuxer = new cTS2PSRemux(channel->Vpid(), channel->Apid1(), 0, 0, 0, 0);
     logger->log("MVPReceiver", Log::DEBUG, "Created new < 1.3 TS->PS");
-  }
+//  }
 #else
   if ((channel->Vpid() == 0) || (channel->Vpid() == 1) || (channel->Vpid() == 0x1FFF))
   {
@@ -145,7 +145,7 @@ void MVPReceiver::threadMethod()
         processed.put(remuxedData, outputSize);
         pthread_mutex_unlock(&processedRingLock);
 
-//        printf("Got from unprocessed: %i, Got from remux: %p %i, consumed: %i\n",
+//        logger->log("MVPReceiver", Log::DEBUG, "Got from unprocessed: %i, Got from remux: %p %i, consumed: %i",
 //               amountGot, remuxedData, outputSize, remuxTook);
       }
       else

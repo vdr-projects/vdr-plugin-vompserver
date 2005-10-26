@@ -4,6 +4,8 @@
 #include "transform.h"
 #include <vdr/remux.h>
 
+#include "../log.h"
+
 #define IPACKS 2048
 
 #define PROTECTIONSIZE 32768
@@ -23,7 +25,6 @@ protected:
         int m_ResultDelivered;
         int m_Synced;
         int m_Skipped;
-        int m_Sync;
 
   int GetPacketLength(const uchar *Data, int Count, int Offset);
   int ScanVideoPacket(const uchar *Data, int Count, int Offset, uchar &PictureType);
@@ -31,9 +32,11 @@ protected:
         virtual void PutTSPacket(int Pid, const uint8_t *Data) = 0;
 
 public:
+        int m_Sync;// CJT moved from protected
+
         cTSRemux(bool Sync = true);
         virtual ~cTSRemux();
-        
+
         virtual uchar *Process(const uchar *Data, int &Count, int &Result);
 
         static void SetBrokenLink(uchar *Data, int Length);

@@ -3,6 +3,8 @@
 
 #include "tsremux.h"
 
+#include "../log.h"
+
 class cTS2PS;
 
 class cTS2PSRemux: public cTSRemux {
