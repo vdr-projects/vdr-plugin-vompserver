@@ -37,7 +37,7 @@
 class MVPReceiver : public cReceiver, public Thread
 {
   public:
-    static MVPReceiver* create(cChannel*);
+    static MVPReceiver* create(cChannel*, int priority);
     virtual ~MVPReceiver();
     int init();
     unsigned long getBlock(unsigned char* buffer, unsigned long amount);

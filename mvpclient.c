@@ -422,7 +422,25 @@ void MVPClient::processStartStreamingChannel(UCHAR* data, int length)
     return;
   }
 
-  lp = MVPReceiver::create(channel);
+  // get the priority we should use
+  int fail = 1;
+  int priority = config.getValueLong("General", "Live priority", &fail);
+  if (!fail)
+  {
+    log->log("Client", Log::DEBUG, "Config: Live TV priority: %i", priority);
+  }
+  else
+  {
+    log->log("Client", Log::DEBUG, "Config: Live TV priority config fail");
+    priority = 0;
+  }
+
+  // a bit of sanity..
+  if (priority < 0) priority = 0;
+  if (priority > 99) priority = 99;
+
+  log->log("Client", Log::DEBUG, "Using live TV priority %i", priority);
+  lp = MVPReceiver::create(channel, priority);
 
   if (!lp)
   {

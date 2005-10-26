@@ -1,9 +1,9 @@
 #include "mvpreceiver.h"
 
-MVPReceiver* MVPReceiver::create(cChannel* channel)
+MVPReceiver* MVPReceiver::create(cChannel* channel, int priority)
 {
   bool NeedsDetachReceivers;
-  cDevice* device = cDevice::GetDevice(channel, 0, &NeedsDetachReceivers);
+  cDevice* device = cDevice::GetDevice(channel, priority, &NeedsDetachReceivers);
 
   if (!device)
   {
@@ -11,12 +11,16 @@ MVPReceiver* MVPReceiver::create(cChannel* channel)
     return NULL;
   }
 
+/*
   if (NeedsDetachReceivers)
   {
     // can't really happen since we stream with priority zero. if a rec has pri zero maybe
     Log::getInstance()->log("MVPReceiver", Log::DEBUG, "Needs detach receivers");
     return NULL;
   }
+*/
+
+  // What should we do if NeedsDetachReceivers is true?
 
   MVPReceiver* m = new MVPReceiver(channel, device);
   return m;
@@ -51,16 +55,16 @@ MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
     logger->log("MVPReceiver", Log::DEBUG, "Created new < 1.3 TS->PS");
 //  }
 #else
-  if ((channel->Vpid() == 0) || (channel->Vpid() == 1) || (channel->Vpid() == 0x1FFF))
-  {
-    remuxer = new cTS2ESRemux(channel->Apid(0));
-    logger->log("MVPReceiver", Log::DEBUG, "Created new > 1.3 TS->ES");
-  }
-  else
-  {
+//  if ((channel->Vpid() == 0) || (channel->Vpid() == 1) || (channel->Vpid() == 0x1FFF))
+//  {
+//    remuxer = new cTS2ESRemux(channel->Apid(0));
+//    logger->log("MVPReceiver", Log::DEBUG, "Created new > 1.3 TS->ES");
+//  }
+//  else
+//  {
     remuxer = new cTS2PSRemux(channel->Vpid(), channel->Apid(0), 0, 0, 0, 0);
     logger->log("MVPReceiver", Log::DEBUG, "Created new > 1.3 TS->PS");
-  }
+//  }
 #endif
 
   unprocessed = new cRingBufferLinear(1000000, TS_SIZE * 2, false);
