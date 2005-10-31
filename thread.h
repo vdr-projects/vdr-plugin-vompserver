@@ -51,6 +51,7 @@ class Thread
     pthread_mutex_t threadCondMutex;
 
   public:
+    virtual ~Thread() {};
     void threadInternalStart2();
 };
 
