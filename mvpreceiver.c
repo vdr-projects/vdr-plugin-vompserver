@@ -11,16 +11,12 @@ MVPReceiver* MVPReceiver::create(cChannel* channel, int priority)
     return NULL;
   }
 
-/*
   if (NeedsDetachReceivers)
   {
-    // can't really happen since we stream with priority zero. if a rec has pri zero maybe
     Log::getInstance()->log("MVPReceiver", Log::DEBUG, "Needs detach receivers");
-    return NULL;
-  }
-*/
 
-  // What should we do if NeedsDetachReceivers is true?
+    // Need to detach other receivers or VDR will shut down
+  }
 
   MVPReceiver* m = new MVPReceiver(channel, device);
   return m;
