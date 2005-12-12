@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 #include <pthread.h>
-#include <netinet/in.h>
+//#include <netinet/in.h>
 #include <signal.h>
 
 #include <unistd.h> // sleep
@@ -55,25 +55,26 @@ class MVPClient
     TCP tcp;
     Config config;
     MVPReceiver* lp;
+    bool loggedIn;
 
 
     cRecordings* recordingManager;
     RecPlayer* rp;
     Log* log;
 
-    void processLogin(UCHAR* buffer, int length);
-    void processGetRecordingsList(UCHAR* data, int length);
-    void processDeleteRecording(UCHAR* data, int length);
-    void processGetSummary(UCHAR* data, int length);
-    void processGetChannelsList(UCHAR* data, int length);
-    void processStartStreamingChannel(UCHAR* data, int length);
-    void processGetBlock(UCHAR* data, int length);
-    void processStopStreaming(UCHAR* data, int length);
-    void processStartStreamingRecording(UCHAR* data, int length);
-    void processReScanRecording(UCHAR* data, int length);
-    void processGetChannelSchedule(UCHAR* data, int length);
-    void processConfigSave(UCHAR* data, int length);
-    void processConfigLoad(UCHAR* data, int length);
+    int processLogin(UCHAR* buffer, int length);
+    int processGetRecordingsList(UCHAR* data, int length);
+    int processDeleteRecording(UCHAR* data, int length);
+    int processGetSummary(UCHAR* data, int length);
+    int processGetChannelsList(UCHAR* data, int length);
+    int processStartStreamingChannel(UCHAR* data, int length);
+    int processGetBlock(UCHAR* data, int length);
+    int processStopStreaming(UCHAR* data, int length);
+    int processStartStreamingRecording(UCHAR* data, int length);
+    int processReScanRecording(UCHAR* data, int length);
+    int processGetChannelSchedule(UCHAR* data, int length);
+    int processConfigSave(UCHAR* data, int length);
+    int processConfigLoad(UCHAR* data, int length);
 
     cChannel* channelFromNumber(ULONG channelNumber);
     void writeResumeData();

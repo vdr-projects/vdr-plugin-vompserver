@@ -27,6 +27,7 @@
 class Thread
 {
   protected:
+
     // Override this method in derived classes
     virtual void threadMethod()=0;
 

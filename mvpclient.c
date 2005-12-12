@@ -27,7 +27,9 @@ MVPClient::MVPClient(int tsocket)
   rp = NULL;
   recordingManager = NULL;
   log = Log::getInstance();
+  loggedIn = false;
 
+/*
   // Get IP address of client for config module
 
   char ipa[20];
@@ -55,7 +57,7 @@ MVPClient::MVPClient(int tsocket)
   config.init(configFileName);
 
   log->log("Client", Log::DEBUG, "Config file name: %s", configFileName);
-
+*/
 
 //test(14);
 
@@ -79,7 +81,7 @@ MVPClient::~MVPClient()
     recordingManager = NULL;
   }
 
-  cleanConfig();
+  if (loggedIn) cleanConfig();
 }
 
 cChannel* MVPClient::channelFromNumber(ULONG channelNumber)
@@ -164,6 +166,7 @@ void MVPClient::run2()
   UCHAR* data;
   int packetLength;
   ULONG opcode;
+  int result = 0;
 
   while(1)
   {
@@ -180,56 +183,79 @@ void MVPClient::run2()
     opcode = ntohl(*(ULONG*)buffer);
     data = buffer + 4;
 
+    if (!loggedIn && (opcode != 1))
+    {
+      free(buffer);
+      break;
+    }
 
     switch(opcode)
     {
       case 1:
-        processLogin(data, packetLength);
+        result = processLogin(data, packetLength);
         break;
       case 2:
-        processGetRecordingsList(data, packetLength);
+        result = processGetRecordingsList(data, packetLength);
         break;
       case 3:
-        processDeleteRecording(data, packetLength);
+        result = processDeleteRecording(data, packetLength);
         break;
       case 4:
-        processGetSummary(data, packetLength);
+        result = processGetSummary(data, packetLength);
         break;
       case 5:
-        processGetChannelsList(data, packetLength);
+        result = processGetChannelsList(data, packetLength);
         break;
       case 6:
-        processStartStreamingChannel(data, packetLength);
+        result = processStartStreamingChannel(data, packetLength);
         break;
       case 7:
-        processGetBlock(data, packetLength);
+        result = processGetBlock(data, packetLength);
         break;
       case 8:
-        processStopStreaming(data, packetLength);
+        result = processStopStreaming(data, packetLength);
         break;
       case 9:
-        processStartStreamingRecording(data, packetLength);
+        result = processStartStreamingRecording(data, packetLength);
         break;
       case 10:
-        processGetChannelSchedule(data, packetLength);
+        result = processGetChannelSchedule(data, packetLength);
         break;
       case 11:
-        processConfigSave(data, packetLength);
+        result = processConfigSave(data, packetLength);
         break;
       case 12:
-        processConfigLoad(data, packetLength);
+        result = processConfigLoad(data, packetLength);
         break;
       case 13:
-        processReScanRecording(data, packetLength);
+        result = processReScanRecording(data, packetLength);
         break;
     }
 
     free(buffer);
+    if (!result) break;
   }
 }
 
-void MVPClient::processLogin(UCHAR* buffer, int length)
+int MVPClient::processLogin(UCHAR* buffer, int length)
 {
+  if (length != 6) return 0;
+
+  // Open the config
+
+  const char* configDir = cPlugin::ConfigDirectory();
+  if (!configDir)
+  {
+    log->log("Client", Log::DEBUG, "No config dir!");
+    return 0;
+  }
+
+  char configFileName[PATH_MAX];
+  snprintf(configFileName, PATH_MAX - strlen(configDir) - 17 - 20, "%s/vomp-%02X-%02X-%02X-%02X-%02X-%02X.conf", configDir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+  config.init(configFileName);
+
+  // Send the login reply
+
   time_t timeNow = time(NULL);
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset = timeStruct->tm_gmtoff;
@@ -241,9 +267,12 @@ void MVPClient::processLogin(UCHAR* buffer, int length)
 
   tcp.sendPacket(sendBuffer, 12);
   log->log("Client", Log::DEBUG, "written login reply");
+
+  loggedIn = true;
+  return 1;
 }
 
-void MVPClient::processGetRecordingsList(UCHAR* data, int length)
+int MVPClient::processGetRecordingsList(UCHAR* data, int length)
 {
   UCHAR* sendBuffer = new UCHAR[50000]; // hope this is enough
   int count = 4; // leave space for the packet length
@@ -287,9 +316,11 @@ void MVPClient::processGetRecordingsList(UCHAR* data, int length)
   tcp.sendPacket(sendBuffer, count);
   delete[] sendBuffer;
   log->log("Client", Log::DEBUG, "Written list");
+
+  return 1;
 }
 
-void MVPClient::processDeleteRecording(UCHAR* data, int length)
+int MVPClient::processDeleteRecording(UCHAR* data, int length)
 {
   // data is a pointer to the fileName string
 
@@ -310,9 +341,11 @@ void MVPClient::processDeleteRecording(UCHAR* data, int length)
   {
     sendULONG(0);
   }
+
+  return 1;
 }
 
-void MVPClient::processGetSummary(UCHAR* data, int length)
+int MVPClient::processGetSummary(UCHAR* data, int length)
 {
   // data is a pointer to the fileName string
 
@@ -357,9 +390,11 @@ void MVPClient::processGetSummary(UCHAR* data, int length)
   {
     sendULONG(0);
   }
+
+  return 1;
 }
 
-void MVPClient::processGetChannelsList(UCHAR* data, int length)
+int MVPClient::processGetChannelsList(UCHAR* data, int length)
 {
   UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
   int count = 4; // leave space for the packet length
@@ -408,9 +443,11 @@ void MVPClient::processGetChannelsList(UCHAR* data, int length)
   tcp.sendPacket(sendBuffer, count);
   delete[] sendBuffer;
   log->log("Client", Log::DEBUG, "Written channels list");
+
+  return 1;
 }
 
-void MVPClient::processStartStreamingChannel(UCHAR* data, int length)
+int MVPClient::processStartStreamingChannel(UCHAR* data, int length)
 {
   log->log("Client", Log::DEBUG, "length = %i", length);
   ULONG channelNumber = ntohl(*(ULONG*)data);
@@ -419,7 +456,7 @@ void MVPClient::processStartStreamingChannel(UCHAR* data, int length)
   if (!channel)
   {
     sendULONG(0);
-    return;
+    return 1;
   }
 
   // get the priority we should use
@@ -445,7 +482,7 @@ void MVPClient::processStartStreamingChannel(UCHAR* data, int length)
   if (!lp)
   {
     sendULONG(0);
-    return;
+    return 1;
   }
 
   if (!lp->init())
@@ -453,13 +490,14 @@ void MVPClient::processStartStreamingChannel(UCHAR* data, int length)
     delete lp;
     lp = NULL;
     sendULONG(0);
-    return;
+    return 1;
   }
 
   sendULONG(1);
+  return 1;
 }
 
-void MVPClient::processStopStreaming(UCHAR* data, int length)
+int MVPClient::processStopStreaming(UCHAR* data, int length)
 {
   log->log("Client", Log::DEBUG, "STOP STREAMING RECEIVED");
   if (lp)
@@ -478,14 +516,15 @@ void MVPClient::processStopStreaming(UCHAR* data, int length)
   }
 
   sendULONG(1);
+  return 1;
 }
 
-void MVPClient::processGetBlock(UCHAR* data, int length)
+int MVPClient::processGetBlock(UCHAR* data, int length)
 {
   if (!lp && !rp)
   {
     log->log("Client", Log::DEBUG, "Get block called when no streaming happening!");
-    return;
+    return 0;
   }
 
   ULLONG position = ntohll(*(ULLONG*)data);
@@ -518,9 +557,11 @@ void MVPClient::processGetBlock(UCHAR* data, int length)
   *(ULONG*)&sendBuffer[0] = htonl(amountReceived);
   tcp.sendPacket(sendBuffer, amountReceived + 4);
   log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
+
+  return 1;
 }
 
-void MVPClient::processStartStreamingRecording(UCHAR* data, int length)
+int MVPClient::processStartStreamingRecording(UCHAR* data, int length)
 {
   // data is a pointer to the fileName string
 
@@ -547,9 +588,10 @@ void MVPClient::processStartStreamingRecording(UCHAR* data, int length)
     delete recordingManager;
     recordingManager = NULL;
   }
+  return 1;
 }
 
-void MVPClient::processReScanRecording(UCHAR* data, int length)
+int MVPClient::processReScanRecording(UCHAR* data, int length)
 {
   ULLONG retval = 0;
 
@@ -569,11 +611,17 @@ void MVPClient::processReScanRecording(UCHAR* data, int length)
 
   tcp.sendPacket(sendBuffer, 12);
   log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
+  return 1;
 }
 
-void MVPClient::processGetChannelSchedule(UCHAR* data, int length)
+int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
 {
   ULONG channelNumber = ntohl(*(ULLONG*)data);
+  data += 4;
+  ULONG startTime = ntohl(*(ULLONG*)data);
+  data += 4;
+  ULONG duration = ntohl(*(ULLONG*)data);
+
   log->log("Client", Log::DEBUG, "get schedule called for channel %lu", channelNumber);
 
   cChannel* channel = channelFromNumber(channelNumber);
@@ -584,7 +632,7 @@ void MVPClient::processGetChannelSchedule(UCHAR* data, int length)
     *(ULONG*)&sendBuffer[4] = htonl(0);
     tcp.sendPacket(sendBuffer, 8);
     log->log("Client", Log::DEBUG, "written 0 because channel = NULL");
-    return;
+    return 1;
   }
 
   log->log("Client", Log::DEBUG, "Got channel");
@@ -603,7 +651,7 @@ void MVPClient::processGetChannelSchedule(UCHAR* data, int length)
     *(ULONG*)&sendBuffer[4] = htonl(0);
     tcp.sendPacket(sendBuffer, 8);
     log->log("Client", Log::DEBUG, "written 0 because Schedule!s! = NULL");
-    return;
+    return 1;
   }
 
   log->log("Client", Log::DEBUG, "Got schedule!s! object");
@@ -616,7 +664,7 @@ void MVPClient::processGetChannelSchedule(UCHAR* data, int length)
     *(ULONG*)&sendBuffer[4] = htonl(0);
     tcp.sendPacket(sendBuffer, 8);
     log->log("Client", Log::DEBUG, "written 0 because Schedule = NULL");
-    return;
+    return 1;
   }
 
   log->log("Client", Log::DEBUG, "Got schedule object");
@@ -670,8 +718,11 @@ void MVPClient::processGetChannelSchedule(UCHAR* data, int length)
     //in the past filter
     if ((thisEventTime + thisEventDuration) < (ULONG)time(NULL)) continue;
 
-    //24 hour filter
-    if (thisEventTime > ((ULONG)time(NULL) + 86400)) continue;
+    //start time filter
+    if ((thisEventTime + thisEventDuration) <= startTime) continue;
+
+    //duration filter
+    if (thisEventTime >= (startTime + duration)) continue;
 
     if (!thisEventTitle) thisEventTitle = empty;
     if (!thisEventSubTitle) thisEventSubTitle = empty;
@@ -695,7 +746,7 @@ void MVPClient::processGetChannelSchedule(UCHAR* data, int length)
         *(ULONG*)&sendBuffer2[4] = htonl(0);
         tcp.sendPacket(sendBuffer2, 8);
         log->log("Client", Log::DEBUG, "written 0 because failed to realloc packet");
-        return;
+        return 1;
       }
       sendBuffer = temp;
     }
@@ -723,10 +774,10 @@ void MVPClient::processGetChannelSchedule(UCHAR* data, int length)
 
   free(sendBuffer);
 
-  return;
+  return 1;
 }
 
-void MVPClient::processConfigSave(UCHAR* buffer, int length)
+int MVPClient::processConfigSave(UCHAR* buffer, int length)
 {
   char* section = (char*)buffer;
   char* key = NULL;
@@ -749,7 +800,7 @@ void MVPClient::processConfigSave(UCHAR* buffer, int length)
   }
 
   // if the last string (value) doesnt have null terminator, give up
-  if (buffer[length - 1] != '\0') return;
+  if (buffer[length - 1] != '\0') return 0;
 
   log->log("Client", Log::DEBUG, "Config save: %s %s %s", section, key, value);
   if (config.setValueString(section, key, value))
@@ -760,9 +811,11 @@ void MVPClient::processConfigSave(UCHAR* buffer, int length)
   {
     sendULONG(0);
   }
+
+  return 1;
 }
 
-void MVPClient::processConfigLoad(UCHAR* buffer, int length)
+int MVPClient::processConfigLoad(UCHAR* buffer, int length)
 {
   char* section = (char*)buffer;
   char* key = NULL;
@@ -797,6 +850,8 @@ void MVPClient::processConfigLoad(UCHAR* buffer, int length)
 
     log->log("Client", Log::DEBUG, "Written config load failed packet");
   }
+
+  return 1;
 }
 
 void MVPClient::cleanConfig()
