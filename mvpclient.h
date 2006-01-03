@@ -32,6 +32,7 @@
 #include <vdr/channels.h>
 #include <vdr/videodir.h>
 #include <vdr/plugin.h>
+#include <vdr/timers.h>
 
 #include "defines.h"
 #include "tcp.h"
@@ -75,6 +76,7 @@ class MVPClient
     int processGetChannelSchedule(UCHAR* data, int length);
     int processConfigSave(UCHAR* data, int length);
     int processConfigLoad(UCHAR* data, int length);
+    int processGetTimers(UCHAR* data, int length);
 
     cChannel* channelFromNumber(ULONG channelNumber);
     void writeResumeData();

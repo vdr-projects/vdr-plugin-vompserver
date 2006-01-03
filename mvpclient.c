@@ -61,6 +61,8 @@ MVPClient::MVPClient(int tsocket)
 
 //test(14);
 
+  test2();
+
 }
 
 MVPClient::~MVPClient()
@@ -229,6 +231,9 @@ void MVPClient::run2()
         break;
       case 13:
         result = processReScanRecording(data, packetLength);
+        break;
+      case 14:
+        result = processGetTimers(data, packetLength);
         break;
     }
 
@@ -1166,3 +1171,77 @@ Description
 IsPresent ? easy to work out tho. Oh it doesn't always work
 
 */
+
+
+void MVPClient::test2()
+{
+  log->log("-", Log::DEBUG, "Timers List");
+
+  for (int i = 0; i < Timers.Count(); i++)
+  {
+    cTimer *timer = Timers.Get(i);
+    //Reply(i < Timers.Count() - 1 ? -250 : 250, "%d %s", timer->Index() + 1, timer->ToText());
+    log->log("-", Log::DEBUG, "i=%i count=%i index=%d", i, Timers.Count(), timer->Index() + 1);
+    log->log("-", Log::DEBUG, "active=%i recording=%i pending=%i start=%li stop=%li priority=%i lifetime=%i", timer->Active(), timer->Recording(), timer->Pending(), timer->StartTime(), timer->StopTime(), timer->Priority(), timer->Lifetime());
+    log->log("-", Log::DEBUG, "channel=%i file=%s summary=%s", timer->Channel()->Number(), timer->File(), timer->Summary());
+    log->log("-", Log::DEBUG, "");
+  }
+
+  // asprintf(&buffer, "%d:%s:%s  :%04d:%04d:%d:%d:%s:%s\n",
+//            active, (UseChannelID ? Channel()->GetChannelID().ToString() : itoa(Channel()->Number())),
+//            PrintDay(day, firstday), start, stop, priority, lifetime, file, summary ? summary : "");
+}
+
+
+/*
+Active seems to be a bool - whether the timer should be done or not. If set to inactive it stays around after its time
+recording is a bool, 0 for not currently recording, 1 for currently recording
+pending is a bool, 0 for would not be trying to record this right now, 1 for would/is trying to record this right now
+*/
+
+
+int MVPClient::processGetTimers(UCHAR* buffer, int length)
+{
+  UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
+  int count = 4; // leave space for the packet length
+
+  const char* string;
+  cTimer *timer;
+  int numTimers = Timers.Count();
+
+//  *(ULONG*)&sendBuffer[count] = htonl(numTimers);    count += 4;
+
+  for (int i = 0; i < numTimers; i++)
+  {
+    if (count > 49000) break;
+
+    timer = Timers.Get(i);
+
+    *(ULONG*)&sendBuffer[count] = htonl(timer->Active());                 count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->Recording());              count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->Pending());                count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->Priority());               count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->Lifetime());               count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->Channel()->Number());      count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->StartTime());              count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->StopTime());               count += 4;
+
+    string = timer->File();
+    strcpy((char*)&sendBuffer[count], string);
+    count += strlen(string) + 1;
+
+    string = timer->Summary();
+    strcpy((char*)&sendBuffer[count], string);
+    count += strlen(string) + 1;
+  }
+
+  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
+
+  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
+
+  tcp.sendPacket(sendBuffer, count);
+  delete[] sendBuffer;
+  log->log("Client", Log::DEBUG, "Written timers list");
+
+  return 1;
+}
