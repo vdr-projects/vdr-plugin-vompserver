@@ -48,9 +48,47 @@ int MVPServer::run()
 {
   if (threadIsActive()) return 1;
 
-  log.init(Log::DEBUG, "/tmp/vompserver.log", 0);
+  log.init(Log::DEBUG, "/tmp/vompserver.log", 1);
 
-  if (!udpr.run())
+  char serverName[1024];
+  bool nameSuccess = false;
+
+  // Try to get a server name from vomp.conf
+  const char* configDir = cPlugin::ConfigDirectory();
+  if (!configDir)
+  {
+    log.log("Client", Log::DEBUG, "No config dir!");
+  }
+  else
+  {
+    char configFileName[PATH_MAX];
+    snprintf(configFileName, PATH_MAX, "%s/vomp.conf", configDir);
+
+    Config c;
+    if (c.init(configFileName))
+    {
+      char* fc = c.getValueString("General", "Server name");
+      if (fc)
+      {
+        strncpy(serverName, fc, 1024);
+        delete[] fc;
+        nameSuccess = true;
+      }
+    }
+    c.shutdown();
+  }
+
+  if (!nameSuccess)
+  {
+    if (gethostname(serverName, 1024)) // if fail
+    {
+      strcpy(serverName, "-");
+    }
+  }
+
+  serverName[1023] = '\0';
+
+  if (!udpr.run(serverName))
   {
     log.log("MVPServer", Log::CRIT, "Could not start UDP replier");
     log.shutdown();

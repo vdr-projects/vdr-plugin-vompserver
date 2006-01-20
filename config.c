@@ -57,6 +57,7 @@ int Config::init(char* takeFileName)
   fclose(file);
 
   initted = 1;
+  log->log("Config", Log::DEBUG, "Opened config file: %s", fileName);
 
   return 1;
 }

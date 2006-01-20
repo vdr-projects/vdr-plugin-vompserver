@@ -23,7 +23,7 @@
 
 #include <stdio.h>
 #include <pthread.h>
-#include <unistd.h> // sleep
+#include <unistd.h>
 #include <endian.h>
 
 #include "defines.h"

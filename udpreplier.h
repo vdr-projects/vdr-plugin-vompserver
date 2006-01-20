@@ -34,13 +34,14 @@ class UDPReplier : public Thread
     UDPReplier();
     virtual ~UDPReplier();
 
-    int run();
+    int run(char* tserverName);
     int stop();
 
   private:
     void threadMethod();
 
     DatagramSocket ds;
+    char* serverName;
 };
 
 #endif

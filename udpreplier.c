@@ -23,11 +23,14 @@
 UDPReplier::UDPReplier()
  : ds(3024)
 {
+  serverName = NULL;
 }
 
 UDPReplier::~UDPReplier()
 {
   if (threadIsActive()) stop();
+  if (serverName) delete[] serverName;
+  serverName = NULL;
 }
 
 int UDPReplier::stop()
@@ -37,9 +40,12 @@ int UDPReplier::stop()
   return 1;
 }
 
-int UDPReplier::run()
+int UDPReplier::run(char* tserverName)
 {
   if (threadIsActive()) return 1;
+
+  serverName = new char[strlen(tserverName)+1];
+  strcpy(serverName, tserverName);
 
   if (!threadStart()) return 0;
 
@@ -56,6 +62,6 @@ void UDPReplier::threadMethod()
     if (retval == 1) continue;
 
     if (!strcmp(ds.getData(), "VOMP"))
-      ds.send(ds.getFromIPA(), 3024, "VOMP SERVER", 11);
+      ds.send(ds.getFromIPA(), 3024, serverName, strlen(serverName));
   }
 }
