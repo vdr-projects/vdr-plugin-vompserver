@@ -1182,7 +1182,11 @@ void MVPClient::test2()
     cTimer *timer = Timers.Get(i);
     //Reply(i < Timers.Count() - 1 ? -250 : 250, "%d %s", timer->Index() + 1, timer->ToText());
     log->log("-", Log::DEBUG, "i=%i count=%i index=%d", i, Timers.Count(), timer->Index() + 1);
+#if VDRVERSNUM < 10300
     log->log("-", Log::DEBUG, "active=%i recording=%i pending=%i start=%li stop=%li priority=%i lifetime=%i", timer->Active(), timer->Recording(), timer->Pending(), timer->StartTime(), timer->StopTime(), timer->Priority(), timer->Lifetime());
+#else
+    log->log("-", Log::DEBUG, "active=%i recording=%i pending=%i start=%li stop=%li priority=%i lifetime=%i", timer->HasFlags(tfActive), timer->Recording(), timer->Pending(), timer->StartTime(), timer->StopTime(), timer->Priority(), timer->Lifetime());
+#endif
     log->log("-", Log::DEBUG, "channel=%i file=%s summary=%s", timer->Channel()->Number(), timer->File(), timer->Summary());
     log->log("-", Log::DEBUG, "");
   }
@@ -1217,7 +1221,11 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length)
 
     timer = Timers.Get(i);
 
+#if VDRVERSNUM < 10300
     *(ULONG*)&sendBuffer[count] = htonl(timer->Active());                 count += 4;
+#else
+    *(ULONG*)&sendBuffer[count] = htonl(timer->HasFlags(tfActive));       count += 4;
+#endif
     *(ULONG*)&sendBuffer[count] = htonl(timer->Recording());              count += 4;
     *(ULONG*)&sendBuffer[count] = htonl(timer->Pending());                count += 4;
     *(ULONG*)&sendBuffer[count] = htonl(timer->Priority());               count += 4;
@@ -1231,8 +1239,15 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length)
     count += strlen(string) + 1;
 
     string = timer->Summary();
-    strcpy((char*)&sendBuffer[count], string);
-    count += strlen(string) + 1;
+    if (string)
+    {
+      strcpy((char*)&sendBuffer[count], string);
+      count += strlen(string) + 1;
+    }
+    else
+    {
+      sendBuffer[count++] = 0;
+    }
   }
 
   *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
