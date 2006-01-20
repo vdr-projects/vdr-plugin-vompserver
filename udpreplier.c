@@ -55,7 +55,7 @@ void UDPReplier::threadMethod()
     retval = ds.waitforMessage(0);
     if (retval == 1) continue;
 
-    if (!strcmp(ds.getData(), "VOMP CLIENT"))
+    if (!strcmp(ds.getData(), "VOMP"))
       ds.send(ds.getFromIPA(), 3024, "VOMP SERVER", 11);
   }
 }
