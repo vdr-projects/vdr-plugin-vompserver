@@ -28,41 +28,6 @@ MVPClient::MVPClient(int tsocket)
   recordingManager = NULL;
   log = Log::getInstance();
   loggedIn = false;
-
-/*
-  // Get IP address of client for config module
-
-  char ipa[20];
-  struct sockaddr_in peer;
-  socklen_t salen = sizeof(struct sockaddr);
-  if(getpeername(tsocket, (struct sockaddr*)&peer, &salen) == 0)
-  {
-    strcpy(ipa, inet_ntoa(peer.sin_addr));
-  }
-  else
-  {
-    ipa[0] = '\0';
-    log->log("Client", Log::DEBUG, "Cannot get peer name!");
-  }
-
-  const char* configDir = cPlugin::ConfigDirectory();
-  if (!configDir)
-  {
-    log->log("Client", Log::DEBUG, "No config dir!");
-    return;
-  }
-
-  char configFileName[PATH_MAX];
-  snprintf(configFileName, PATH_MAX - strlen(configDir) - strlen(ipa) - 20, "%s/vomp-%s.conf", configDir, ipa);
-  config.init(configFileName);
-
-  log->log("Client", Log::DEBUG, "Config file name: %s", configFileName);
-*/
-
-//test(14);
-
-  test2();
-
 }
 
 MVPClient::~MVPClient()
@@ -84,6 +49,31 @@ MVPClient::~MVPClient()
   }
 
   if (loggedIn) cleanConfig();
+}
+
+ULLONG MVPClient::ntohll(ULLONG a)
+{
+  return htonll(a);
+}
+
+ULLONG MVPClient::htonll(ULLONG a)
+{
+  #if BYTE_ORDER == BIG_ENDIAN
+    return a;
+  #else
+    ULLONG b = 0;
+
+    b = ((a << 56) & 0xFF00000000000000ULL)
+      | ((a << 40) & 0x00FF000000000000ULL)
+      | ((a << 24) & 0x0000FF0000000000ULL)
+      | ((a <<  8) & 0x000000FF00000000ULL)
+      | ((a >>  8) & 0x00000000FF000000ULL)
+      | ((a >> 24) & 0x0000000000FF0000ULL)
+      | ((a >> 40) & 0x000000000000FF00ULL)
+      | ((a >> 56) & 0x00000000000000FFULL) ;
+
+    return b;
+  #endif
 }
 
 cChannel* MVPClient::channelFromNumber(ULONG channelNumber)
@@ -117,7 +107,6 @@ cChannel* MVPClient::channelFromNumber(ULONG channelNumber)
 
   return channel;
 }
-
 
 void MVPClient::writeResumeData()
 {
@@ -1172,7 +1161,7 @@ IsPresent ? easy to work out tho. Oh it doesn't always work
 
 */
 
-
+/*
 void MVPClient::test2()
 {
   log->log("-", Log::DEBUG, "Timers List");
@@ -1195,7 +1184,7 @@ void MVPClient::test2()
 //            active, (UseChannelID ? Channel()->GetChannelID().ToString() : itoa(Channel()->Number())),
 //            PrintDay(day, firstday), start, stop, priority, lifetime, file, summary ? summary : "");
 }
-
+*/
 
 /*
 Active seems to be a bool - whether the timer should be done or not. If set to inactive it stays around after its time

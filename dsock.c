@@ -20,17 +20,26 @@
 
 #include "dsock.h"
 
-DatagramSocket::DatagramSocket(short port)
+DatagramSocket::DatagramSocket()
 {
-  myPort = port;
   addrlen = sizeof(struct sockaddr);
   log = Log::getInstance();
   initted = 0;
+}
 
+DatagramSocket::~DatagramSocket()
+{
+  if (initted) close(socketnum);
+  initted = 0;
+}
+
+bool DatagramSocket::init(short port)
+{
+  myPort = port;
   if ((socketnum = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
   {
     log->log("UDP", Log::CRIT, "Socket error");
-    return;
+    return false;
   }
 
   myAddr.sin_family = AF_INET;         // host byte order
@@ -41,20 +50,16 @@ DatagramSocket::DatagramSocket(short port)
   {
     log->log("UDP", Log::CRIT, "Bind error");
     close(socketnum);
-    return;
+    return false;
   }
-  initted = 1;
 
   FD_ZERO(&readfds);
   FD_SET(socketnum, &readfds);
   tv.tv_sec = 0;
   tv.tv_usec = 0;
-}
 
-DatagramSocket::~DatagramSocket()
-{
-  if (initted) close(socketnum);
-  initted = 0;
+  initted = 1;
+  return true;
 }
 
 unsigned char DatagramSocket::waitforMessage(unsigned char how)

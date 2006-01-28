@@ -35,10 +35,9 @@ class Log
     ~Log();
     static Log* getInstance();
 
-    int init(int defaultLevel, char* fileName, int enabled);
+    int init(int defaultLevel, char* fileName);
     int shutdown();
     int log(char *fromModule, int level, char *message, ...);
-    int status();
     void upLogLevel();
     void downLogLevel();
 

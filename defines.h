@@ -27,8 +27,4 @@ typedef unsigned int UINT;
 typedef unsigned long ULONG;
 typedef unsigned long long ULLONG;
 
-ULLONG htonll(ULLONG a);
-ULLONG ntohll(ULLONG a);
-
-
 #endif

@@ -30,7 +30,7 @@
 
 #include "mvpserver.h"
 
-static const char *VERSION        = "0.0.1";
+static const char *VERSION        = "0.1.2";
 static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
 
 class cPluginVompserver : public cPlugin
@@ -58,10 +58,17 @@ cPluginVompserver::cPluginVompserver(void)
   // VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
 }
 
+bool cPluginVompserver::Start(void)
+{
+  // Start any background activities the plugin shall perform.
+  int success = mvpserver.run();
+  if (success) return true;
+  else return false;
+}
+
 cPluginVompserver::~cPluginVompserver()
 {
   // Clean up after yourself!
-
   mvpserver.stop();
 }
 
@@ -81,14 +88,6 @@ bool cPluginVompserver::Initialize(void)
 {
   // Initialize any background activities the plugin shall perform.
   return true;
-}
-
-bool cPluginVompserver::Start(void)
-{
-  // Start any background activities the plugin shall perform.
-  int success = mvpserver.run();
-  if (success) return true;
-  else return false;
 }
 
 bool cPluginVompserver::SetupParse(const char *Name, const char *Value)

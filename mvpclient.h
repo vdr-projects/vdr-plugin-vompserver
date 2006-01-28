@@ -23,8 +23,8 @@
 
 #include <stdio.h>
 #include <pthread.h>
-//#include <netinet/in.h>
 #include <signal.h>
+#include <endian.h>
 
 #include <unistd.h> // sleep
 
@@ -82,6 +82,9 @@ class MVPClient
     void writeResumeData();
     void cleanConfig();
     void sendULONG(ULONG ul);
+
+    ULLONG ntohll(ULLONG a);
+    ULLONG htonll(ULLONG a);
 
     void test(int num);
     void test2();

@@ -35,7 +35,7 @@ class UDPReplier : public Thread
     virtual ~UDPReplier();
 
     int run(char* tserverName);
-    int stop();
+    int shutdown();
 
   private:
     void threadMethod();

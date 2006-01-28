@@ -44,6 +44,8 @@ Log* Log::getInstance()
 
 void Log::upLogLevel()
 {
+  if (!initted) return;
+
   if (logLevel == Log::DEBUG)
   {
     log("Log", logLevel, "Log level is at its highest already");
@@ -56,6 +58,8 @@ void Log::upLogLevel()
 
 void Log::downLogLevel()
 {
+  if (!initted) return;
+
   if (logLevel == Log::CRAZY)
   {
     log("Log", logLevel, "Log level is at its lowest already");
@@ -66,22 +70,18 @@ void Log::downLogLevel()
   log("Log", logLevel, "Log level is now %i", logLevel);
 }
 
-int Log::init(int startLogLevel, char* fileName, int tenabled)
+int Log::init(int startLogLevel, char* fileName)
 {
-  initted = 1;
   logLevel = startLogLevel;
-  enabled = tenabled;
-
-  if (!enabled) return 1;
 
   logfile = fopen(fileName, "a");
   if (logfile)
   {
+    initted = 1;
     return 1;
   }
   else
   {
-    enabled = 0;
     return 0;
   }
 }
@@ -89,15 +89,15 @@ int Log::init(int startLogLevel, char* fileName, int tenabled)
 int Log::shutdown()
 {
   if (!initted) return 1;
+  initted = 0;
   if (logfile) fclose(logfile);
   return 1;
 }
 
 int Log::log(char *fromModule, int level, char* message, ...)
 {
-  if (!instance || !logfile) return 0;
+  if (!initted) return 0;
 
-  if (!enabled) return 1;
   if (level > logLevel) return 1;
 
   char buffer[151];
@@ -148,10 +148,4 @@ int Log::log(char *fromModule, int level, char* message, ...)
   else
     return 0;
 
-}
-
-int Log::status()
-{
-  if (instance && logfile) return 1;
-  else return 0;
 }

@@ -26,20 +26,20 @@ MVPServer::MVPServer()
 
 MVPServer::~MVPServer()
 {
-  if (threadIsActive()) stop();
+  stop();
 }
 
 int MVPServer::stop()
 {
-  if (!threadIsActive()) return 0;
+  if (threadIsActive()) threadCancel();
+  close(listeningSocket);
 
-  threadCancel();
-  log.log("MVPServer", Log::INFO, "Stopped MVPServer thread");
+  udpr.shutdown();
 
-  udpr.stop();
+  log.log("Main", Log::INFO, "Stopped main server thread");
   log.shutdown();
 
-  close(listeningSocket);
+  config.shutdown();
 
   return 1;
 }
@@ -48,63 +48,70 @@ int MVPServer::run()
 {
   if (threadIsActive()) return 1;
 
-  log.init(Log::DEBUG, "/tmp/vompserver.log", 1);
-
-  char serverName[1024];
-  bool nameSuccess = false;
-
-  // Try to get a server name from vomp.conf
+  // Start config
   const char* configDir = cPlugin::ConfigDirectory();
   if (!configDir)
   {
-    log.log("Client", Log::DEBUG, "No config dir!");
+    dsyslog("VOMP: Could not get config dir from VDR");
   }
   else
   {
     char configFileName[PATH_MAX];
     snprintf(configFileName, PATH_MAX, "%s/vomp.conf", configDir);
-
-    Config c;
-    if (c.init(configFileName))
+    if (config.init(configFileName))
     {
-      char* fc = c.getValueString("General", "Server name");
-      if (fc)
-      {
-        strncpy(serverName, fc, 1024);
-        delete[] fc;
-        nameSuccess = true;
-      }
+      dsyslog("VOMP: Config file found");
     }
-    c.shutdown();
+    else
+    {
+      dsyslog("VOMP: Config file not found");
+    }
   }
 
-  if (!nameSuccess)
+  // Start logging
+
+  char* cfgLogFilename = config.getValueString("General", "Log file");
+  if (cfgLogFilename)
   {
-    if (gethostname(serverName, 1024)) // if fail
+    log.init(Log::DEBUG, cfgLogFilename);
+    delete[] cfgLogFilename;
+  }
+
+  // Work out a name for this server
+
+  char* serverName;
+
+  // Try to get from vomp.conf
+  serverName = config.getValueString("General", "Server name");
+  if (!serverName) // If not, get the hostname
+  {
+    serverName = new char[1024];
+    if (gethostname(serverName, 1024)) // if not, just use "-"
     {
       strcpy(serverName, "-");
     }
   }
 
-  serverName[1023] = '\0';
+  int udpSuccess = udpr.run(serverName);
 
-  if (!udpr.run(serverName))
+  delete[] serverName;
+
+  if (!udpSuccess)
   {
-    log.log("MVPServer", Log::CRIT, "Could not start UDP replier");
-    log.shutdown();
+    log.log("Main", Log::CRIT, "Could not start UDP replier");
+    stop();
     return 0;
   }
 
   // start thread here
   if (!threadStart())
   {
-    log.log("MVPServer", Log::CRIT, "Could not start MVPServer thread");
-    udpr.stop();
-    log.shutdown();
+    log.log("Main", Log::CRIT, "Could not start MVPServer thread");
+    stop();
     return 0;
   }
 
-  log.log("MVPServer", Log::DEBUG, "MVPServer run success");
+  log.log("Main", Log::DEBUG, "MVPServer run success");
   return 1;
 }
 
@@ -147,30 +154,4 @@ void MVPServer::threadMethod()
     MVPClient* m = new MVPClient(clientSocket);
     m->run();
   }
-}
-
-
-ULLONG ntohll(ULLONG a)
-{
-  return htonll(a);
-}
-
-ULLONG htonll(ULLONG a)
-{
-  #if BYTE_ORDER == BIG_ENDIAN
-    return a;
-  #else
-    ULLONG b = 0;
-
-    b = ((a << 56) & 0xFF00000000000000ULL)
-      | ((a << 40) & 0x00FF000000000000ULL)
-      | ((a << 24) & 0x0000FF0000000000ULL)
-      | ((a <<  8) & 0x000000FF00000000ULL)
-      | ((a >>  8) & 0x00000000FF000000ULL)
-      | ((a >> 24) & 0x0000000000FF0000ULL)
-      | ((a >> 40) & 0x000000000000FF00ULL)
-      | ((a >> 56) & 0x00000000000000FFULL) ;
-
-    return b;
-  #endif
 }

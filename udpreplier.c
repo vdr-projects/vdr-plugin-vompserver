@@ -21,22 +21,21 @@
 #include "udpreplier.h"
 
 UDPReplier::UDPReplier()
- : ds(3024)
 {
   serverName = NULL;
 }
 
 UDPReplier::~UDPReplier()
 {
-  if (threadIsActive()) stop();
-  if (serverName) delete[] serverName;
-  serverName = NULL;
+  shutdown();
 }
 
-int UDPReplier::stop()
+int UDPReplier::shutdown()
 {
-  if (!threadIsActive()) return 0;
-  threadCancel();
+  if (threadIsActive()) threadCancel();
+
+  if (serverName) delete[] serverName;
+  serverName = NULL;
   return 1;
 }
 
@@ -47,7 +46,17 @@ int UDPReplier::run(char* tserverName)
   serverName = new char[strlen(tserverName)+1];
   strcpy(serverName, tserverName);
 
-  if (!threadStart()) return 0;
+  if (!ds.init(3024))
+  {
+    shutdown();
+    return 0;
+  }
+
+  if (!threadStart())
+  {
+    shutdown();
+    return 0;
+  }
 
   Log::getInstance()->log("UDP", Log::DEBUG, "UDP replier started");
   return 1;
@@ -62,6 +71,9 @@ void UDPReplier::threadMethod()
     if (retval == 1) continue;
 
     if (!strcmp(ds.getData(), "VOMP"))
+    {
+      Log::getInstance()->log("UDP", Log::DEBUG, "UDP request from %s", ds.getFromIPA());
       ds.send(ds.getFromIPA(), 3024, serverName, strlen(serverName));
+    }
   }
 }

@@ -24,12 +24,12 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <unistd.h>
-#include <endian.h>
 
 #include "defines.h"
 #include "udpreplier.h"
 #include "mvpclient.h"
 #include "thread.h"
+#include "config.h"
 
 class MVPServer : public Thread
 {
@@ -43,6 +43,7 @@ class MVPServer : public Thread
   private:
     void threadMethod();
 
+    Config config;
     Log log;
     UDPReplier udpr;
     int listeningSocket;
