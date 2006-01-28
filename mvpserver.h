@@ -43,8 +43,8 @@ class MVPServer : public Thread
   private:
     void threadMethod();
 
-    Config config;
     Log log;
+    Config config;
     UDPReplier udpr;
     int listeningSocket;
 };
