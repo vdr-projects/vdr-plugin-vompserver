@@ -246,6 +246,7 @@ int MVPClient::processLogin(UCHAR* buffer, int length)
 
   char configFileName[PATH_MAX];
   snprintf(configFileName, PATH_MAX - strlen(configDir) - 17 - 20, "%s/vomp-%02X-%02X-%02X-%02X-%02X-%02X.conf", configDir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
+                                //( ^^^^^^^^^^^^^eh?^^^^^^^^^^^^^)
   config.init(configFileName);
 
   // Send the login reply
