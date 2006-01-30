@@ -1,0 +1,11 @@
+[General]
+
+## Specify a log file here to enable logging
+
+# Log file = /tmp/vompserver.log
+
+## If you have more than one vompserver running you
+## can enter a name here that will appear on the
+## server select list on the MVP
+
+# Server name = MyServer
