@@ -29,8 +29,7 @@ DatagramSocket::DatagramSocket()
 
 DatagramSocket::~DatagramSocket()
 {
-  if (initted) close(socketnum);
-  initted = 0;
+  shutdown();
 }
 
 bool DatagramSocket::init(short port)
@@ -53,6 +52,9 @@ bool DatagramSocket::init(short port)
     return false;
   }
 
+  int allowed = 1;
+  setsockopt(socketnum, SOL_SOCKET, SO_BROADCAST, &allowed, sizeof(allowed));
+
   FD_ZERO(&readfds);
   FD_SET(socketnum, &readfds);
   tv.tv_sec = 0;
@@ -60,6 +62,12 @@ bool DatagramSocket::init(short port)
 
   initted = 1;
   return true;
+}
+
+void DatagramSocket::shutdown()
+{
+  if (initted) close(socketnum);
+  initted = 0;
 }
 
 unsigned char DatagramSocket::waitforMessage(unsigned char how)

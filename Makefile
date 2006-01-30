@@ -46,7 +46,7 @@ DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o dsock.o mvpserver.o udpreplier.o mvpclient.o tcp.o \
+OBJS = $(PLUGIN).o dsock.o mvpserver.o udpreplier.o bootpd.o mvpclient.o tcp.o \
                    remux/ts2ps.o remux/ts2es.o remux/tsremux.o ringbuffer.o \
                    recplayer.o config.o log.o thread.o mvpreceiver.o
 

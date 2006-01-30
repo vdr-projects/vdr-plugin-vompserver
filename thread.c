@@ -37,6 +37,11 @@ void Thread::threadInternalStart2()
   threadMethod();
 }
 
+Thread::Thread()
+{
+  threadActive = 0;
+}
+
 int Thread::threadStart()
 {
   pthread_cond_init(&threadCond, NULL);

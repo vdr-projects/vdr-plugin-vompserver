@@ -35,6 +35,7 @@ int MVPServer::stop()
   close(listeningSocket);
 
   udpr.shutdown();
+  bootpd.shutdown();
 
   log.log("Main", Log::INFO, "Stopped main server thread");
   log.shutdown();
@@ -75,6 +76,11 @@ int MVPServer::run()
   {
     log.init(Log::DEBUG, cfgLogFilename);
     delete[] cfgLogFilename;
+    log.log("Main", Log::INFO, "Logging started");
+  }
+  else
+  {
+    dsyslog("VOMP: Logging disabled");
   }
 
   // Work out a name for this server
@@ -101,6 +107,20 @@ int MVPServer::run()
     log.log("Main", Log::CRIT, "Could not start UDP replier");
     stop();
     return 0;
+  }
+
+  if (config.getValueString("General", "Bootp server"))
+  {
+    if (!bootpd.run())
+    {
+      log.log("Main", Log::CRIT, "Could not start Bootpd");
+      stop();
+      return 0;
+    }
+  }
+  else
+  {
+    log.log("Main", Log::INFO, "Not starting Bootpd");
   }
 
   // start thread here

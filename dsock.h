@@ -44,6 +44,7 @@ class DatagramSocket
     DatagramSocket();
     ~DatagramSocket();
     bool init(short);                 // port
+    void shutdown();
     unsigned char waitforMessage(unsigned char); // int =0-block =1-new wait =2-continue wait
     int getDataLength(void) const;
     char *getData(void);               // returns a pointer to the data
