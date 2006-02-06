@@ -113,9 +113,9 @@ int Config::readLine()
   if (!initted || !file) { log->log("Config", Log::DEBUG, "1"); return 0; }
   if (!fgets(buffer, BUFFER_LENGTH-1, file)) { log->log("Config", Log::DEBUG, "2"); return 0; }
   lastLineLength = strlen(buffer);
-  log->log("Config", Log::DEBUG, "buffer before trim: '%s'", buffer);
+//  log->log("Config", Log::DEBUG, "buffer before trim: '%s'", buffer);
   trim(buffer);
-  log->log("Config", Log::DEBUG, "buffer after trim: '%s'", buffer);
+//  log->log("Config", Log::DEBUG, "buffer after trim: '%s'", buffer);
   return 1;
 }
 
@@ -317,7 +317,7 @@ int Config::findSection(char* section)
 
   while(readLine())
   {
-    log->log("Config", Log::DEBUG, "to find '%s' this line '%s'", toFind, buffer);
+//    log->log("Config", Log::DEBUG, "to find '%s' this line '%s'", toFind, buffer);
     if (!strcmp(toFind, buffer)) return 1;
   }
   return 0;

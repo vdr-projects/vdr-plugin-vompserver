@@ -27,9 +27,9 @@
 class Thread
 {
   protected:
-
     // Override this method in derived classes
     virtual void threadMethod()=0;
+    virtual void threadPostStopCleanup() {};
 
     // Methods to use from outside the thread
     int threadStart();    // start the thread. threadMethod() will be called in derived class
@@ -42,6 +42,7 @@ class Thread
     // Methods to use from inside the thread
     void threadCheckExit();      // terminates thread if threadStop() has been called
     void threadWaitForSignal();  // pauses thread until threadSignal() is called
+    void threadDetach();         // Detaches the thread
 
     // Internal bits and pieces
 

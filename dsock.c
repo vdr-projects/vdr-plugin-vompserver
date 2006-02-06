@@ -116,7 +116,7 @@ unsigned char DatagramSocket::waitforMessage(unsigned char how)
     memset(&buf[mlength], 0, MAXBUFLEN - mlength);
     strcpy(fromIPA, inet_ntoa(theirAddr.sin_addr));
     fromPort = ntohs(theirAddr.sin_port);
-    log->log("UDP", Log::DEBUG, "%s:%i received length %i", fromIPA, fromPort, mlength);
+//    log->log("UDP", Log::DEBUG, "%s:%i received length %i", fromIPA, fromPort, mlength);
     return 2;
   }
 
@@ -149,7 +149,7 @@ void DatagramSocket::send(char *ipa, short port, char *message, int length)
   sentLength = sendto(socketnum, message, length, 0, (struct sockaddr *)&theirAddr, addrlen);
   if (sentLength == length)
   {
-    log->log("UDP", Log::DEBUG, "%s:%i sent length %i", ipa, port, length);
+//    log->log("UDP", Log::DEBUG, "%s:%i sent length %i", ipa, port, length);
     return;
   }
 

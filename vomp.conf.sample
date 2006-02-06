@@ -16,3 +16,9 @@
 ## name and server
 
 # Bootp server = 1
+
+## Enable this to start the built in TFTP server
+## Required to boot the MVP if you have not got a
+## TFTP server running elsewhere
+
+# TFTP server = 1

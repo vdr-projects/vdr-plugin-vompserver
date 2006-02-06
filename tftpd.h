@@ -1,5 +1,5 @@
 /*
-    Copyright 2004-2005 Chris Tallon
+    Copyright 2006 Chris Tallon
 
     This file is part of VOMP.
 
@@ -18,39 +18,34 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#ifndef MVPSERVER_H
-#define MVPSERVER_H
+#ifndef TFTPD_H
+#define TFTPD_H
 
 #include <stdio.h>
-#include <pthread.h>
-#include <unistd.h>
+#include <signal.h>
+#include <ctype.h>
+#include <vdr/plugin.h>
 
 #include "defines.h"
-#include "udpreplier.h"
-#include "bootpd.h"
-#include "tftpd.h"
-#include "mvpclient.h"
+#include "log.h"
+#include "dsock.h"
 #include "thread.h"
-#include "config.h"
+#include "tftpclient.h"
 
-class MVPServer : public Thread
+class Tftpd : public Thread
 {
   public:
-    MVPServer();
-    virtual ~MVPServer();
+    Tftpd();
+    virtual ~Tftpd();
 
     int run();
-    int stop();
+    int shutdown();
 
   private:
     void threadMethod();
 
-    Log log;
-    Config config;
-    UDPReplier udpr;
-    Bootpd bootpd;
-    Tftpd tftpd;
-    int listeningSocket;
+    DatagramSocket ds;
+    Log* log;
 };
 
 #endif

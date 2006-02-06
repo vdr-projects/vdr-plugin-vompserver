@@ -24,9 +24,9 @@
 void threadInternalStart(void *arg)
 {
   // I don't want signals
-  sigset_t sigset;
-  sigfillset(&sigset);
-  pthread_sigmask(SIG_BLOCK, &sigset, NULL);
+  sigset_t sigs;
+  sigfillset(&sigs);
+  pthread_sigmask(SIG_BLOCK, &sigs, NULL);
 
   Thread *t = (Thread *)arg;
   t->threadInternalStart2();
@@ -35,6 +35,7 @@ void threadInternalStart(void *arg)
 void Thread::threadInternalStart2()
 {
   threadMethod();
+  this->threadPostStopCleanup();
 }
 
 Thread::Thread()
@@ -58,6 +59,7 @@ void Thread::threadStop()
   // Signal thread here in case it's waiting
   threadSignal();
   pthread_join(pthread, NULL);
+  this->threadPostStopCleanup();
 }
 
 void Thread::threadCancel()
@@ -65,6 +67,7 @@ void Thread::threadCancel()
   threadActive = 0;
   pthread_cancel(pthread);
   pthread_join(pthread, NULL);
+  this->threadPostStopCleanup();
 }
 
 void Thread::threadCheckExit()
@@ -94,4 +97,9 @@ void Thread::threadWaitForSignal()
   pthread_mutex_lock(&threadCondMutex);
   pthread_cond_wait(&threadCond, &threadCondMutex);
   pthread_mutex_unlock(&threadCondMutex);
+}
+
+void Thread::threadDetach()
+{
+  pthread_detach(pthread);
 }

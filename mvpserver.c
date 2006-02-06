@@ -36,6 +36,7 @@ int MVPServer::stop()
 
   udpr.shutdown();
   bootpd.shutdown();
+  tftpd.shutdown();
 
   log.log("Main", Log::INFO, "Stopped main server thread");
   log.shutdown();
@@ -109,6 +110,7 @@ int MVPServer::run()
     return 0;
   }
 
+  // Start Bootpd
   if (config.getValueString("General", "Bootp server"))
   {
     if (!bootpd.run())
@@ -121,6 +123,21 @@ int MVPServer::run()
   else
   {
     log.log("Main", Log::INFO, "Not starting Bootpd");
+  }
+
+  // Start Tftpd
+  if (config.getValueString("General", "TFTP server"))
+  {
+    if (!tftpd.run())
+    {
+      log.log("Main", Log::CRIT, "Could not start TFTPd");
+      stop();
+      return 0;
+    }
+  }
+  else
+  {
+    log.log("Main", Log::INFO, "Not starting TFTPd");
   }
 
   // start thread here
