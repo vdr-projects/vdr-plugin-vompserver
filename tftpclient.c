@@ -20,9 +20,6 @@
 
 #include "tftpclient.h"
 
-void dump(unsigned char* data, USHORT size);
-unsigned char dcc(UCHAR c);
-
 TftpClient::TftpClient()
 {
   log = Log::getInstance();
@@ -33,6 +30,7 @@ TftpClient::TftpClient()
 
 TftpClient::~TftpClient()
 {
+  log->log("TftpClient", Log::DEBUG, "Someone calls tftpclient::~tftpclient");
   shutdown();
 }
 
@@ -52,10 +50,12 @@ int TftpClient::shutdown()
   return 1;
 }
 
-int TftpClient::run(char* tpeerIP, USHORT tpeerPort, UCHAR* data, int length)
+int TftpClient::run(char* tbaseDir, char* tpeerIP, USHORT tpeerPort, UCHAR* data, int length)
 {
   if (threadIsActive()) return 1;
   log->log("TftpClient", Log::DEBUG, "Client handler started");
+
+  baseDir = tbaseDir;
 
   strncpy(peerIP, tpeerIP, 16);
   peerPort = tpeerPort;
@@ -87,7 +87,11 @@ void TftpClient::threadMethod()
 
   // process the first message received by the parent listener
   // the first incoming message is placed in buffer by above run method
-  if (!processMessage(buffer, bufferLength)) return;
+  if (!processMessage(buffer, bufferLength))
+  {
+    log->log("TftpClient", Log::INFO, "threadMethod terminating connection");
+    return;
+  }
 
   int retval;
 
@@ -107,9 +111,9 @@ void TftpClient::threadMethod()
     {
       // 1s timer expired
       // see if we need to retransmit a data packet
-      if (((state == 1) || (state == 2)) && (lastCom < (time(NULL) - 3)))
+      if (((state == 1) || (state == 2)) && (lastCom < (time(NULL) - 1)))
       {
-        log->log("TftpClient", Log::DEBUG, "Retransmitting buffer");
+//        log->log("TftpClient", Log::DEBUG, "Retransmitting buffer");
         transmitBuffer();
       }
 
@@ -134,8 +138,8 @@ void TftpClient::threadMethod()
 
 void TftpClient::threadPostStopCleanup()
 {
-  log->log("TftpClient", Log::DEBUG, "Deleting tftpclient");
-  delete this; // careful
+//  log->log("TftpClient", Log::DEBUG, "Deleting tftpclient");
+//  delete this; // careful
 }
 
 int TftpClient::processMessage(UCHAR* data, int length)
@@ -162,7 +166,8 @@ int TftpClient::processMessage(UCHAR* data, int length)
     }
     case 3: // Data
     {
-      break;
+      log->log("TftpClient", Log::ERR, "Client sent a data packet!");
+      return 0; // quit
     }
     case 4: // Ack
     {
@@ -176,6 +181,7 @@ int TftpClient::processMessage(UCHAR* data, int length)
 
     default:
     {
+      log->log("TftpClient", Log::ERR, "Client TFTP protocol error");
       return 0;
     }
   }
@@ -225,7 +231,7 @@ int TftpClient::processAck(UCHAR* data, int length)
     // successful incoming packet
     lastCom = time(NULL);
 
-    log->log("TftpClient", Log::DEBUG, "Ack received for block %i - success", ackBlock);
+//    log->log("TftpClient", Log::DEBUG, "Ack received for block %i - success", ackBlock);
 
     if (state == 1) // it wasn't the final block
     {
@@ -240,15 +246,34 @@ int TftpClient::processAck(UCHAR* data, int length)
   }
   else
   {
-    log->log("TftpClient", Log::DEBUG, "Ack received for block %i - rejected\n", ackBlock);
+//    log->log("TftpClient", Log::DEBUG, "Ack received for block %i - rejected, retransmitting block\n", ackBlock);
+    transmitBuffer();
   }
 
   return 1;
 }
 
-int TftpClient::openFile(char* filename)
+int TftpClient::openFile(char* requestedFile)
 {
-  file = fopen("/opt/dvb/vomp-dongle-0.1.1", "r");
+  char fileName[PATH_MAX];
+  strcpy(fileName, requestedFile);
+
+  for(UINT i = 0; i < strlen(fileName); i++)
+  {
+    if (fileName[i] == '/')
+    {
+      log->log("TftpClient", Log::ERR, "TFTP filename from client contained a path");
+      return 0;
+    }
+  }
+
+  char fileName2[PATH_MAX];
+  snprintf(fileName2, PATH_MAX, "%s%s", baseDir, fileName);
+
+  log->log("TftpClient", Log::INFO, "File: '%s'", fileName2);
+
+
+  file = fopen(fileName2, "r");
   if (!file) return 0;
   return 1;
 }
@@ -280,142 +305,5 @@ void TftpClient::transmitBuffer()
 {
   ds.send(peerIP, peerPort, (char*)buffer, bufferLength);
 //  dump(buffer, bufferLength);
-  log->log("TftpClient", Log::DEBUG, "Sent block number %i", blockNumber - 1);
+//  log->log("TftpClient", Log::DEBUG, "Sent block number %i", blockNumber - 1);
 }
-
-void dump(unsigned char* data, USHORT size)
-{
-  printf("Size = %u\n", size);
-
-  USHORT c = 0;
-  while(c < size)
-  {
-    if ((size - c) > 15)
-    {
-      printf(" %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X %02X %02X  %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c\n",
-        data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-        data[c+8], data[c+9], data[c+10], data[c+11], data[c+12], data[c+13], data[c+14], data[c+15],
-        dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]),
-        dcc(data[c+8]), dcc(data[c+9]), dcc(data[c+10]), dcc(data[c+11]), dcc(data[c+12]), dcc(data[c+13]), dcc(data[c+14]), dcc(data[c+15]));
-      c += 16;
-    }
-    else
-    {
-      switch (size - c)
-      {
-        case 15:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X %02X     %c%c%c%c%c%c%c%c%c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-            data[c+8], data[c+9], data[c+10], data[c+11], data[c+12], data[c+13], data[c+14],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]),
-            dcc(data[c+8]), dcc(data[c+9]), dcc(data[c+10]), dcc(data[c+11]), dcc(data[c+12]), dcc(data[c+13]), dcc(data[c+14]));
-          c += 15;
-          break;
-        case 14:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X        %c%c%c%c%c%c%c%c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-            data[c+8], data[c+9], data[c+10], data[c+11], data[c+12], data[c+13],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]),
-            dcc(data[c+8]), dcc(data[c+9]), dcc(data[c+10]), dcc(data[c+11]), dcc(data[c+12]), dcc(data[c+13]));
-          c += 14;
-          break;
-        case 13:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X %02X %02X  %02X           %c%c%c%c%c%c%c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-            data[c+8], data[c+9], data[c+10], data[c+11], data[c+12],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]),
-            dcc(data[c+8]), dcc(data[c+9]), dcc(data[c+10]), dcc(data[c+11]), dcc(data[c+12]));
-          c += 13;
-          break;
-        case 12:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X %02X %02X               %c%c%c%c%c%c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-            data[c+8], data[c+9], data[c+10], data[c+11],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]),
-            dcc(data[c+8]), dcc(data[c+9]), dcc(data[c+10]), dcc(data[c+11]));
-          c += 12;
-          break;
-        case 11:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X %02X                  %c%c%c%c%c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-            data[c+8], data[c+9], data[c+10],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]),
-            dcc(data[c+8]), dcc(data[c+9]), dcc(data[c+10]));
-          c += 11;
-          break;
-        case 10:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X %02X  %02X %02X                     %c%c%c%c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-            data[c+8], data[c+9],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]),
-            dcc(data[c+8]), dcc(data[c+9]));
-          c += 10;
-          break;
-        case 9:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X %02X  %02X                        %c%c%c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-            data[c+8],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]),
-            dcc(data[c+8]));
-          c += 9;
-          break;
-        case 8:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X %02X                            %c%c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6], data[c+7],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]), dcc(data[c+7]));
-          c += 8;
-          break;
-        case 7:
-          printf(" %02X %02X %02X %02X  %02X %02X %02X                               %c%c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5], data[c+6],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]), dcc(data[c+6]));
-          c += 7;
-          break;
-        case 6:
-          printf(" %02X %02X %02X %02X  %02X %02X                                  %c%c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4], data[c+5],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]), dcc(data[c+5]));
-          c += 6;
-          break;
-        case 5:
-          printf(" %02X %02X %02X %02X  %02X                                     %c%c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3], data[c+4],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]), dcc(data[c+4]));
-          c += 5;
-          break;
-        case 4:
-          printf(" %02X %02X %02X %02X                                         %c%c%c%c\n",
-            data[c], data[c+1], data[c+2], data[c+3],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]), dcc(data[c+3]));
-          c += 4;
-          break;
-        case 3:
-          printf(" %02X %02X %02X                                            %c%c%c\n",
-            data[c], data[c+1], data[c+2],
-            dcc(data[c]), dcc(data[c+1]), dcc(data[c+2]));
-          c += 3;
-          break;
-        case 2:
-          printf(" %02X %02X                                               %c%c\n",
-            data[c], data[c+1],
-            dcc(data[c]), dcc(data[c+1]));
-          c += 2;
-          break;
-        case 1:
-          printf(" %02X                                                  %c\n",
-            data[c],
-            dcc(data[c]));
-          c += 1;
-          break;
-      }
-    }
-  }
-}
-
-unsigned char dcc(UCHAR c)
-{
-  if (isspace(c)) return ' ';
-  if (isprint(c)) return c;
-  return '.';
-}
-

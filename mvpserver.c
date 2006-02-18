@@ -110,8 +110,22 @@ int MVPServer::run()
     return 0;
   }
 
-  // Start Bootpd
-  if (config.getValueString("General", "Bootp server"))
+  // Read config and start bootp and tftp as appropriate
+
+  char* configString;
+  int bootpEnabled = 0;
+  int tftpEnabled = 0;
+
+  configString = config.getValueString("General", "Bootp server enabled");
+  if (configString && (!strcasecmp(configString, "yes"))) bootpEnabled = 1;
+  if (configString) delete[] configString;
+
+  configString = config.getValueString("General", "TFTP server enabled");
+  if (configString && (!strcasecmp(configString, "yes"))) tftpEnabled = 1;
+  if (configString) delete[] configString;
+
+
+  if (bootpEnabled)
   {
     if (!bootpd.run())
     {
@@ -125,10 +139,38 @@ int MVPServer::run()
     log.log("Main", Log::INFO, "Not starting Bootpd");
   }
 
-  // Start Tftpd
-  if (config.getValueString("General", "TFTP server"))
+  if (tftpEnabled)
   {
-    if (!tftpd.run())
+    char tftpPath[PATH_MAX];
+//    snprintf(configFileName, PATH_MAX, "%s/vomp.conf", configDir);
+
+    configString = config.getValueString("General", "TFTP directory");
+    if (configString)
+    {
+      snprintf(tftpPath, PATH_MAX, "%s", configString);
+
+      // this will never happen.. surely.
+      if ((strlen(tftpPath) + 2) >= PATH_MAX)
+      {
+        delete[] configString;
+        log.log("Main", Log::CRIT, "Could not understand TFTP directory from config");
+        stop();
+        return 0;
+      }
+
+      // if there isn't a / at the end of the dir, add one
+      if (tftpPath[strlen(tftpPath) - 1] != '/') strcat(tftpPath, "/");
+
+      delete[] configString;
+    }
+    else
+    {
+      snprintf(tftpPath, PATH_MAX, "%s/", configDir);
+    }
+
+    log.log("Main", Log::INFO, "TFTP path '%s'", tftpPath);
+
+    if (!tftpd.run(tftpPath))
     {
       log.log("Main", Log::CRIT, "Could not start TFTPd");
       stop();
@@ -139,6 +181,7 @@ int MVPServer::run()
   {
     log.log("Main", Log::INFO, "Not starting TFTPd");
   }
+
 
   // start thread here
   if (!threadStart())

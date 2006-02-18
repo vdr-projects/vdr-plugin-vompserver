@@ -23,6 +23,7 @@
 Tftpd::Tftpd()
 {
   log = Log::getInstance();
+  baseDir = NULL;
 }
 
 Tftpd::~Tftpd()
@@ -35,13 +36,16 @@ int Tftpd::shutdown()
   if (threadIsActive()) threadCancel();
   ds.shutdown();
 
+  if (baseDir) delete[] baseDir;
+  baseDir = NULL;
+
   return 1;
 }
 
-int Tftpd::run()
+int Tftpd::run(char* tbaseDir)
 {
   if (threadIsActive()) return 1;
-  log->log("Tftpd", Log::DEBUG, "Starting Tftpd");
+  log->log("Tftpd", Log::DEBUG, "Starting TFTPd");
 
   if (!ds.init(16869))
   {
@@ -50,6 +54,9 @@ int Tftpd::run()
     return 0;
   }
 
+  baseDir = new char[strlen(tbaseDir) + 1];
+  strcpy(baseDir, tbaseDir);
+
   if (!threadStart())
   {
     log->log("Tftpd", Log::DEBUG, "Thread start error");
@@ -57,7 +64,7 @@ int Tftpd::run()
     return 0;
   }
 
-  log->log("Tftpd", Log::DEBUG, "Bootp replier started");
+  log->log("Tftpd", Log::DEBUG, "TFTP server started with base path '%s'", baseDir);
   return 1;
 }
 
@@ -82,7 +89,7 @@ void Tftpd::threadMethod()
     else
     {
       TftpClient* t = new TftpClient();
-      t->run(ds.getFromIPA(), ds.getFromPort(), (UCHAR*)ds.getData(), ds.getDataLength());
+      t->run(baseDir, ds.getFromIPA(), ds.getFromPort(), (UCHAR*)ds.getData(), ds.getDataLength());
     }
   }
 }

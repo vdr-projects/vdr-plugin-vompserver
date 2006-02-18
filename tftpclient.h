@@ -37,12 +37,13 @@ class TftpClient : public Thread
     TftpClient();
     virtual ~TftpClient();
 
-    int run(char* ip, USHORT port, UCHAR* data, int length);
+    int run(char* baseDir, char* ip, USHORT port, UCHAR* data, int length);
     int shutdown();
 
   private:
     Log* log;
     DatagramSocket ds;
+    char* baseDir;
     char peerIP[17];
     USHORT peerPort;
     UCHAR buffer[600];

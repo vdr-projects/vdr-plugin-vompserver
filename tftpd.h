@@ -38,7 +38,7 @@ class Tftpd : public Thread
     Tftpd();
     virtual ~Tftpd();
 
-    int run();
+    int run(char* baseDir);
     int shutdown();
 
   private:
@@ -46,6 +46,8 @@ class Tftpd : public Thread
 
     DatagramSocket ds;
     Log* log;
+
+    char* baseDir;
 };
 
 #endif

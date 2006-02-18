@@ -10,6 +10,11 @@
 
 # Override IP = 1
 
+## A file name to send to the MVP. The MVP will then request
+## this file from the TFTP server. Don't use a path here!
+
+# TFTP file name = vomp-dongle
+
 [General]
 
 ## The client auto-detects whether to use PAL or NTSC. If you

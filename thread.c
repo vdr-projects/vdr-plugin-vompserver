@@ -59,7 +59,6 @@ void Thread::threadStop()
   // Signal thread here in case it's waiting
   threadSignal();
   pthread_join(pthread, NULL);
-  this->threadPostStopCleanup();
 }
 
 void Thread::threadCancel()
@@ -67,7 +66,7 @@ void Thread::threadCancel()
   threadActive = 0;
   pthread_cancel(pthread);
   pthread_join(pthread, NULL);
-  this->threadPostStopCleanup();
+  this->threadPostStopCleanup(); // thread was cancelled, did not run post-stop above
 }
 
 void Thread::threadCheckExit()

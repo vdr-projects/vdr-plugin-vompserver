@@ -222,7 +222,17 @@ void Bootpd::processRequest(UCHAR* data, int length)
   }
 
   // Set filename
-  strncpy((char*)&data[108], "/mvp/vomp-dongle", 127);
+  char* tftpFileName = config.getValueString("Boot", "TFTP file name");
+  if (tftpFileName)
+  {
+    strncpy((char*)&data[108], tftpFileName, 127);
+    delete[] tftpFileName;
+  }
+  else
+  {
+    data[108] = '-';
+    data[109] = '\0';
+  }
 
   // set to reply
   data[0] = 2;
