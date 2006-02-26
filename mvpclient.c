@@ -1263,7 +1263,11 @@ int MVPClient::processSetTimer(UCHAR* buffer, int length)
     if (!t)
     {
       Timers.Add(timer);
+#if VDRVERSNUM < 10300
+      Timers.Save();
+#else
       Timers.SetModified();
+#endif
       sendULONG(0);
       return 1;
     }
