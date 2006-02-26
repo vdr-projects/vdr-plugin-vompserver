@@ -1256,8 +1256,43 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length)
 
 int MVPClient::processSetTimer(UCHAR* buffer, int length)
 {
+  char* timerString = new char[strlen((char*)buffer) + 1];
+  strcpy(timerString, (char*)buffer);
+
+#if VDRVERSNUM < 10300
+
+  // If this is VDR 1.2 the date part of the timer string must be reduced
+  // to just DD rather than YYYY-MM-DD
+
+  int s = 0; // source
+  int d = 0; // destination
+  int c = 0; // count
+  while(c != 2) // copy up to date section, including the second ':'
+  {
+    timerString[d] = buffer[s];
+    if (buffer[s] == ':') c++;
+    ++s;
+    ++d;
+  }
+  // now it has copied up to the date section
+  c = 0;
+  while(c != 2) // waste YYYY-MM-
+  {
+    if (buffer[s] == '-') c++;
+    ++s;
+  }
+  // now source is at the DD
+  memcpy(&timerString[d], &buffer[s], length - s);
+  d += length - s;
+  timerString[d] = '\0';
+
+  log->log("Client", Log::DEBUG, "Timer string after 1.2 conversion:");
+  log->log("Client", Log::DEBUG, "%s", timerString);
+
+#endif
+
   cTimer *timer = new cTimer;
-  if (timer->Parse((char*)buffer))
+  if (timer->Parse((char*)timerString))
   {
     cTimer *t = Timers.GetTimer(timer);
     if (!t)
