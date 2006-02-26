@@ -1206,7 +1206,7 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length)
   cTimer *timer;
   int numTimers = Timers.Count();
 
-//  *(ULONG*)&sendBuffer[count] = htonl(numTimers);    count += 4;
+  *(ULONG*)&sendBuffer[count] = htonl(numTimers);    count += 4;
 
   for (int i = 0; i < numTimers; i++)
   {
