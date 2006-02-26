@@ -224,6 +224,9 @@ void MVPClient::run2()
       case 14:
         result = processGetTimers(data, packetLength);
         break;
+      case 15:
+        result = processSetTimer(data, packetLength);
+        break;
     }
 
     free(buffer);
@@ -1248,5 +1251,31 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length)
   delete[] sendBuffer;
   log->log("Client", Log::DEBUG, "Written timers list");
 
+  return 1;
+}
+
+int MVPClient::processSetTimer(UCHAR* buffer, int length)
+{
+  cTimer *timer = new cTimer;
+  if (timer->Parse((char*)buffer))
+  {
+    cTimer *t = Timers.GetTimer(timer);
+    if (!t)
+    {
+      Timers.Add(timer);
+      Timers.SetModified();
+      sendULONG(0);
+      return 1;
+    }
+    else
+    {
+      sendULONG(1);
+    }
+  }
+  else
+  {
+     sendULONG(2);
+  }
+  delete timer;
   return 1;
 }
