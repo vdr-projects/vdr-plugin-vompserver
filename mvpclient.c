@@ -1202,7 +1202,7 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length)
   UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
   int count = 4; // leave space for the packet length
 
-  const char* string;
+  const char* fileName;
   cTimer *timer;
   int numTimers = Timers.Count();
 
@@ -1227,20 +1227,9 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length)
     *(ULONG*)&sendBuffer[count] = htonl(timer->StartTime());              count += 4;
     *(ULONG*)&sendBuffer[count] = htonl(timer->StopTime());               count += 4;
 
-    string = timer->File();
-    strcpy((char*)&sendBuffer[count], string);
-    count += strlen(string) + 1;
-
-    string = timer->Summary();
-    if (string)
-    {
-      strcpy((char*)&sendBuffer[count], string);
-      count += strlen(string) + 1;
-    }
-    else
-    {
-      sendBuffer[count++] = 0;
-    }
+    fileName = timer->File();
+    strcpy((char*)&sendBuffer[count], fileName);
+    count += strlen(fileName) + 1;
   }
 
   *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field

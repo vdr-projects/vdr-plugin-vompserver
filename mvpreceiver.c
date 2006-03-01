@@ -165,7 +165,7 @@ unsigned long MVPReceiver::getBlock(unsigned char* buffer, unsigned long amount)
   while ((unsigned long)processed.getContent() < amount)
   {
     pthread_mutex_unlock(&processedRingLock);
-    if (++numTries == 10) // 5s
+    if (++numTries == 30) // 15s
     {
       logger->log("MVPReceiver", Log::DEBUG, "getBlock timeout");
       return 0;
