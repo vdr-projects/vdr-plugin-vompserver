@@ -31,6 +31,9 @@ RecPlayer::RecPlayer(cRecording* rec)
 
   // FIXME find out max file path / name lengths
 
+  indexFile = new cIndexFile(recording->FileName(), false);
+  if (!indexFile) log->log("RecPlayer", Log::ERR, "Failed to create indexfile!");
+
   scan();
 }
 
@@ -171,4 +174,23 @@ ULLONG RecPlayer::getLastPosition()
 cRecording* RecPlayer::getCurrentRecording()
 {
   return recording;
+}
+
+ULLONG RecPlayer::positionFromFrameNumber(ULONG frameNumber)
+{
+  if (!indexFile) return 0;
+
+  uchar retFileNumber;
+  int retFileOffset;
+  uchar retPicType;
+  int retLength;
+
+  if (!indexFile->Get((int)frameNumber, &retFileNumber, &retFileOffset, &retPicType, &retLength))
+  {
+    return 0;
+  }
+
+  log->log("RecPlayer", Log::DEBUG, "FN: %u FO: %i PT: %u L: %i", retFileNumber, retFileOffset, retPicType, retLength);
+
+  return 0;
 }

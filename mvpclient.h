@@ -78,6 +78,7 @@ class MVPClient
     int processConfigLoad(UCHAR* data, int length);
     int processGetTimers(UCHAR* data, int length);
     int processSetTimer(UCHAR* data, int length);
+    int processPositionFromFrameNumber(UCHAR* data, int length);
 
     cChannel* channelFromNumber(ULONG channelNumber);
     void writeResumeData();

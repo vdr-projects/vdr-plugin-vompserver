@@ -45,10 +45,12 @@ class RecPlayer
     ULLONG getLastPosition();
     cRecording* getCurrentRecording();
     void scan();
+    ULLONG positionFromFrameNumber(ULONG frameNumber);
 
   private:
     Log* log;
     cRecording* recording;
+    cIndexFile* indexFile;
     FILE* file;
     int fileOpen;
     Segment* segments[1000];

@@ -227,6 +227,9 @@ void MVPClient::run2()
       case 15:
         result = processSetTimer(data, packetLength);
         break;
+      case 16:
+        result = processPositionFromFrameNumber(data, packetLength);
+        break;
     }
 
     free(buffer);
@@ -612,13 +615,38 @@ int MVPClient::processReScanRecording(UCHAR* data, int length)
   return 1;
 }
 
+int MVPClient::processPositionFromFrameNumber(UCHAR* data, int length)
+{
+  ULLONG retval = 0;
+
+  ULONG frameNumber = ntohl(*(ULONG*)data);
+  data += 4;
+
+  if (!rp)
+  {
+    log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
+  }
+  else
+  {
+    retval = rp->positionFromFrameNumber(frameNumber);
+  }
+
+  UCHAR sendBuffer[12];
+  *(ULONG*)&sendBuffer[0] = htonl(8);
+  *(ULLONG*)&sendBuffer[4] = htonll(retval);
+
+  tcp.sendPacket(sendBuffer, 12);
+  log->log("Client", Log::DEBUG, "Wrote posFromFrameNum reply to client");
+  return 1;
+}
+
 int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
 {
-  ULONG channelNumber = ntohl(*(ULLONG*)data);
+  ULONG channelNumber = ntohl(*(ULONG*)data);
   data += 4;
-  ULONG startTime = ntohl(*(ULLONG*)data);
+  ULONG startTime = ntohl(*(ULONG*)data);
   data += 4;
-  ULONG duration = ntohl(*(ULLONG*)data);
+  ULONG duration = ntohl(*(ULONG*)data);
 
   log->log("Client", Log::DEBUG, "get schedule called for channel %lu", channelNumber);
 
