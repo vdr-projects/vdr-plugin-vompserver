@@ -361,8 +361,8 @@ int MVPClient::processGetSummary(UCHAR* data, int length)
   {
     UCHAR* sendBuffer = new UCHAR[50000]; // hope this is enough
     int count = 4; // leave space for the packet length
-
     char* point;
+
 #if VDRVERSNUM < 10300
     point = (char*)recording->Summary();
 #else
@@ -375,8 +375,18 @@ int MVPClient::processGetSummary(UCHAR* data, int length)
       log->log("Client", Log::DEBUG, "description pointer %p", point);
     }
 #endif
-    strcpy((char*)&sendBuffer[count], point);
-    count += strlen(point) + 1;
+
+    if (point)
+    {
+      strcpy((char*)&sendBuffer[count], point);
+      count += strlen(point) + 1;
+    }
+    else
+    {
+      strcpy((char*)&sendBuffer[count], "");
+      count += 1;
+    }
+
     *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
 
     log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
