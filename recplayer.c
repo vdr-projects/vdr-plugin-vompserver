@@ -190,7 +190,10 @@ ULLONG RecPlayer::positionFromFrameNumber(ULONG frameNumber)
     return 0;
   }
 
-  log->log("RecPlayer", Log::DEBUG, "FN: %u FO: %i PT: %u L: %i", retFileNumber, retFileOffset, retPicType, retLength);
+//  log->log("RecPlayer", Log::DEBUG, "FN: %u FO: %i", retFileNumber, retFileOffset);
+  if (!segments[retFileNumber]) return 0;
+  ULLONG position = segments[retFileNumber]->start + retFileOffset;
+//  log->log("RecPlayer", Log::DEBUG, "Pos: %llu", position);
 
-  return 0;
+  return position;
 }
