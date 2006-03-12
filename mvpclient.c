@@ -565,9 +565,17 @@ int MVPClient::processGetBlock(UCHAR* data, int length)
     amountReceived = rp->getBlock(&sendBuffer[4], position, amount);
   }
 
-  *(ULONG*)&sendBuffer[0] = htonl(amountReceived);
-  tcp.sendPacket(sendBuffer, amountReceived + 4);
-  log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
+  if (!amountReceived)
+  {
+    sendULONG(0);
+    log->log("Client", Log::DEBUG, "written 4(0) as getblock got 0");
+  }
+  else
+  {
+    *(ULONG*)&sendBuffer[0] = htonl(amountReceived);
+    tcp.sendPacket(sendBuffer, amountReceived + 4);
+    log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
+  }
 
   return 1;
 }
@@ -663,10 +671,7 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
   cChannel* channel = channelFromNumber(channelNumber);
   if (!channel)
   {
-    UCHAR sendBuffer[4];
-    *(ULONG*)&sendBuffer[0] = htonl(4);
-    *(ULONG*)&sendBuffer[4] = htonl(0);
-    tcp.sendPacket(sendBuffer, 8);
+    sendULONG(0);
     log->log("Client", Log::DEBUG, "written 0 because channel = NULL");
     return 1;
   }
@@ -682,10 +687,7 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
 #endif
   if (!Schedules)
   {
-    UCHAR sendBuffer[8];
-    *(ULONG*)&sendBuffer[0] = htonl(4);
-    *(ULONG*)&sendBuffer[4] = htonl(0);
-    tcp.sendPacket(sendBuffer, 8);
+    sendULONG(0);
     log->log("Client", Log::DEBUG, "written 0 because Schedule!s! = NULL");
     return 1;
   }
@@ -695,10 +697,7 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
   const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
   if (!Schedule)
   {
-    UCHAR sendBuffer[8];
-    *(ULONG*)&sendBuffer[0] = htonl(4);
-    *(ULONG*)&sendBuffer[4] = htonl(0);
-    tcp.sendPacket(sendBuffer, 8);
+    sendULONG(0);
     log->log("Client", Log::DEBUG, "written 0 because Schedule = NULL");
     return 1;
   }
@@ -802,11 +801,19 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
 
   log->log("Client", Log::DEBUG, "Got all event data");
 
-  // Write the length into the first 4 bytes. It's sendBufferUsed - 4 because of the hole!
-  *(ULONG*)&sendBuffer[0] = htonl(sendBufferUsed - sizeof(ULONG));
-
-  tcp.sendPacket(sendBuffer, sendBufferUsed);
-  log->log("Client", Log::DEBUG, "written %lu schedules packet", sendBufferUsed);
+  if (sendBufferUsed == sizeof(ULONG))
+  {
+    // No data
+    sendULONG(0);
+    log->log("Client", Log::DEBUG, "Written 0 because no data");
+  }
+  else
+  {
+    // Write the length into the first 4 bytes. It's sendBufferUsed - 4 because of the hole!
+    *(ULONG*)&sendBuffer[0] = htonl(sendBufferUsed - sizeof(ULONG));
+    tcp.sendPacket(sendBuffer, sendBufferUsed);
+    log->log("Client", Log::DEBUG, "written %lu schedules packet", sendBufferUsed);
+  }
 
   free(sendBuffer);
 
