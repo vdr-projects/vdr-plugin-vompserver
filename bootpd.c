@@ -230,8 +230,8 @@ void Bootpd::processRequest(UCHAR* data, int length)
   }
   else
   {
-    data[108] = '-';
-    data[109] = '\0';
+    strncpy((char*)&data[108], "vomp-dongle", 127);
+    config.setValueString("Boot", "TFTP file name", "vomp-dongle");
   }
 
   // set to reply
