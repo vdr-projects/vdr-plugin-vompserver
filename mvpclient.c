@@ -20,6 +20,9 @@
 
 #include "mvpclient.h"
 
+// This is here else it causes compile errors with something in libdvbmpeg
+#include <vdr/menu.h>
+
 MVPClient::MVPClient(int tsocket)
  : tcp(tsocket)
 {
@@ -335,12 +338,27 @@ int MVPClient::processDeleteRecording(UCHAR* data, int length)
   if (recording)
   {
     log->log("Client", Log::DEBUG, "deleting recording: %s", recording->Name());
-    recording->Delete();
-    sendULONG(1);
+
+    cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
+    if (!rc)
+    {
+      if (recording->Delete())
+      {
+        sendULONG(1);
+      }
+      else
+      {
+        sendULONG(2);
+      }
+    }
+    else
+    {
+      sendULONG(3);
+    }
   }
   else
   {
-    sendULONG(0);
+    sendULONG(4);
   }
 
   return 1;
