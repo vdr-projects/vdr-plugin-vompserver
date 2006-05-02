@@ -46,12 +46,14 @@ int MVPServer::stop()
   return 1;
 }
 
-int MVPServer::run()
+int MVPServer::run(char* tconfigDirExtra)
 {
   if (threadIsActive()) return 1;
 
+  configDirExtra = tconfigDirExtra;
+
   // Start config
-  const char* configDir = cPlugin::ConfigDirectory();
+  const char* configDir = cPlugin::ConfigDirectory(configDirExtra);
   if (!configDir)
   {
     dsyslog("VOMP: Could not get config dir from VDR");
@@ -60,6 +62,7 @@ int MVPServer::run()
   {
     char configFileName[PATH_MAX];
     snprintf(configFileName, PATH_MAX, "%s/vomp.conf", configDir);
+
     if (config.init(configFileName))
     {
       dsyslog("VOMP: Config file found");
@@ -231,7 +234,7 @@ void MVPServer::threadMethod()
   while(1)
   {
     clientSocket = accept(listeningSocket,(struct sockaddr *)&address, &length);
-    MVPClient* m = new MVPClient(clientSocket);
+    MVPClient* m = new MVPClient(configDirExtra, clientSocket);
     m->run();
   }
 }

@@ -23,7 +23,7 @@
 // This is here else it causes compile errors with something in libdvbmpeg
 #include <vdr/menu.h>
 
-MVPClient::MVPClient(int tsocket)
+MVPClient::MVPClient(char* tconfigDirExtra, int tsocket)
  : tcp(tsocket)
 {
   lp = NULL;
@@ -31,6 +31,7 @@ MVPClient::MVPClient(int tsocket)
   recordingManager = NULL;
   log = Log::getInstance();
   loggedIn = false;
+  configDirExtra = tconfigDirExtra;
 }
 
 MVPClient::~MVPClient()
@@ -246,7 +247,7 @@ int MVPClient::processLogin(UCHAR* buffer, int length)
 
   // Open the config
 
-  const char* configDir = cPlugin::ConfigDirectory();
+  const char* configDir = cPlugin::ConfigDirectory(configDirExtra);
   if (!configDir)
   {
     log->log("Client", Log::DEBUG, "No config dir!");
@@ -254,8 +255,7 @@ int MVPClient::processLogin(UCHAR* buffer, int length)
   }
 
   char configFileName[PATH_MAX];
-  snprintf(configFileName, PATH_MAX - strlen(configDir) - 17 - 20, "%s/vomp-%02X-%02X-%02X-%02X-%02X-%02X.conf", configDir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
-                                //( ^^^^^^^^^^^^^eh?^^^^^^^^^^^^^)
+  snprintf(configFileName, PATH_MAX, "%s/vomp-%02X-%02X-%02X-%02X-%02X-%02X.conf", configDir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);
   config.init(configFileName);
 
   // Send the login reply

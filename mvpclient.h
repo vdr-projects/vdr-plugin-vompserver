@@ -43,7 +43,7 @@
 class MVPClient
 {
   public:
-    MVPClient(int tsocket);
+    MVPClient(char* configDirExtra, int tsocket);
     ~MVPClient();
 
     int run();
@@ -57,6 +57,7 @@ class MVPClient
     Config config;
     MVPReceiver* lp;
     bool loggedIn;
+    char* configDirExtra;
 
 
     cRecordings* recordingManager;

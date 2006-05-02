@@ -18,19 +18,12 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-/*
- * vomp-server.c: A plugin for the Video Disk Recorder
- *
- * See the README file for copyright information and how to reach the author.
- *
- * $Id$
- */
-
 #include <vdr/plugin.h>
+#include <getopt.h>
 
 #include "mvpserver.h"
 
-static const char *VERSION        = "0.2.2";
+static const char *VERSION        = "0.2.3";
 static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
 
 class cPluginVompserver : public cPlugin
@@ -49,6 +42,7 @@ public:
 private:
 
   MVPServer mvpserver;
+  char* configDir;
 };
 
 cPluginVompserver::cPluginVompserver(void)
@@ -56,12 +50,14 @@ cPluginVompserver::cPluginVompserver(void)
   // Initialize any member variables here.
   // DON'T DO ANYTHING ELSE THAT MAY HAVE SIDE EFFECTS, REQUIRE GLOBAL
   // VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
+
+  configDir = NULL;
 }
 
 bool cPluginVompserver::Start(void)
 {
   // Start any background activities the plugin shall perform.
-  int success = mvpserver.run();
+  int success = mvpserver.run(configDir);
   if (success) return true;
   else return false;
 }
@@ -75,12 +71,27 @@ cPluginVompserver::~cPluginVompserver()
 const char *cPluginVompserver::CommandLineHelp(void)
 {
   // Return a string that describes all known command line options.
-  return NULL;
+
+  return "  -c dir    config path relative to VDR plugins config path\n";
 }
 
 bool cPluginVompserver::ProcessArgs(int argc, char *argv[])
 {
   // Implement command line argument processing here if applicable.
+
+  int c;
+  while ((c = getopt(argc, argv, "c:")) != -1)
+  {
+    if (c == 'c')
+    {
+      configDir = optarg;
+    }
+    else
+    {
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -97,3 +108,4 @@ bool cPluginVompserver::SetupParse(const char *Name, const char *Value)
 }
 
 VDRPLUGINCREATOR(cPluginVompserver); // Don't touch this!
+

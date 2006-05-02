@@ -39,7 +39,7 @@ class MVPServer : public Thread
     MVPServer();
     virtual ~MVPServer();
 
-    int run();
+    int run(char* configDir);
     int stop();
 
   private:
@@ -51,6 +51,7 @@ class MVPServer : public Thread
     Bootpd bootpd;
     Tftpd tftpd;
     int listeningSocket;
+    char* configDirExtra;
 };
 
 #endif
