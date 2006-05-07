@@ -345,7 +345,9 @@ int MVPClient::processDeleteRecording(UCHAR* data, int length)
       if (recording->Delete())
       {
         // Copy svdrp's way of doing this, see if it works
+#if VDRVERSNUM > 10300
         ::Recordings.DelByName(recording->FileName());
+#endif
         sendULONG(1);
       }
       else
