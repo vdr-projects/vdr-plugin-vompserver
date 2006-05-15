@@ -46,6 +46,7 @@ class RecPlayer
     cRecording* getCurrentRecording();
     void scan();
     ULLONG positionFromFrameNumber(ULONG frameNumber);
+    ULONG frameNumberFromPosition(ULLONG position);
 
   private:
     Log* log;

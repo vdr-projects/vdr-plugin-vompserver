@@ -67,6 +67,7 @@ class MVPClient
     int processLogin(UCHAR* buffer, int length);
     int processGetRecordingsList(UCHAR* data, int length);
     int processDeleteRecording(UCHAR* data, int length);
+    int processMoveRecording(UCHAR* data, int length);
     int processGetSummary(UCHAR* data, int length);
     int processGetChannelsList(UCHAR* data, int length);
     int processStartStreamingChannel(UCHAR* data, int length);
@@ -80,6 +81,7 @@ class MVPClient
     int processGetTimers(UCHAR* data, int length);
     int processSetTimer(UCHAR* data, int length);
     int processPositionFromFrameNumber(UCHAR* data, int length);
+    int processFrameNumberFromPosition(UCHAR* data, int length);
 
     cChannel* channelFromNumber(ULONG channelNumber);
     void writeResumeData();

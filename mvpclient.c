@@ -184,6 +184,7 @@ void MVPClient::run2()
       break;
     }
 
+    log->log("Client", Log::DEBUG, "SwitchOp");
     switch(opcode)
     {
       case 1:
@@ -233,6 +234,12 @@ void MVPClient::run2()
         break;
       case 16:
         result = processPositionFromFrameNumber(data, packetLength);
+        break;
+      case 17:
+        result = processFrameNumberFromPosition(data, packetLength);
+        break;
+      case 18:
+        result = processMoveRecording(data, packetLength);
         break;
     }
 
@@ -348,6 +355,60 @@ int MVPClient::processDeleteRecording(UCHAR* data, int length)
 #if VDRVERSNUM > 10300
         ::Recordings.DelByName(recording->FileName());
 #endif
+        sendULONG(1);
+      }
+      else
+      {
+        sendULONG(2);
+      }
+    }
+    else
+    {
+      sendULONG(3);
+    }
+  }
+  else
+  {
+    sendULONG(4);
+  }
+
+  return 1;
+}
+
+int MVPClient::processMoveRecording(UCHAR* data, int length)
+{
+  log->log("Client", Log::DEBUG, "Process move recording");
+  char* fileName = (char*)data;
+  char* newPath = NULL;
+
+  for (int k = 0; k < length; k++)
+  {
+    if (data[k] == '\0')
+    {
+      newPath = (char*)&data[k+1];
+      break;
+    }
+  }
+  log->log("Client", Log::DEBUG, "newPath=%s", newPath);
+  if (!newPath) return 0;
+
+  cRecordings Recordings;
+  Recordings.Load(); // probably have to do this
+
+  cRecording* recording = Recordings.GetByName((char*)fileName);
+
+  log->log("Client", Log::DEBUG, "recording pointer %p", recording);
+
+  if (recording)
+  {
+    log->log("Client", Log::DEBUG, "moving recording: %s", recording->Name());
+
+    cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
+    if (!rc)
+    {
+      if (1)
+      {
+
         sendULONG(1);
       }
       else
@@ -677,6 +738,31 @@ int MVPClient::processPositionFromFrameNumber(UCHAR* data, int length)
 
   tcp.sendPacket(sendBuffer, 12);
   log->log("Client", Log::DEBUG, "Wrote posFromFrameNum reply to client");
+  return 1;
+}
+
+int MVPClient::processFrameNumberFromPosition(UCHAR* data, int length)
+{
+  ULONG retval = 0;
+
+  ULLONG position = ntohll(*(ULLONG*)data);
+  data += 8;
+
+  if (!rp)
+  {
+    log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
+  }
+  else
+  {
+    retval = rp->frameNumberFromPosition(position);
+  }
+
+  UCHAR sendBuffer[8];
+  *(ULONG*)&sendBuffer[0] = htonl(4);
+  *(ULONG*)&sendBuffer[4] = htonl(retval);
+
+  tcp.sendPacket(sendBuffer, 8);
+  log->log("Client", Log::DEBUG, "Wrote frameNumFromPos reply to client");
   return 1;
 }
 

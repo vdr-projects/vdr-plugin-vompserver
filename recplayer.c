@@ -197,3 +197,18 @@ ULLONG RecPlayer::positionFromFrameNumber(ULONG frameNumber)
 
   return position;
 }
+
+ULONG RecPlayer::frameNumberFromPosition(ULLONG position)
+{
+  if (!indexFile) return 0;
+
+  uchar segmentNumber;
+  for(segmentNumber = 1; segmentNumber < 255; segmentNumber++)
+  {
+    if ((position >= segments[segmentNumber]->start) && (position < segments[segmentNumber]->end)) break;
+    // position is in this block
+  }
+  ULONG askposition = position - segments[segmentNumber]->start;
+  return indexFile->Get((int)segmentNumber, askposition);
+
+}
