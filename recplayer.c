@@ -202,6 +202,12 @@ ULONG RecPlayer::frameNumberFromPosition(ULLONG position)
 {
   if (!indexFile) return 0;
 
+  if (position >= totalLength)
+  {
+    log->log("RecPlayer", Log::DEBUG, "Client asked for data starting past end of recording!");
+    return 0;
+  }
+
   uchar segmentNumber;
   for(segmentNumber = 1; segmentNumber < 255; segmentNumber++)
   {
