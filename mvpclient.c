@@ -389,7 +389,6 @@ int MVPClient::processMoveRecording(UCHAR* data, int length)
       break;
     }
   }
-  log->log("Client", Log::DEBUG, "newPath=%s", newPath);
   if (!newPath) return 0;
 
   cRecordings Recordings;
@@ -401,20 +400,113 @@ int MVPClient::processMoveRecording(UCHAR* data, int length)
 
   if (recording)
   {
-    log->log("Client", Log::DEBUG, "moving recording: %s", recording->Name());
-
     cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
     if (!rc)
     {
-      if (1)
-      {
+//      if ()
+        log->log("Client", Log::DEBUG, "moving recording: %s", recording->Name());
+        log->log("Client", Log::DEBUG, "moving recording: %s", recording->FileName());
+        log->log("Client", Log::DEBUG, "to: %s", newPath);
 
-        sendULONG(1);
-      }
-      else
-      {
-        sendULONG(2);
-      }
+        const char* t = recording->FileName();
+
+        char* dateDirName = NULL;   int k;
+        char* titleDirName = NULL;  int j;
+
+        // Find the datedirname
+        for(k = strlen(t) - 1; k >= 0; k--)
+        {
+          if (t[k] == '/')
+          {
+            log->log("Client", Log::DEBUG, "l1: %i", strlen(&t[k+1]) + 1);
+            dateDirName = new char[strlen(&t[k+1]) + 1];
+            strcpy(dateDirName, &t[k+1]);
+            break;
+          }
+        }
+
+        // Find the titledirname
+
+        for(j = k-1; j >= 0; j--)
+        {
+          if (t[j] == '/')
+          {
+            log->log("Client", Log::DEBUG, "l2: %i", (k - j - 1) + 1);
+            titleDirName = new char[(k - j - 1) + 1];
+            memcpy(titleDirName, &t[j+1], k - j - 1);
+            titleDirName[k - j - 1] = '\0';
+            break;
+          }
+        }
+
+        log->log("Client", Log::DEBUG, "datedirname: %s", dateDirName);
+        log->log("Client", Log::DEBUG, "titledirname: %s", titleDirName);
+
+        log->log("Client", Log::DEBUG, "viddir: %s", VideoDirectory);
+
+        char* newContainer = new char[strlen(VideoDirectory) + strlen(newPath) + 1 + strlen(titleDirName) + 1];
+        log->log("Client", Log::DEBUG, "l10: %i", strlen(VideoDirectory) + strlen(newPath) + 1 + strlen(titleDirName) + 1);
+        sprintf(newContainer, "%s%s/%s", VideoDirectory, newPath, titleDirName);
+
+        // FIXME Check whether this already exists before mkdiring it
+
+        log->log("Client", Log::DEBUG, "%s", newContainer);
+
+
+        struct stat dstat;
+        int statret = stat(newContainer, &dstat);
+        if ((statret == -1) && (errno == ENOENT)) // Dir does not exist
+        {
+          log->log("Client", Log::DEBUG, "new dir does not exist");
+          int mkdirret = mkdir(newContainer, 0755);
+          if (mkdirret != 0)
+          {
+            delete[] dateDirName;
+            delete[] titleDirName;
+            delete[] newContainer;
+            sendULONG(5);
+            return 1;
+          }
+        }
+        else if ((statret == 0) && (! (dstat.st_mode && S_IFDIR))) // Something exists but it's not a dir
+        {
+          delete[] dateDirName;
+          delete[] titleDirName;
+          delete[] newContainer;
+          sendULONG(5);
+          return 1;
+        }
+
+        // Ok, the directory container has been made, or it pre-existed.
+
+        char* newDir = new char[strlen(newContainer) + 1 + strlen(dateDirName) + 1];
+        sprintf(newDir, "%s/%s", newContainer, dateDirName);
+
+        log->log("Client", Log::DEBUG, "doing rename '%s' '%s'", t, newDir);
+        int renameret = rename(t, newDir);
+        if (renameret == 0)
+        {
+          // Success. Test for remove old dir containter
+          char* oldTitleDir = new char[k+1];
+          memcpy(oldTitleDir, t, k);
+          oldTitleDir[k] = '\0';
+          log->log("Client", Log::DEBUG, "len: %i, cp: %i, strlen: %i, oldtitledir: %s", k+1, k, strlen(oldTitleDir), oldTitleDir);
+          rmdir(oldTitleDir); // can't do anything about a fail result at this point.
+          delete[] oldTitleDir;
+        }
+
+        delete[] dateDirName;
+        delete[] titleDirName;
+        delete[] newContainer;
+        delete[] newDir;
+
+        if (renameret == 0) sendULONG(1);
+        else sendULONG(5);
+//      }
+//      else
+//      {
+//        sendULONG(2);
+//      }
     }
     else
     {
