@@ -42,6 +42,7 @@ void RecPlayer::scan()
   if (file) fclose(file);
   totalLength = 0;
   fileOpen = 0;
+  totalFrames = 0;
 
   int i = 1;
   while(segments[i++]) delete segments[i];
@@ -58,7 +59,8 @@ void RecPlayer::scan()
     segments[i]->start = totalLength;
     fseek(file, 0, SEEK_END);
     totalLength += ftell(file);
-    log->log("RecPlayer", Log::DEBUG, "File %i found, totalLength now %llu", i, totalLength);
+    totalFrames = indexFile->Last();
+    log->log("RecPlayer", Log::DEBUG, "File %i found, totalLength now %llu, numFrames = %lu", i, totalLength, totalFrames);
     segments[i]->end = totalLength;
     fclose(file);
   }
@@ -93,9 +95,14 @@ int RecPlayer::openFile(int index)
   return 1;
 }
 
-ULLONG RecPlayer::getTotalLength()
+ULLONG RecPlayer::getLengthBytes()
 {
   return totalLength;
+}
+
+ULONG RecPlayer::getLengthFrames()
+{
+  return totalFrames;
 }
 
 unsigned long RecPlayer::getBlock(unsigned char* buffer, ULLONG position, unsigned long amount)

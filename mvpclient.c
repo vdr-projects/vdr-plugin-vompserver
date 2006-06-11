@@ -780,11 +780,12 @@ int MVPClient::processStartStreamingRecording(UCHAR* data, int length)
   {
     rp = new RecPlayer(recording);
 
-    UCHAR sendBuffer[12];
-    *(ULONG*)&sendBuffer[0] = htonl(8);
-    *(ULLONG*)&sendBuffer[4] = htonll(rp->getTotalLength());
+    UCHAR sendBuffer[16];
+    *(ULONG*)&sendBuffer[0] = htonl(12);
+    *(ULLONG*)&sendBuffer[4] = htonll(rp->getLengthBytes());
+    *(ULONG*)&sendBuffer[12] = htonl(rp->getLengthFrames());
 
-    tcp.sendPacket(sendBuffer, 12);
+    tcp.sendPacket(sendBuffer, 16);
     log->log("Client", Log::DEBUG, "written totalLength");
   }
   else
@@ -797,23 +798,20 @@ int MVPClient::processStartStreamingRecording(UCHAR* data, int length)
 
 int MVPClient::processReScanRecording(UCHAR* data, int length)
 {
-  ULLONG retval = 0;
-
   if (!rp)
   {
     log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
-  }
-  else
-  {
-    rp->scan();
-    retval = rp->getTotalLength();
+    return 0;
   }
 
-  UCHAR sendBuffer[12];
-  *(ULONG*)&sendBuffer[0] = htonl(8);
-  *(ULLONG*)&sendBuffer[4] = htonll(retval);
+  rp->scan();
 
-  tcp.sendPacket(sendBuffer, 12);
+  UCHAR sendBuffer[16];
+  *(ULONG*)&sendBuffer[0] = htonl(12);
+  *(ULLONG*)&sendBuffer[4] = htonll(rp->getLengthBytes());
+  *(ULONG*)&sendBuffer[12] = htonl(rp->getLengthFrames());
+
+  tcp.sendPacket(sendBuffer, 16);
   log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
   return 1;
 }

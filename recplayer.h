@@ -39,7 +39,8 @@ class RecPlayer
   public:
     RecPlayer(cRecording* rec);
     ~RecPlayer();
-    ULLONG getTotalLength();
+    ULLONG getLengthBytes();
+    ULONG getLengthFrames();
     unsigned long getBlock(unsigned char* buffer, ULLONG position, unsigned long amount);
     int openFile(int index);
     ULLONG getLastPosition();
@@ -57,6 +58,7 @@ class RecPlayer
     Segment* segments[1000];
     ULLONG totalLength;
     ULLONG lastPosition;
+    ULONG totalFrames;
 };
 
 #endif
