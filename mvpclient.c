@@ -114,7 +114,9 @@ cChannel* MVPClient::channelFromNumber(ULONG channelNumber)
 
 void MVPClient::writeResumeData()
 {
-  config.setValueLongLong("ResumeData", (char*)rp->getCurrentRecording()->FileName(), rp->getLastPosition());
+  config.setValueLong("ResumeData",
+                          (char*)rp->getCurrentRecording()->FileName(),
+                          rp->frameNumberFromPosition(rp->getLastPosition()) );
 }
 
 void MVPClient::sendULONG(ULONG ul)
