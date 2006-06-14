@@ -498,9 +498,10 @@ int MVPClient::processMoveRecording(UCHAR* data, int length)
 
       if (renameret == 0)
       {
+#if VDRVERSNUM > 10311
         // Tell VDR
         ::Recordings.Update();
-
+#endif
         // Success. Send a different packet from just a ulong
         int totalLength = 4 + 4 + strlen(newDir) + 1;
         UCHAR* sendBuffer = new UCHAR[totalLength];

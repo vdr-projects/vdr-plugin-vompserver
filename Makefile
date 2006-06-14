@@ -16,7 +16,7 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 ### The C++ compiler and options:
 
 CXX      ?= g++
-CXXFLAGS ?= -O2 -Wall -Woverloaded-virtual -Werror
+CXXFLAGS ?= -O2 -fPIC -Wall -Woverloaded-virtual -Werror
 
 ### The directory environment:
 
