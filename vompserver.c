@@ -23,7 +23,7 @@
 
 #include "mvpserver.h"
 
-static const char *VERSION        = "0.2.3";
+static const char *VERSION        = "0.2.4";
 static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
 
 class cPluginVompserver : public cPlugin
