@@ -243,6 +243,9 @@ void MVPClient::run2()
       case 18:
         result = processMoveRecording(data, packetLength);
         break;
+      case 19:
+        result = processGetIFrame(data, packetLength);
+        break;
     }
 
     free(buffer);
@@ -866,6 +869,55 @@ int MVPClient::processFrameNumberFromPosition(UCHAR* data, int length)
 
   tcp.sendPacket(sendBuffer, 8);
   log->log("Client", Log::DEBUG, "Wrote frameNumFromPos reply to client");
+  return 1;
+}
+
+int MVPClient::processGetIFrame(UCHAR* data, int length)
+{
+  bool success = false;
+
+  ULONG frameNumber = ntohl(*(ULONG*)data);
+  data += 4;
+  ULONG direction = ntohl(*(ULONG*)data);
+  data += 4;
+
+  ULLONG rfilePosition = 0;
+  ULONG rframeNumber = 0;
+  ULONG rframeLength = 0;
+
+  if (!rp)
+  {
+    log->log("Client", Log::DEBUG, "GetIFrame recording called when no recording being played!");
+  }
+  else
+  {
+    success = rp->getNextIFrame(frameNumber, direction, &rfilePosition, &rframeNumber, &rframeLength);
+  }
+
+  // returns file position, frame number, length
+
+  UCHAR sendBuffer[20];
+  int packetLength;
+
+  if (success)
+  {
+    packetLength = 20;
+    *(ULONG*)&sendBuffer[0] = htonl(16);
+    *(ULLONG*)&sendBuffer[4] = htonll(rfilePosition);
+    *(ULONG*)&sendBuffer[12] = htonl(rframeNumber);
+    *(ULONG*)&sendBuffer[16] = htonl(rframeLength);
+  }
+  else
+  {
+    packetLength = 8;
+    *(ULONG*)&sendBuffer[0] = htonl(4);
+    *(ULONG*)&sendBuffer[4] = 0;
+  }
+
+  log->log("Client", Log::DEBUG, "%llu %lu %lu", rfilePosition, rframeNumber, rframeLength);
+
+  tcp.sendPacket(sendBuffer, packetLength);
+  log->log("Client", Log::DEBUG, "Wrote GNIF reply to client");
   return 1;
 }
 

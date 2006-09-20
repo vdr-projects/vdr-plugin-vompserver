@@ -225,3 +225,29 @@ ULONG RecPlayer::frameNumberFromPosition(ULLONG position)
   return indexFile->Get((int)segmentNumber, askposition);
 
 }
+
+
+bool RecPlayer::getNextIFrame(ULONG frameNumber, ULONG direction, ULLONG* rfilePosition, ULONG* rframeNumber, ULONG* rframeLength)
+{
+  // 0 = backwards
+  // 1 = forwards
+
+  if (!indexFile) return false;
+
+  uchar waste1;
+  int waste2;
+
+  int iframeLength;
+  int indexReturnFrameNumber;
+
+  indexReturnFrameNumber = (ULONG)indexFile->GetNextIFrame(frameNumber, (direction==1 ? true : false), &waste1, &waste2, &iframeLength);
+  log->log("RecPlayer", Log::DEBUG, "GNIF input framenumber:%lu, direction=%lu, output:framenumber=%i, framelength=%i", frameNumber, direction, indexReturnFrameNumber, iframeLength);
+
+  if (indexReturnFrameNumber == -1) return false;
+
+  *rfilePosition = positionFromFrameNumber(indexReturnFrameNumber);
+  *rframeNumber = (ULONG)indexReturnFrameNumber;
+  *rframeLength = (ULONG)iframeLength;
+
+  return true;
+}

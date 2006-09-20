@@ -48,6 +48,7 @@ class RecPlayer
     void scan();
     ULLONG positionFromFrameNumber(ULONG frameNumber);
     ULONG frameNumberFromPosition(ULLONG position);
+    bool getNextIFrame(ULONG frameNumber, ULONG direction, ULLONG* rfilePosition, ULONG* rframeNumber, ULONG* rframeLength);
 
   private:
     Log* log;
