@@ -198,9 +198,6 @@ void MVPClient::run2()
       case 3:
         result = processDeleteRecording(data, packetLength);
         break;
-      case 4:
-        result = processGetSummary(data, packetLength);
-        break;
       case 5:
         result = processGetChannelsList(data, packetLength);
         break;
@@ -226,7 +223,7 @@ void MVPClient::run2()
         result = processConfigLoad(data, packetLength);
         break;
       case 13:
-        result = processReScanRecording(data, packetLength);
+        result = processReScanRecording(data, packetLength);         // FIXME obselete
         break;
       case 14:
         result = processGetTimers(data, packetLength);
@@ -245,6 +242,9 @@ void MVPClient::run2()
         break;
       case 19:
         result = processGetIFrame(data, packetLength);
+        break;
+      case 20:
+        result = processGetRecInfo(data, packetLength);
         break;
     }
 
@@ -537,65 +537,6 @@ int MVPClient::processMoveRecording(UCHAR* data, int length)
   return 1;
 }
 
-int MVPClient::processGetSummary(UCHAR* data, int length)
-{
-  // data is a pointer to the fileName string
-
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
-
-  cRecording *recording = Recordings.GetByName((char*)data);
-
-  log->log("Client", Log::DEBUG, "recording pointer %p", recording);
-
-  if (recording)
-  {
-    UCHAR* sendBuffer = new UCHAR[50000]; // hope this is enough
-    int count = 4; // leave space for the packet length
-    char* point;
-
-#if VDRVERSNUM < 10300
-    point = (char*)recording->Summary();
-#else
-    const cRecordingInfo *Info = recording->Info();
-    point = (char*)Info->ShortText();
-    log->log("Client", Log::DEBUG, "info pointer %p summary pointer %p", Info, point);
-    if (isempty(point))
-    {
-      point = (char*)Info->Description();
-      log->log("Client", Log::DEBUG, "description pointer %p", point);
-    }
-#endif
-
-    if (point)
-    {
-      strcpy((char*)&sendBuffer[count], point);
-      count += strlen(point) + 1;
-    }
-    else
-    {
-      strcpy((char*)&sendBuffer[count], "");
-      count += 1;
-    }
-
-    *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
-
-    log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
-
-    tcp.sendPacket(sendBuffer, count);
-    delete[] sendBuffer;
-    log->log("Client", Log::DEBUG, "Written summary");
-
-
-  }
-  else
-  {
-    sendULONG(0);
-  }
-
-  return 1;
-}
-
 int MVPClient::processGetChannelsList(UCHAR* data, int length)
 {
   UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
@@ -799,26 +740,6 @@ int MVPClient::processStartStreamingRecording(UCHAR* data, int length)
     delete recordingManager;
     recordingManager = NULL;
   }
-  return 1;
-}
-
-int MVPClient::processReScanRecording(UCHAR* data, int length)
-{
-  if (!rp)
-  {
-    log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
-    return 0;
-  }
-
-  rp->scan();
-
-  UCHAR sendBuffer[16];
-  *(ULONG*)&sendBuffer[0] = htonl(12);
-  *(ULLONG*)&sendBuffer[4] = htonll(rp->getLengthBytes());
-  *(ULONG*)&sendBuffer[12] = htonl(rp->getLengthFrames());
-
-  tcp.sendPacket(sendBuffer, 16);
-  log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
   return 1;
 }
 
@@ -1615,3 +1536,214 @@ int MVPClient::processSetTimer(UCHAR* buffer, int length)
   delete timer;
   return 1;
 }
+
+int MVPClient::processGetRecInfo(UCHAR* data, int length)
+{
+  // data is a pointer to the fileName string
+
+  cRecordings Recordings;
+  Recordings.Load(); // probably have to do this
+
+  cRecording *recording = Recordings.GetByName((char*)data);
+
+  time_t timerStart = 0;
+  time_t timerStop = 0;
+  char* summary = NULL;
+  ULONG resumePoint = 0;
+
+  if (!recording)
+  {
+    log->log("Client", Log::ERR, "GetRecInfo found no recording");
+    sendULONG(0);
+    return 1;
+  }
+
+  ULONG sendBufferSize = 10000;
+  UCHAR* sendBuffer = (UCHAR*)malloc(sendBufferSize);
+  ULONG pos = 4; // leave first 4 bytes for size field
+
+
+  /* Return packet:
+  4 bytes: start time for timer
+  4 bytes: end time for timer
+  4 bytes: resume point
+  string: summary
+  4 bytes: num components
+  {
+    1 byte: stream
+    1 byte: type
+    string: language
+    string: description
+  }
+
+  */
+
+  // Get current timer
+
+  cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
+  if (rc)
+  {
+    timerStart = rc->Timer()->StartTime();
+    timerStop = rc->Timer()->StopTime();
+    log->log("Client", Log::DEBUG, "GRI: RC: %lu %lu", timerStart, timerStop);
+  }
+
+  *(time_t*)&sendBuffer[pos] = htonl(timerStart);    pos += 4;
+  *(time_t*)&sendBuffer[pos] = htonl(timerStop);     pos += 4;
+
+  // Get resume point
+
+  char* value = config.getValueString("ResumeData", (char*)data);
+  if (value)
+  {
+    resumePoint = strtoul(value, NULL, 10);
+    delete[] value;
+  }
+  log->log("Client", Log::DEBUG, "GRI: RP: %lu", resumePoint);
+
+  *(ULONG*)&sendBuffer[pos] = htonl(resumePoint);    pos += 4;
+
+
+  // Get summary
+
+#if VDRVERSNUM < 10300
+  summary = (char*)recording->Summary();
+#else
+  const cRecordingInfo *Info = recording->Info();
+  summary = (char*)Info->ShortText();
+  if (isempty(summary)) summary = (char*)Info->Description();
+#endif
+  log->log("Client", Log::DEBUG, "GRI: S: %s", summary);
+  if (summary)
+  {
+    // memory insanity...
+    if ((sendBufferSize - pos) < (strlen(summary) + 500)) // random
+    {
+      UCHAR* newBuffer = (UCHAR*)realloc(sendBuffer, sendBufferSize + strlen(summary) + 10000);
+      if (newBuffer)
+      {
+        sendBuffer = newBuffer;
+        sendBufferSize += strlen(summary) + 10000;
+      }
+      else
+      {
+        free(sendBuffer);
+        sendULONG(0);
+        return 1;
+      }
+    }
+
+    strcpy((char*)&sendBuffer[pos], summary);
+    pos += strlen(summary) + 1;
+  }
+  else
+  {
+    strcpy((char*)&sendBuffer[pos], "");
+    pos += 1;
+  }
+
+
+  // Get channels
+
+#if VDRVERSNUM < 10300
+
+  // Send 0 for numchannels - this signals the client this info is not available
+  *(ULONG*)&sendBuffer[pos] = 0;    pos += 4;
+
+#else
+  const cComponents* components = Info->Components();
+
+  *(ULONG*)&sendBuffer[pos] = htonl(components->NumComponents());    pos += 4;
+
+  tComponent* component;
+  for (int i = 0; i < components->NumComponents(); i++)
+  {
+    component = components->Component(i);
+
+    // memory insanity...
+    ULONG extraNeeded = 2 + (component->language ? strlen(component->language) : 0)
+                          + (component->description ? strlen(component->description) : 0) + 2;
+
+    if ((sendBufferSize - pos) < extraNeeded)
+    {
+      UCHAR* newBuffer = (UCHAR*)realloc(sendBuffer, sendBufferSize + extraNeeded + 10000);
+      if (newBuffer)
+      {
+        sendBuffer = newBuffer;
+        sendBufferSize += extraNeeded + 10000;
+      }
+      else
+      {
+        free(sendBuffer);
+        sendULONG(0);
+        return 1;
+      }
+    }
+
+    log->log("Client", Log::DEBUG, "GRI: C: %i %u %u %s %s", i, component->stream, component->type, component->language, component->description);
+    sendBuffer[pos] = component->stream;  pos += 1;
+    sendBuffer[pos] = component->type;    pos += 1;
+    if (component->language)
+    {
+      strcpy((char*)&sendBuffer[pos], component->language);
+      pos += strlen(component->language) + 1;
+    }
+    else
+    {
+      strcpy((char*)&sendBuffer[pos], "");
+      pos += 1;
+    }
+    if (component->description)
+    {
+      strcpy((char*)&sendBuffer[pos], component->description);
+      pos += strlen(component->description) + 1;
+    }
+    else
+    {
+      strcpy((char*)&sendBuffer[pos], "");
+      pos += 1;
+    }
+
+  }
+
+#endif
+
+  // Done. send it
+
+  *(ULONG*)&sendBuffer[0] = htonl(pos - 4); // -4 :  take off the size field
+
+  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
+
+  tcp.sendPacket(sendBuffer, pos);
+  delete[] sendBuffer;
+  log->log("Client", Log::DEBUG, "Written getrecinfo");
+
+  return 1;
+}
+
+
+
+
+// FIXME obselete
+
+int MVPClient::processReScanRecording(UCHAR* data, int length)
+{
+  if (!rp)
+  {
+    log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
+    return 0;
+  }
+
+  rp->scan();
+
+  UCHAR sendBuffer[16];
+  *(ULONG*)&sendBuffer[0] = htonl(12);
+  *(ULLONG*)&sendBuffer[4] = htonll(rp->getLengthBytes());
+  *(ULONG*)&sendBuffer[12] = htonl(rp->getLengthFrames());
+
+  tcp.sendPacket(sendBuffer, 16);
+  log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
+  return 1;
+}
+
+// FIXME without client calling rescan, getblock wont work even tho more data is avail

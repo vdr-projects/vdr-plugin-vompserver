@@ -68,13 +68,11 @@ class MVPClient
     int processGetRecordingsList(UCHAR* data, int length);
     int processDeleteRecording(UCHAR* data, int length);
     int processMoveRecording(UCHAR* data, int length);
-    int processGetSummary(UCHAR* data, int length);
     int processGetChannelsList(UCHAR* data, int length);
     int processStartStreamingChannel(UCHAR* data, int length);
     int processGetBlock(UCHAR* data, int length);
     int processStopStreaming(UCHAR* data, int length);
     int processStartStreamingRecording(UCHAR* data, int length);
-    int processReScanRecording(UCHAR* data, int length);
     int processGetChannelSchedule(UCHAR* data, int length);
     int processConfigSave(UCHAR* data, int length);
     int processConfigLoad(UCHAR* data, int length);
@@ -83,6 +81,9 @@ class MVPClient
     int processPositionFromFrameNumber(UCHAR* data, int length);
     int processFrameNumberFromPosition(UCHAR* data, int length);
     int processGetIFrame(UCHAR* data, int length);
+    int processGetRecInfo(UCHAR* data, int length);
+
+    int processReScanRecording(UCHAR* data, int length);           // FIXME obselete
 
     cChannel* channelFromNumber(ULONG channelNumber);
     void writeResumeData();
