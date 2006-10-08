@@ -1653,57 +1653,66 @@ int MVPClient::processGetRecInfo(UCHAR* data, int length)
 #else
   const cComponents* components = Info->Components();
 
-  *(ULONG*)&sendBuffer[pos] = htonl(components->NumComponents());    pos += 4;
+  log->log("Client", Log::DEBUG, "GRI: D1: %p", components);
 
-  tComponent* component;
-  for (int i = 0; i < components->NumComponents(); i++)
+  if (!components)
   {
-    component = components->Component(i);
+    *(ULONG*)&sendBuffer[pos] = htonl(0);    pos += 4;
+  }
+  else
+  {
+    *(ULONG*)&sendBuffer[pos] = htonl(components->NumComponents());    pos += 4;
 
-    // memory insanity...
-    ULONG extraNeeded = 2 + (component->language ? strlen(component->language) : 0)
-                          + (component->description ? strlen(component->description) : 0) + 2;
-
-    if ((sendBufferSize - pos) < extraNeeded)
+    tComponent* component;
+    for (int i = 0; i < components->NumComponents(); i++)
     {
-      UCHAR* newBuffer = (UCHAR*)realloc(sendBuffer, sendBufferSize + extraNeeded + 10000);
-      if (newBuffer)
+      component = components->Component(i);
+
+      // memory insanity...
+      ULONG extraNeeded = 2 + (component->language ? strlen(component->language) : 0)
+                            + (component->description ? strlen(component->description) : 0) + 2;
+
+      if ((sendBufferSize - pos) < extraNeeded)
       {
-        sendBuffer = newBuffer;
-        sendBufferSize += extraNeeded + 10000;
+        UCHAR* newBuffer = (UCHAR*)realloc(sendBuffer, sendBufferSize + extraNeeded + 10000);
+        if (newBuffer)
+        {
+          sendBuffer = newBuffer;
+          sendBufferSize += extraNeeded + 10000;
+        }
+        else
+        {
+          free(sendBuffer);
+          sendULONG(0);
+          return 1;
+        }
+      }
+
+      log->log("Client", Log::DEBUG, "GRI: C: %i %u %u %s %s", i, component->stream, component->type, component->language, component->description);
+      sendBuffer[pos] = component->stream;  pos += 1;
+      sendBuffer[pos] = component->type;    pos += 1;
+      if (component->language)
+      {
+        strcpy((char*)&sendBuffer[pos], component->language);
+        pos += strlen(component->language) + 1;
       }
       else
       {
-        free(sendBuffer);
-        sendULONG(0);
-        return 1;
+        strcpy((char*)&sendBuffer[pos], "");
+        pos += 1;
       }
-    }
+      if (component->description)
+      {
+        strcpy((char*)&sendBuffer[pos], component->description);
+        pos += strlen(component->description) + 1;
+      }
+      else
+      {
+        strcpy((char*)&sendBuffer[pos], "");
+        pos += 1;
+      }
 
-    log->log("Client", Log::DEBUG, "GRI: C: %i %u %u %s %s", i, component->stream, component->type, component->language, component->description);
-    sendBuffer[pos] = component->stream;  pos += 1;
-    sendBuffer[pos] = component->type;    pos += 1;
-    if (component->language)
-    {
-      strcpy((char*)&sendBuffer[pos], component->language);
-      pos += strlen(component->language) + 1;
     }
-    else
-    {
-      strcpy((char*)&sendBuffer[pos], "");
-      pos += 1;
-    }
-    if (component->description)
-    {
-      strcpy((char*)&sendBuffer[pos], component->description);
-      pos += strlen(component->description) + 1;
-    }
-    else
-    {
-      strcpy((char*)&sendBuffer[pos], "");
-      pos += 1;
-    }
-
   }
 
 #endif
