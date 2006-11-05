@@ -16,7 +16,7 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 ### The C++ compiler and options:
 
 CXX      ?= g++
-CXXFLAGS ?= -O2 -fPIC -Wall -Woverloaded-virtual -Werror -D_GNU_SOURCE
+CXXFLAGS ?= -O2 -fPIC -Wall -Woverloaded-virtual -Werror
 
 ### The directory environment:
 
@@ -42,7 +42,7 @@ PACKAGE = vdr-$(ARCHIVE)
 
 INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include -Iremux -Ilibdvbmpeg
 
-DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
+DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 ### The object files (add further files here):
 
