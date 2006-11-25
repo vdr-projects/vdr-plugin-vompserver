@@ -21,6 +21,8 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
+#include <stdint.h>
+
 typedef uint8_t  UCHAR;
 typedef uint16_t USHORT;
 typedef uint32_t UINT;
