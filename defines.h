@@ -21,10 +21,10 @@
 #ifndef DEFINES_H
 #define DEFINES_H
 
-typedef unsigned char UCHAR;
-typedef unsigned short USHORT;
-typedef unsigned int UINT;
-typedef unsigned long ULONG;
-typedef unsigned long long ULLONG;
+typedef uint8_t  UCHAR;
+typedef uint16_t USHORT;
+typedef uint32_t UINT;
+typedef uint32_t ULONG;
+typedef uint64_t ULLONG;
 
 #endif
