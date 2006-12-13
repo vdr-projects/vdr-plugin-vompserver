@@ -82,6 +82,7 @@ class MVPClient
     int processFrameNumberFromPosition(UCHAR* data, int length);
     int processGetIFrame(UCHAR* data, int length);
     int processGetRecInfo(UCHAR* data, int length);
+    int processGetMarks(UCHAR* data, int length);
 
     int processReScanRecording(UCHAR* data, int length);           // FIXME obselete
 

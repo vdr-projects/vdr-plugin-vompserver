@@ -246,6 +246,9 @@ void MVPClient::run2()
       case 20:
         result = processGetRecInfo(data, packetLength);
         break;
+      case 21:
+        result = processGetMarks(data, packetLength);
+        break;
     }
 
     free(buffer);
@@ -1756,3 +1759,53 @@ int MVPClient::processReScanRecording(UCHAR* data, int length)
 }
 
 // FIXME without client calling rescan, getblock wont work even tho more data is avail
+
+
+int MVPClient::processGetMarks(UCHAR* data, int length)
+{
+  // data is a pointer to the fileName string
+
+  UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
+  int count = 4; // leave space for the packet length
+
+
+  cMarks Marks;
+  cRecordings Recordings;
+  Recordings.Load(); // probably have to do this
+
+  cRecording *recording = Recordings.GetByName((char*)data);
+
+  log->log("Client", Log::DEBUG, "recording pointer %p", recording);
+
+  if (recording)
+  {
+    Marks.Load(recording->FileName());
+    if (Marks.Count())
+    {
+      for (const cMark *m = Marks.First(); m; m = Marks.Next(m))
+      {
+        log->log("Client", Log::DEBUG, "found Mark %i", m->position);
+
+        if (count > 49000) break;
+        *(ULONG*)&sendBuffer[count] = htonl(m->position);
+        count += 4;
+      }
+    }
+    else
+    {
+      log->log("Client", Log::DEBUG, "no marks found, sending 0-mark");
+      *(ULONG*)&sendBuffer[count] = htonl(0);
+      count += 4;
+    }
+  }
+
+  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
+
+  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
+
+  tcp.sendPacket(sendBuffer, count);
+  delete[] sendBuffer;
+  log->log("Client", Log::DEBUG, "Written Marks list");
+
+  return 1;
+}
