@@ -24,17 +24,12 @@
 #include <vdr/channels.h>
 #include <vdr/device.h>
 #include <vdr/receiver.h>
-#include <vdr/ringbuffer.h>
-
-#include "tsremux.h"
-#include "ts2es.h"
-#include "ts2ps.h"
 
 #include "log.h"
 #include "thread.h"
 #include "ringbuffer.h"
 
-class MVPReceiver : public cReceiver, public Thread
+class MVPReceiver : public cReceiver
 {
   public:
     static MVPReceiver* create(cChannel*, int priority);
@@ -45,14 +40,10 @@ class MVPReceiver : public cReceiver, public Thread
 
   private:
     MVPReceiver(cChannel* channel, cDevice* device);
-    void threadMethod();
 
     Log* logger;
     bool vdrActivated;
     int inittedOK;
-    cTSRemux* remuxer;
-    cRingBufferLinear* unprocessed; // A VDR ring buffer used for the unprocessed data
-                                    // it doesn't delete until told and does its own locking
     Ringbuffer processed;    // A simpler deleting ringbuffer for processed data
     pthread_mutex_t processedRingLock; // needs outside locking
 

@@ -249,6 +249,9 @@ void MVPClient::run2()
       case 21:
         result = processGetMarks(data, packetLength);
         break;
+      case 22:
+        result = processGetChannelPids(data, packetLength);
+        break;
     }
 
     free(buffer);
@@ -589,6 +592,56 @@ int MVPClient::processGetChannelsList(UCHAR* data, int length)
   tcp.sendPacket(sendBuffer, count);
   delete[] sendBuffer;
   log->log("Client", Log::DEBUG, "Written channels list");
+
+  return 1;
+}
+
+int MVPClient::processGetChannelPids(UCHAR* data, int length)
+{
+  ULONG channelNumber = ntohl(*(ULONG*)data);
+
+  cChannel* channel = channelFromNumber(channelNumber);
+  if (!channel)
+  {
+    sendULONG(0);
+    return 1;
+  }
+
+  ULONG numApids = 0;
+  ULONG spaceRequired = 12; // 4 for length field, 4 for vpid, 4 for number of apids
+  // Work out space required and number of Apids
+  for (const int *Apid = channel->Apids(); *Apid; Apid++)
+  {
+    spaceRequired += 4 + strlen(channel->Alang(numApids)) + 1; // 4 for pid, length of string + \0
+    numApids++;
+  }
+
+  // Format of response
+  // vpid
+  // number of apids
+  // {
+  //    apid
+  //    lang string
+  // }
+
+  UCHAR* sendBuffer = new UCHAR[spaceRequired];
+  ULONG point = 0;
+  *(ULONG*)&sendBuffer[point] = htonl(spaceRequired - 4);   point += 4;   // take off first 4 bytes
+  *(ULONG*)&sendBuffer[point] = htonl(channel->Vpid());     point += 4;
+  *(ULONG*)&sendBuffer[point] = htonl(numApids);            point += 4;
+
+  for (ULONG i = 0; i < numApids; i++)
+  {
+    *(ULONG*)&sendBuffer[point] = htonl(channel->Apid(i));  point += 4;
+    strcpy((char*)&sendBuffer[point], channel->Alang(i));          point += strlen(channel->Alang(i)) + 1;
+  }
+
+  printf("About to send getchannelpids response. length = %u\n", spaceRequired);
+  tcp.dump(sendBuffer, spaceRequired);
+
+  tcp.sendPacket(sendBuffer, spaceRequired);
+  delete[] sendBuffer;
+  log->log("Client", Log::DEBUG, "Written channels pids");
 
   return 1;
 }

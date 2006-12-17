@@ -40,20 +40,15 @@ PACKAGE = vdr-$(ARCHIVE)
 
 ### Includes and Defines (add further entries here):
 
-INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include -Iremux -Ilibdvbmpeg
+INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include
 
 DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 ### The object files (add further files here):
 
 OBJS = $(PLUGIN).o dsock.o mvpserver.o udpreplier.o bootpd.o tftpd.o mvpclient.o tcp.o \
-                   remux/ts2ps.o remux/ts2es.o remux/tsremux.o ringbuffer.o \
+                   ringbuffer.o \
                    recplayer.o config.o log.o thread.o mvpreceiver.o tftpclient.o
-
-
-libdvbmpeg/libdvbmpegtools.a: libdvbmpeg/*.c libdvbmpeg/*.cc libdvbmpeg/*.h libdvbmpeg/*.hh
-	make -C ./libdvbmpeg libdvbmpegtools.a
-
 
 ### Implicit rules:
 
@@ -73,8 +68,8 @@ $(DEPFILE): Makefile
 
 all: libvdr-$(PLUGIN).so
 
-libvdr-$(PLUGIN).so: $(OBJS) libdvbmpeg/libdvbmpegtools.a
-	$(CXX) $(CXXFLAGS) -shared $(OBJS) libdvbmpeg/libdvbmpegtools.a -o $@
+libvdr-$(PLUGIN).so: $(OBJS)
+	$(CXX) $(CXXFLAGS) -shared $(OBJS) -o $@
 	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
 
 dist: clean
@@ -86,5 +81,4 @@ dist: clean
 	@echo Distribution package created as $(PACKAGE).tgz
 
 clean:
-	make -C libdvbmpeg clean
-	rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~ remux/*.o
+	rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~
