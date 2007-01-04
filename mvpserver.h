@@ -27,6 +27,7 @@
 
 #include "defines.h"
 #include "udpreplier.h"
+#include "mvprelay.h"
 #include "bootpd.h"
 #include "tftpd.h"
 #include "mvpclient.h"
@@ -50,6 +51,7 @@ class MVPServer : public Thread
     UDPReplier udpr;
     Bootpd bootpd;
     Tftpd tftpd;
+    MVPRelay mvprelay;
     int listeningSocket;
     char* configDirExtra;
 };

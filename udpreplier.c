@@ -58,7 +58,7 @@ int UDPReplier::run(char* tserverName)
     return 0;
   }
 
-  Log::getInstance()->log("UDP", Log::DEBUG, "UDP replier started");
+  Log::getInstance()->log("UDPReplier", Log::DEBUG, "UDP replier started");
   return 1;
 }
 
@@ -72,7 +72,7 @@ void UDPReplier::threadMethod()
 
     if (!strcmp(ds.getData(), "VOMP"))
     {
-      Log::getInstance()->log("UDP", Log::DEBUG, "UDP request from %s", ds.getFromIPA());
+      Log::getInstance()->log("UDPReplier", Log::DEBUG, "UDP request from %s", ds.getFromIPA());
       ds.send(ds.getFromIPA(), 3024, serverName, strlen(serverName));
     }
   }

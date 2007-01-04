@@ -37,6 +37,7 @@ int MVPServer::stop()
   udpr.shutdown();
   bootpd.shutdown();
   tftpd.shutdown();
+  mvprelay.shutdown();
 
   log.log("Main", Log::INFO, "Stopped main server thread");
   log.shutdown();
@@ -185,6 +186,17 @@ int MVPServer::run(char* tconfigDirExtra)
     log.log("Main", Log::INFO, "Not starting TFTPd");
   }
 
+  // Start mvprelay thread
+  if (!mvprelay.run())
+  {
+    log.log("Main", Log::CRIT, "Could not start MVPRelay");
+    stop();
+    return 0;
+  }
+  else
+  {
+    log.log("Main", Log::INFO, "MVPRelay started");
+  }
 
   // start thread here
   if (!threadStart())

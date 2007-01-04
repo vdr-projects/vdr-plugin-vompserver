@@ -32,6 +32,7 @@
 #include <string.h>
 #include <errno.h>
 
+#include "defines.h"
 #include "log.h"
 
 #define MAXBUFLEN 2000
@@ -43,26 +44,31 @@ class DatagramSocket
   public:
     DatagramSocket();
     ~DatagramSocket();
-    bool init(short);                 // port
+    bool init(USHORT);                 // port
     void shutdown();
     unsigned char waitforMessage(unsigned char); // int =0-block =1-new wait =2-continue wait
-    int getDataLength(void) const;
-    char *getData(void);               // returns a pointer to the data
-    char *getFromIPA(void);            // returns a pointer to from IP address
-    short getFromPort(void) const;
-    void send(char *, short, char *, int); // send wants: IP Address ddn style, port,
-                                           // data, length of data
+    void send(char *, USHORT, char *, int); // send wants: IP Address ddn style, port,
+                                            // data, length of data
+
+    char*  getData(void)             { return buf; }      // returns a pointer to the data
+    char*  getFromIPA(void)          { return fromIPA; }  // returns a pointer to from IP address
+    USHORT getFromPort(void) const   { return fromPort; } // returns the sender port number
+    int    getDataLength(void) const { return mlength; }  // returns data length
+
+    ULONG  getMyIP(ULONG targetIP);
+    static struct in_addr myIPforIP(struct in_addr targetIP);
+
   private:
     Log* log;
     int initted;
     int socketnum;                  // Socket descriptor
-    short myPort;                   // My port number
+    USHORT myPort;                  // My port number
     struct sockaddr_in myAddr;      // My address
     struct sockaddr_in theirAddr;   // User address
     socklen_t addrlen;              // length of sockaddr struct
     char buf[MAXBUFLEN];            // main data buffer
     char fromIPA[20];               // from string (ip address)
-    short fromPort;                 // which port user sent on
+    USHORT fromPort;                // which port user sent on
     int mlength;                    // length of message
     struct timeval tv;
     fd_set readfds;

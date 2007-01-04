@@ -32,7 +32,7 @@ DatagramSocket::~DatagramSocket()
   shutdown();
 }
 
-bool DatagramSocket::init(short port)
+bool DatagramSocket::init(USHORT port)
 {
   myPort = port;
   if ((socketnum = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
@@ -47,7 +47,7 @@ bool DatagramSocket::init(short port)
   memset(&(myAddr.sin_zero), 0, 8);    // zero the rest of the struct
   if (bind(socketnum, (struct sockaddr *)&myAddr, addrlen) == -1)
   {
-    log->log("UDP", Log::CRIT, "Bind error");
+    log->log("UDP", Log::CRIT, "Bind error %u", myPort);
     close(socketnum);
     return false;
   }
@@ -116,7 +116,7 @@ unsigned char DatagramSocket::waitforMessage(unsigned char how)
     memset(&buf[mlength], 0, MAXBUFLEN - mlength);
     strcpy(fromIPA, inet_ntoa(theirAddr.sin_addr));
     fromPort = ntohs(theirAddr.sin_port);
-//    log->log("UDP", Log::DEBUG, "%s:%i received length %i", fromIPA, fromPort, mlength);
+    //log->log("UDP", Log::DEBUG, "%s:%i received length %i", fromIPA, fromPort, mlength);
     return 2;
   }
 
@@ -126,18 +126,11 @@ unsigned char DatagramSocket::waitforMessage(unsigned char how)
   */
 }
 
-int DatagramSocket::getDataLength(void) const
-{
-  return mlength;
-}
-
-char *DatagramSocket::getData(void)             {  return buf;  }
-char *DatagramSocket::getFromIPA(void)          {  return fromIPA;  }
-short DatagramSocket::getFromPort(void) const   {  return fromPort; }
-
-void DatagramSocket::send(char *ipa, short port, char *message, int length)
+void DatagramSocket::send(char *ipa, USHORT port, char *message, int length)
 {
   int sentLength = 0;
+
+  //log->log("UDP", Log::DEBUG, "Send port %u", port);
 
   theirAddr.sin_family = AF_INET;      // host byte order
   theirAddr.sin_port = htons(port);    // short, network byte order
@@ -149,19 +142,72 @@ void DatagramSocket::send(char *ipa, short port, char *message, int length)
   sentLength = sendto(socketnum, message, length, 0, (struct sockaddr *)&theirAddr, addrlen);
   if (sentLength == length)
   {
-//    log->log("UDP", Log::DEBUG, "%s:%i sent length %i", ipa, port, length);
+    //log->log("UDP", Log::DEBUG, "%s:%u sent length %i", ipa, port, length);
     return;
   }
 
-  log->log("UDP", Log::DEBUG, "%s:%i send failed %i", ipa, port, length);
+  log->log("UDP", Log::DEBUG, "%s:%u send failed %i", ipa, port, length);
 
   sentLength = sendto(socketnum, message, length, 0, (struct sockaddr *)&theirAddr, addrlen);
   if (sentLength == length)
   {
-    log->log("UDP", Log::DEBUG, "%s:%i sent length %i 2nd try", ipa, port, length);
+    log->log("UDP", Log::DEBUG, "%s:%u sent length %i 2nd try", ipa, port, length);
     return;
   }
 
-  log->log("UDP", Log::DEBUG, "%s:%i send failed %i 2nd try", ipa, port, length);
+  log->log("UDP", Log::DEBUG, "%s:%u send failed %i 2nd try", ipa, port, length);
 }
 
+ULONG DatagramSocket::getMyIP(ULONG targetIP)
+{
+  // More friendly interface to below, takes and returns IP in network order
+
+  struct in_addr stargetIP;
+  stargetIP.s_addr = targetIP;
+  struct in_addr ret = myIPforIP(stargetIP);
+  return ret.s_addr;
+}
+
+struct in_addr DatagramSocket::myIPforIP(struct in_addr targetIP)
+{
+  // This function takes a target IP on the network and returns the local IP
+  // that would be used to communicate with it.
+  // This function is static.
+
+  struct in_addr fail;
+  fail.s_addr = 0;
+
+  int zSocket;
+  if ((zSocket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == -1)
+  {
+    Log::getInstance()->log("UDP", Log::CRIT, "Socket error");
+    return fail;
+  }
+
+  struct sockaddr_in zTarget;
+  zTarget.sin_family = AF_INET;
+  zTarget.sin_port = htons(3024); // arbitrary
+  zTarget.sin_addr.s_addr = targetIP.s_addr;
+  memset(&(zTarget.sin_zero), 0, 8);
+
+  if (connect(zSocket, (struct sockaddr *)&zTarget, sizeof(struct sockaddr)) == -1)
+  {
+    Log::getInstance()->log("UDP", Log::CRIT, "Connect error");
+    close(zSocket);
+    return fail;
+  }
+
+  struct sockaddr_in zSource;
+  socklen_t zSourceLen = sizeof(struct sockaddr_in);
+  memset(&zSource, 0, zSourceLen);
+
+  if (getsockname(zSocket, (struct sockaddr*)&zSource, &zSourceLen) == -1)
+  {
+    Log::getInstance()->log("UDP", Log::CRIT, "Getsockname error");
+    close(zSocket);
+    return fail;
+  }
+
+  close(zSocket);
+  return zSource.sin_addr;
+}

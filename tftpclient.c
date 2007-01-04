@@ -30,7 +30,6 @@ TftpClient::TftpClient()
 
 TftpClient::~TftpClient()
 {
-  log->log("TftpClient", Log::DEBUG, "Someone calls tftpclient::~tftpclient");
   shutdown();
 }
 
@@ -45,7 +44,7 @@ int TftpClient::shutdown()
     file = NULL;
   }
 
-  log->log("TftpClient", Log::DEBUG, "shutdown");
+  log->log("TftpClient", Log::DEBUG, "Shutdown");
 
   return 1;
 }
@@ -113,7 +112,7 @@ void TftpClient::threadMethod()
       // see if we need to retransmit a data packet
       if (((state == 1) || (state == 2)) && (lastCom < (time(NULL) - 1)))
       {
-//        log->log("TftpClient", Log::DEBUG, "Retransmitting buffer");
+        log->log("TftpClient", Log::DEBUG, "Retransmitting buffer");
         transmitBuffer();
       }
 
@@ -121,8 +120,17 @@ void TftpClient::threadMethod()
     }
     else
     {
-      if (strcmp(ds.getFromIPA(), peerIP)) continue; // not from my client's IP
-      if (ds.getFromPort() != peerPort) continue; // not from my client's port
+      if (strcmp(ds.getFromIPA(), peerIP))
+      {
+        log->log("TftpClient", Log::ERR, "Not my client IP");
+        continue; // not from my client's IP
+      }
+
+      if (ds.getFromPort() != peerPort)
+      {
+        log->log("TftpClient", Log::ERR, "Not my client port %i %u", ds.getFromPort(), peerPort);
+        continue; // not from my client's port
+      }
 
       if (!processMessage((UCHAR*)ds.getData(), ds.getDataLength()))
       {
@@ -241,12 +249,14 @@ int TftpClient::processAck(UCHAR* data, int length)
     {
       // state == 2, end of transfer. kill connection
       log->log("TftpClient", Log::INFO, "File transfer finished");
+      fclose(file);
+      file = NULL;
       return 0;
     }
   }
   else
   {
-//    log->log("TftpClient", Log::DEBUG, "Ack received for block %i - rejected, retransmitting block\n", ackBlock);
+    log->log("TftpClient", Log::DEBUG, "Ack received for block %i - rejected, retransmitting block\n", ackBlock);
     transmitBuffer();
   }
 
@@ -288,8 +298,6 @@ int TftpClient::sendBlock()
   {
     // end of file
     state = 2;
-    fclose(file);
-    file = NULL;
   }
   else
   {
@@ -303,7 +311,8 @@ int TftpClient::sendBlock()
 
 void TftpClient::transmitBuffer()
 {
+
   ds.send(peerIP, peerPort, (char*)buffer, bufferLength);
 //  dump(buffer, bufferLength);
-//  log->log("TftpClient", Log::DEBUG, "Sent block number %i", blockNumber - 1);
+//  log->log("TftpClient", Log::DEBUG, "Sent block number %i to port %u", blockNumber - 1, peerPort);
 }
