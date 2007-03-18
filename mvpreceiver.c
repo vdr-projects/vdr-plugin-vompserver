@@ -33,7 +33,7 @@ MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
   vdrActivated = false;
   inittedOK = 0;
 
-  logger->log("MVPReceiver", Log::DEBUG, "Channel has VPID %i APID %i", channel->Vpid(), channel->Apid(0));
+//  logger->log("MVPReceiver", Log::DEBUG, "Channel has VPID %i APID %i", channel->Vpid(), channel->Apid(0));
 
   if (!processed.init(1000000)) return;
   pthread_mutex_init(&processedRingLock, NULL);

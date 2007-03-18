@@ -610,11 +610,36 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length)
   ULONG numApids = 0;
   ULONG spaceRequired = 12; // 4 for length field, 4 for vpid, 4 for number of apids
   // Work out space required and number of Apids
+
+#if VDRVERSNUM < 10300
+
+  log->log("Client", Log::DEBUG, "Apid1: %i", channel->Apid1());
+  log->log("Client", Log::DEBUG, "Apid2: %i", channel->Apid2());
+
+  if (channel->Apid2())
+  {
+    numApids = 2;
+    spaceRequired += 10; // 8 + 2 nulls
+  }
+  else if (channel->Apid1())
+  {
+    numApids = 1;
+    spaceRequired += 5; // 4 + 1 null
+  }
+  else
+  {
+    numApids = 0;
+  }
+
+#else
+
   for (const int *Apid = channel->Apids(); *Apid; Apid++)
   {
     spaceRequired += 4 + strlen(channel->Alang(numApids)) + 1; // 4 for pid, length of string + \0
     numApids++;
   }
+#endif
+
 
   // Format of response
   // vpid
@@ -630,13 +655,26 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length)
   *(ULONG*)&sendBuffer[point] = htonl(channel->Vpid());     point += 4;
   *(ULONG*)&sendBuffer[point] = htonl(numApids);            point += 4;
 
+#if VDRVERSNUM < 10300
+  if (numApids >= 1)
+  {
+    *(ULONG*)&sendBuffer[point] = htonl(channel->Apid1());  point += 4;
+    sendBuffer[point] = '\0';                               point += 1;
+  }
+  if (numApids == 2)
+  {
+    *(ULONG*)&sendBuffer[point] = htonl(channel->Apid2());  point += 4;
+    sendBuffer[point] = '\0';                               point += 1;
+  }
+#else
   for (ULONG i = 0; i < numApids; i++)
   {
     *(ULONG*)&sendBuffer[point] = htonl(channel->Apid(i));  point += 4;
-    strcpy((char*)&sendBuffer[point], channel->Alang(i));          point += strlen(channel->Alang(i)) + 1;
+    strcpy((char*)&sendBuffer[point], channel->Alang(i));   point += strlen(channel->Alang(i)) + 1;
   }
+#endif
 
-  printf("About to send getchannelpids response. length = %u\n", spaceRequired);
+//  printf("About to send getchannelpids response. length = %u\n", spaceRequired);
   tcp.dump(sendBuffer, spaceRequired);
 
   tcp.sendPacket(sendBuffer, spaceRequired);
