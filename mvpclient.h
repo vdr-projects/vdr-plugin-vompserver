@@ -33,6 +33,7 @@
 #include <vdr/videodir.h>
 #include <vdr/plugin.h>
 #include <vdr/timers.h>
+#include <vdr/menu.h>
 
 #include "defines.h"
 #include "tcp.h"
@@ -49,8 +50,10 @@ class MVPClient
     int run();
     // not for external use
     void run2();
+    static int getNrClients();
 
   private:
+    static int nr_clients;
     pthread_t runThread;
     int initted;
     TCP tcp;
@@ -86,6 +89,9 @@ class MVPClient
     int processGetChannelPids(UCHAR* data, int length);
 
     int processReScanRecording(UCHAR* data, int length);           // FIXME obselete
+
+    void incClients();
+    void decClients();
 
     cChannel* channelFromNumber(ULONG channelNumber);
     void writeResumeData();

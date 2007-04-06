@@ -20,8 +20,12 @@
 
 #include "mvpserver.h"
 
+extern pthread_mutex_t threadClientMutex;
+
 MVPServer::MVPServer()
 {
+  // MH in case anbody has a better position :-)
+  pthread_mutex_init(&threadClientMutex, NULL);
 }
 
 MVPServer::~MVPServer()

@@ -22,6 +22,7 @@
 #include <getopt.h>
 
 #include "mvpserver.h"
+#include "mvpclient.h"
 
 static const char *VERSION        = "0.2.6";
 static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
@@ -38,6 +39,7 @@ public:
   virtual bool Initialize(void);
   virtual bool Start(void);
   virtual bool SetupParse(const char *Name, const char *Value);
+  virtual cString Active(void);
 
 private:
 
@@ -105,6 +107,12 @@ bool cPluginVompserver::SetupParse(const char *Name, const char *Value)
 {
   // Parse your own setup parameters and store their values.
   return false;
+}
+
+cString cPluginVompserver::Active(void)
+{
+  if(MVPClient::getNrClients() != 0) return tr("VOMP client(s) connected");
+  return NULL;
 }
 
 VDRPLUGINCREATOR(cPluginVompserver); // Don't touch this!

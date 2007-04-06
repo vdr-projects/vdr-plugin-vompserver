@@ -21,7 +21,11 @@
 #include "mvpclient.h"
 
 // This is here else it causes compile errors with something in libdvbmpeg
-#include <vdr/menu.h>
+//#include <vdr/menu.h>
+
+pthread_mutex_t threadClientMutex;
+int MVPClient::nr_clients = 0;
+
 
 MVPClient::MVPClient(char* tconfigDirExtra, int tsocket)
  : tcp(tsocket)
@@ -32,6 +36,7 @@ MVPClient::MVPClient(char* tconfigDirExtra, int tsocket)
   log = Log::getInstance();
   loggedIn = false;
   configDirExtra = tconfigDirExtra;
+  incClients();
 }
 
 MVPClient::~MVPClient()
@@ -53,6 +58,7 @@ MVPClient::~MVPClient()
   }
 
   if (loggedIn) cleanConfig();
+  decClients();
 }
 
 ULLONG MVPClient::ntohll(ULLONG a)
@@ -1629,6 +1635,29 @@ int MVPClient::processSetTimer(UCHAR* buffer, int length)
   }
   delete timer;
   return 1;
+}
+
+void MVPClient::incClients()
+{
+  pthread_mutex_lock(&threadClientMutex);
+  MVPClient::nr_clients++;
+  pthread_mutex_unlock(&threadClientMutex);
+}
+
+void MVPClient::decClients()
+{
+  pthread_mutex_lock(&threadClientMutex);
+  MVPClient::nr_clients--;
+  pthread_mutex_unlock(&threadClientMutex);
+}
+
+int MVPClient::getNrClients()
+{
+  int nrClients;
+  pthread_mutex_lock(&threadClientMutex);
+  nrClients = MVPClient::nr_clients;
+  pthread_mutex_unlock(&threadClientMutex);
+  return nrClients;
 }
 
 int MVPClient::processGetRecInfo(UCHAR* data, int length)
