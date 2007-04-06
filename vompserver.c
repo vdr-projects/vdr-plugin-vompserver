@@ -39,7 +39,9 @@ public:
   virtual bool Initialize(void);
   virtual bool Start(void);
   virtual bool SetupParse(const char *Name, const char *Value);
+#if VDRVERSNUM > 10300
   virtual cString Active(void);
+#endif
 
 private:
 
@@ -109,11 +111,15 @@ bool cPluginVompserver::SetupParse(const char *Name, const char *Value)
   return false;
 }
 
+#if VDRVERSNUM > 10300
+
 cString cPluginVompserver::Active(void)
 {
   if(MVPClient::getNrClients() != 0) return tr("VOMP client(s) connected");
   return NULL;
 }
+
+#endif
 
 VDRPLUGINCREATOR(cPluginVompserver); // Don't touch this!
 
