@@ -27,15 +27,17 @@ pthread_mutex_t threadClientMutex;
 int MVPClient::nr_clients = 0;
 
 
-MVPClient::MVPClient(char* tconfigDirExtra, int tsocket)
+MVPClient::MVPClient(Config* cfgBase, char* tconfigDirExtra, int tsocket)
  : tcp(tsocket)
 {
   lp = NULL;
   rp = NULL;
+  imageFile = 0;
   recordingManager = NULL;
   log = Log::getInstance();
   loggedIn = false;
   configDirExtra = tconfigDirExtra;
+  baseConfig = cfgBase;
   incClients();
 }
 
@@ -257,6 +259,15 @@ void MVPClient::run2()
         break;
       case 22:
         result = processGetChannelPids(data, packetLength);
+        break;
+      case 30:
+        result = processGetMediaList(data, packetLength);
+        break;
+      case 31:
+        result = processGetPicture(data, packetLength);
+        break;
+      case 32:
+        result = processGetImageBlock(data, packetLength);
         break;
     }
 
@@ -1929,3 +1940,190 @@ int MVPClient::processGetMarks(UCHAR* data, int length)
 
   return 1;
 }
+
+
+/**
+  * media List Request:
+  * 4 length
+  * 4 VDR_GETMEDIALIST
+  * 4 flags (currently unused)
+  * n dirname
+  * n+1 0
+  * Media List response:
+  * 4 length
+  * 4 VDR_
+  * 4 numentries
+  * per entry:
+  * 4 media type
+  * 4 time stamp
+  * 4 flags
+  * 4 strlen (incl. 0 Byte)
+  * string
+  * 0
+*/
+#define MLISTBUF 500000
+int MVPClient::processGetMediaList(UCHAR* data, int length)
+{
+  if (length < 4) {
+    log->log("Client", Log::ERR, "getMediaList packet too short %d", length);
+    return 0;
+  }
+  char * dirname=NULL;
+  if (length > 4) {
+    //we have a dirname provided
+    dirname=(char *)&data[4];
+    log->log("Client", Log::DEBUG, "getMediaList for %s", dirname);
+  }
+
+
+  UCHAR* sendBuffer = new UCHAR[MLISTBUF]; // FIXME hope this is enough
+  int count = 4; // leave space for the header
+
+  MediaList * ml=MediaList::readList(baseConfig,dirname);
+  if (ml == NULL) {
+     log->log("Client", Log::ERR, "getMediaList returned NULL");
+     return 0;
+  }
+  //response code (not yet set)
+  *(ULONG*)&sendBuffer[count] = htonl(0);
+  count += 4;
+  //numentries
+  *(ULONG*)&sendBuffer[count] = htonl(ml->Count());
+  count += 4;
+  for (int nm=0;nm<ml->Count() && count < (MLISTBUF-1000);nm++) {
+      Media *m=ml->Get(nm);
+      log->log("Client", Log::DEBUG, "found media entry %s, type=%d",m->getFilename(),m->getType());
+      *(ULONG*)&sendBuffer[count] = htonl(m->getType());
+      count += 4;
+      //time stamp
+      *(ULONG*)&sendBuffer[count] = htonl(m->getTime());
+      count += 4;
+      //flags
+      *(ULONG*)&sendBuffer[count] = htonl(0);
+      count += 4;
+      int len=strlen(m->getFilename());
+      //strlen
+      *(ULONG*)&sendBuffer[count] = htonl(len+1);
+      count += 4;
+      //should have a check for strlen > 1000...
+      strcpy((char *)&sendBuffer[count],m->getFilename());
+      count+=len+1;
+  }
+  delete ml;
+
+  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
+
+  log->log("Client", Log::DEBUG, "getMediaList size  %u", ntohl(*(ULONG*)&sendBuffer[0]));
+
+  tcp.sendPacket(sendBuffer, count);
+  delete[] sendBuffer;
+  log->log("Client", Log::DEBUG, "Written Media list");
+
+  return 1;
+}
+
+/**
+  * get image Request:
+  * 4 length
+  * 4 VDR_GETIMAGE
+  * 4 flags (currently unused)
+  * 4 x size
+  * 4 y size
+  * n filename
+  * n+1 0
+  * get image response:
+  * 4 length
+  * 4 VDR_GETIMAGE
+  * 4 len of image
+*/
+#define MLISTBUF 500000
+int MVPClient::processGetPicture(UCHAR* data, int length)
+{
+  if (length < 12) {
+    log->log("Client", Log::ERR, "getPicture packet too short %d", length);
+    return 0;
+  }
+  if (imageFile) {
+    fclose(imageFile);
+    imageFile=NULL;
+  }
+  char * filename=NULL;
+  if (length > 4) {
+    //we have a dirname provided
+    filename=(char *)&data[4];
+    log->log("Client", Log::DEBUG, "getPicture  %s", filename);
+  }
+  else {
+    log->log("Client", Log::ERR, "getPicture  empty filename");
+  }
+  if (filename) {
+    imageFile=fopen(filename,"r");
+    if (!imageFile) log->log("Client", Log::ERR, "getPicture unable to open %s",filename);
+  }
+  int size=0;
+  if (imageFile) {
+    struct stat st;
+    if ( fstat(fileno(imageFile),&st) == 0) size=st.st_size;
+  }
+  UCHAR* sendBuffer = new UCHAR[12];
+  int count = 4; // leave space for the header
+  //response code (not yet set)
+  *(ULONG*)&sendBuffer[count] = htonl(31);
+  count += 4;
+  //size
+  *(ULONG*)&sendBuffer[count] = htonl(size);
+  count += 4;
+  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
+  log->log("Client", Log::DEBUG, "getPicture size  %u", size);
+
+  tcp.sendPacket(sendBuffer, count);
+  delete[] sendBuffer;
+  log->log("Client", Log::DEBUG, "Written Media list");
+
+  return 1;
+}
+
+
+int MVPClient::processGetImageBlock(UCHAR* data, int length)
+{
+  if (!imageFile)
+  {
+    log->log("Client", Log::DEBUG, "Get image block called when no image active");
+    return 0;
+  }
+
+  ULLONG position = ntohll(*(ULLONG*)data);
+  data += sizeof(ULLONG);
+  ULONG amount = ntohl(*(ULONG*)data);
+
+  log->log("Client", Log::DEBUG, "getImageblock pos = %llu length = %lu", position, amount);
+
+  UCHAR sendBuffer[amount + 4];
+  ULONG amountReceived = 0; // compiler moan.
+  ULLONG cpos=ftell(imageFile);
+  if (position != cpos) {
+    fseek(imageFile,position-cpos,SEEK_CUR);
+  }
+  if (position != (ULLONG)ftell(imageFile)) {
+    log->log("Client", Log::DEBUG, "getImageblock pos = %llu not available", position);
+  }
+  else {
+    amountReceived=fread(&sendBuffer[4],1,amount,imageFile);
+  }
+
+  if (!amountReceived)
+  {
+    sendULONG(0);
+    log->log("Client", Log::DEBUG, "written 4(0) as getblock got 0");
+  }
+  else
+  {
+    *(ULONG*)&sendBuffer[0] = htonl(amountReceived);
+    tcp.sendPacket(sendBuffer, amountReceived + 4);
+    log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
+  }
+
+  return 1;
+}
+
+

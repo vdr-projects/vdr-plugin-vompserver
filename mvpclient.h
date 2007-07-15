@@ -40,11 +40,12 @@
 #include "mvpreceiver.h"
 #include "recplayer.h"
 #include "config.h"
+#include "media.h"
 
 class MVPClient
 {
   public:
-    MVPClient(char* configDirExtra, int tsocket);
+    MVPClient(Config* baseConfig, char* configDirExtra, int tsocket);
     ~MVPClient();
 
     int run();
@@ -58,9 +59,11 @@ class MVPClient
     int initted;
     TCP tcp;
     Config config;
+    Config* baseConfig;
     MVPReceiver* lp;
     bool loggedIn;
     char* configDirExtra;
+    FILE* imageFile;
 
 
     cRecordings* recordingManager;
@@ -87,6 +90,9 @@ class MVPClient
     int processGetRecInfo(UCHAR* data, int length);
     int processGetMarks(UCHAR* data, int length);
     int processGetChannelPids(UCHAR* data, int length);
+    int processGetMediaList(UCHAR* data, int length);
+    int processGetPicture(UCHAR* data, int length);
+    int processGetImageBlock(UCHAR* data, int length);
 
     int processReScanRecording(UCHAR* data, int length);           // FIXME obselete
 

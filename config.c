@@ -62,6 +62,11 @@ int Config::init(char* takeFileName)
   return 1;
 }
 
+int Config::status()
+{
+  return initted;
+}
+
 int Config::shutdown()
 {
   if (!initted) return 1;
