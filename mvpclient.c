@@ -2141,8 +2141,8 @@ int MVPClient::processDeleteTimer(UCHAR* buffer, int length)
   INT delChannel = ntohl(*(ULONG*)&buffer[position]); position += 4;
   INT delWeekdays = ntohl(*(ULONG*)&buffer[position]); position += 4;
   INT delDay = ntohl(*(ULONG*)&buffer[position]); position += 4;  
-  ULONG delStart = ntohl(*(ULONG*)&buffer[position]); position += 4;  
-  ULONG delStop = ntohl(*(ULONG*)&buffer[position]); position += 4;
+  INT delStart = ntohl(*(ULONG*)&buffer[position]); position += 4;  
+  INT delStop = ntohl(*(ULONG*)&buffer[position]); position += 4;
     
   cTimer* ti = NULL;
   for (ti = Timers.First(); ti; ti = Timers.Next(ti))
