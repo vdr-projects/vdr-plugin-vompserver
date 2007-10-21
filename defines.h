@@ -29,4 +29,6 @@ typedef uint32_t UINT;
 typedef uint32_t ULONG;
 typedef uint64_t ULLONG;
 
+typedef int32_t INT;
+
 #endif

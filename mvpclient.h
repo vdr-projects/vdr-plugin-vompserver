@@ -93,6 +93,7 @@ class MVPClient
     int processGetMediaList(UCHAR* data, int length);
     int processGetPicture(UCHAR* data, int length);
     int processGetImageBlock(UCHAR* data, int length);
+    int processDeleteTimer(UCHAR* buffer, int length);
 
     int processReScanRecording(UCHAR* data, int length);           // FIXME obselete
 

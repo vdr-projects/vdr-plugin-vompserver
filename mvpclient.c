@@ -260,6 +260,9 @@ void MVPClient::run2()
       case 22:
         result = processGetChannelPids(data, packetLength);
         break;
+      case 23:
+        result = processDeleteTimer(data, packetLength);
+        break;
       case 30:
         result = processGetMediaList(data, packetLength);
         break;
@@ -1566,6 +1569,8 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length)
     *(ULONG*)&sendBuffer[count] = htonl(timer->Channel()->Number());      count += 4;
     *(ULONG*)&sendBuffer[count] = htonl(timer->StartTime());              count += 4;
     *(ULONG*)&sendBuffer[count] = htonl(timer->StopTime());               count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->Day());                    count += 4;
+    *(ULONG*)&sendBuffer[count] = htonl(timer->WeekDays());               count += 4;
 
     fileName = timer->File();
     strcpy((char*)&sendBuffer[count], fileName);
@@ -2126,4 +2131,56 @@ int MVPClient::processGetImageBlock(UCHAR* data, int length)
   return 1;
 }
 
+int MVPClient::processDeleteTimer(UCHAR* buffer, int length)
+{
+  log->log("Client", Log::DEBUG, "Delete timer called");
+  // get timer
+  
+  int position = 0;
+  
+  INT delChannel = ntohl(*(ULONG*)&buffer[position]); position += 4;
+  INT delWeekdays = ntohl(*(ULONG*)&buffer[position]); position += 4;
+  INT delDay = ntohl(*(ULONG*)&buffer[position]); position += 4;  
+  ULONG delStart = ntohl(*(ULONG*)&buffer[position]); position += 4;  
+  ULONG delStop = ntohl(*(ULONG*)&buffer[position]); position += 4;
+    
+  cTimer* ti = NULL;
+  for (ti = Timers.First(); ti; ti = Timers.Next(ti))
+  {
+    if  ( (ti->Channel()->Number() == delChannel)
+     &&   ((ti->WeekDays() && (ti->WeekDays() == delWeekdays)) || (!ti->WeekDays() && (ti->Day() == delDay)))
+     &&   (ti->StartTime() == delStart)
+     &&   (ti->StopTime() == delStop) )
+       break;
+  }
+  
+  if (!ti)
+  {
+    sendULONG(4);
+    return 1;
+  }
+          
+  if (!Timers.BeingEdited())
+  {
+    if (!ti->Recording())
+    {
+      Timers.Del(ti);
+      Timers.SetModified();
+      sendULONG(10);
+      return 1;
+    }
+    else
+    {
+      log->log("Client", Log::ERR, "Unable to delete timer - timer is running");
+      sendULONG(3);
+      return 1;
+    }  
+  }
+  else
+  {
+    log->log("Client", Log::ERR, "Unable to delete timer - timers being edited at VDR");
+    sendULONG(1);
+    return 1;
+  }  
+}
 
