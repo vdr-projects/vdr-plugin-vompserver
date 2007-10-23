@@ -15,7 +15,7 @@ MVPReceiver* MVPReceiver::create(cChannel* channel, int priority)
   {
     Log::getInstance()->log("MVPReceiver", Log::DEBUG, "Needs detach receivers");
 
-    // Need to detach other receivers or VDR will shut down
+    // Need to detach other receivers or VDR will shut down??
   }
 
   MVPReceiver* m = new MVPReceiver(channel, device);
