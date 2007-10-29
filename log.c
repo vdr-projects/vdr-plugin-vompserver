@@ -94,7 +94,7 @@ int Log::shutdown()
   return 1;
 }
 
-int Log::log(char *fromModule, int level, char* message, ...)
+int Log::log(const char *fromModule, int level, const char* message, ...)
 {
   if (!initted) return 0;
 

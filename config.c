@@ -164,7 +164,7 @@ int Config::copyRest(FILE* newFile)
   return 1;
 }
 
-int Config::deleteValue(char* section, char* key)
+int Config::deleteValue(const char* section, char* key)
 {
   if (!initted) return 0;
   if (!openFile()) return 0;
@@ -188,7 +188,7 @@ int Config::deleteValue(char* section, char* key)
   return copyRest(newFile);
 }
 
-int Config::setValueLong(char* section, char* key, long newValue)
+int Config::setValueLong(const char* section, char* key, long newValue)
 {
   char longBuffer[50];
   sprintf(longBuffer, "%li", newValue);
@@ -209,7 +209,7 @@ int Config::setValueDouble(char* section, char* key, double newValue)
   return setValueString(section, key, doubleBuffer);
 }
 
-int Config::setValueString(char* section, char* key, char* newValue)
+int Config::setValueString(const char* section, const char* key, const char* newValue)
 {
   if (!initted) return 0;
   if (!openFile()) return 0;
@@ -263,7 +263,7 @@ int Config::setValueString(char* section, char* key, char* newValue)
   }
 }
 
-char* Config::getSectionKeyNames(char* section, int& numberOfReturns, int& allKeysSize)
+char* Config::getSectionKeyNames(const char* section, int& numberOfReturns, int& allKeysSize)
 {
   numberOfReturns = 0;
   allKeysSize = 0;
@@ -305,7 +305,7 @@ char* Config::getSectionKeyNames(char* section, int& numberOfReturns, int& allKe
 
 // END HERE
 
-int Config::findSection(char* section)
+int Config::findSection(const char* section)
 {
   if (!initted || !file) return 0;
   if (strlen(section) > (BUFFER_LENGTH-2))
@@ -328,7 +328,7 @@ int Config::findSection(char* section)
   return 0;
 }
 
-int Config::findKey(char* key)
+int Config::findKey(const char* key)
 {
   if (!initted || !file) return 0;
 
@@ -369,7 +369,7 @@ int Config::findKey(char* key)
   return 0;
 }
 
-char* Config::getValueString(char* section, char* key)
+char* Config::getValueString(const char* section, const char* key)
 {
   if (!initted) return NULL;
   if (!openFile()) return NULL;
@@ -395,7 +395,7 @@ char* Config::getValueString(char* section, char* key)
   return returnString;
 }
 
-long Config::getValueLong(char* section, char* key, int* failure)
+long Config::getValueLong(const char* section, const char* key, int* failure)
 {
   *failure = 1;
   if (!initted) return 0;

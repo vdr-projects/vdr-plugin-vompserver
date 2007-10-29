@@ -126,7 +126,7 @@ unsigned char DatagramSocket::waitforMessage(unsigned char how)
   */
 }
 
-void DatagramSocket::send(char *ipa, USHORT port, char *message, int length)
+void DatagramSocket::send(const char *ipa, USHORT port, char *message, int length)
 {
   int sentLength = 0;
 

@@ -1006,7 +1006,7 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
   ULONG sendBufferLength = 100000;
   ULONG sendBufferUsed = sizeof(ULONG); // leave a hole for the entire packet length
 
-  char* empty = "";
+  const char* empty = "";
 
   // assign all the event info to temp vars then we know exactly what size they are
   ULONG thisEventID;

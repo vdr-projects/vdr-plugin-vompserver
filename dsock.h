@@ -47,7 +47,7 @@ class DatagramSocket
     bool init(USHORT);                 // port
     void shutdown();
     unsigned char waitforMessage(unsigned char); // int =0-block =1-new wait =2-continue wait
-    void send(char *, USHORT, char *, int); // send wants: IP Address ddn style, port,
+    void send(const char *, USHORT, char *, int); // send wants: IP Address ddn style, port,
                                             // data, length of data
 
     char*  getData(void)             { return buf; }      // returns a pointer to the data

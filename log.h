@@ -37,7 +37,7 @@ class Log
 
     int init(int defaultLevel, char* fileName);
     int shutdown();
-    int log(char *fromModule, int level, char *message, ...);
+    int log(const char *fromModule, int level, const char *message, ...);
     void upLogLevel();
     void downLogLevel();
 

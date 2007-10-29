@@ -42,18 +42,18 @@ class Config
     int shutdown();
     int status();
 
-    char* getValueString(char* section, char* key);
-    long getValueLong(char* section, char* key, int* failure);
+    char* getValueString(const char* section, const char* key);
+    long getValueLong(const char* section, const char* key, int* failure);
     long long getValueLongLong(char* section, char* key, int* failure);
     double getValueDouble(char* section, char* key, int* failure);
 
-    int setValueString(char* section, char* key, char* newValue);
-    int setValueLong(char* section, char* key, long newValue);
+    int setValueString(const char* section, const char* key, const char* newValue);
+    int setValueLong(const char* section, char* key, long newValue);
     int setValueLongLong(char* section, char* key, long long newValue);
     int setValueDouble(char* section, char* key, double newValue);
 
-    int deleteValue(char* section, char* key); // err.. delete "key".
-    char* getSectionKeyNames(char* section, int& numberOfReturns, int& length);
+    int deleteValue(const char* section, char* key); // err.. delete "key".
+    char* getSectionKeyNames(const char* section, int& numberOfReturns, int& length);
 
   private:
     pthread_mutex_t fileLock;
@@ -70,8 +70,8 @@ class Config
     int openFile();
     void closeFile();
     int readLine();
-    int findSection(char* section);
-    int findKey(char* key);
+    int findSection(const char* section);
+    int findKey(const char* key);
     void trim(char* sting);
     FILE* copyToHere(long position);
     int copyRest(FILE* newFile);
