@@ -141,7 +141,7 @@ void Bootpd::processRequest(UCHAR* data, int length)
   // See if we should enforce the IP from the config file
   int failure;
   long enforceConfigIP = config.getValueLong("Boot", "Override IP", &failure);
-  if (newClientIP && enforceConfigIP)
+  if (newClientIP[0] && enforceConfigIP)
   {
     log->log("BOOTPD", Log::DEBUG, "Will enforce IP %s on MVP even if it already has another", newClientIP);
   }
