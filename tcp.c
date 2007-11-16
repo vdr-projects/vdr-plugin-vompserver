@@ -27,6 +27,7 @@ TCP::TCP(int tsocket)
   sock = -1;
   connected = 0;
   readTimeoutEnabled = 1;
+  pthread_mutex_init(&sendLock, NULL);
 
   if (tsocket)
   {
@@ -221,7 +222,13 @@ int TCP::readData(UCHAR* buffer, int totalBytes)
 
 int TCP::sendPacket(UCHAR* buf, size_t count)
 {
-  if (!connected) return 0;
+  pthread_mutex_lock(&sendLock);
+  
+  if (!connected)
+  {
+    pthread_mutex_unlock(&sendLock);
+    return 0;
+  }
 
   unsigned int bytesWritten = 0;
   int thisWrite;
@@ -241,6 +248,7 @@ int TCP::sendPacket(UCHAR* buf, size_t count)
     {
       cleanup();
       log->log("TCP", Log::DEBUG, "TCP: error or timeout");
+      pthread_mutex_unlock(&sendLock);
       return 0;  // error, or timeout
     }
 
@@ -252,6 +260,7 @@ int TCP::sendPacket(UCHAR* buf, size_t count)
       // and sets errno to EGAGAIN. but we use select so it wouldn't do that anyway.
       cleanup();
       log->log("TCP", Log::DEBUG, "Detected connection closed");
+      pthread_mutex_unlock(&sendLock);      
       return 0;
     }
     bytesWritten += thisWrite;
@@ -259,6 +268,7 @@ int TCP::sendPacket(UCHAR* buf, size_t count)
 //    log->log("TCP", Log::DEBUG, "Bytes written now: %u", bytesWritten);
     if (bytesWritten == count)
     {
+      pthread_mutex_unlock(&sendLock);
       return 1;
     }
     else
@@ -267,14 +277,12 @@ int TCP::sendPacket(UCHAR* buf, size_t count)
       {
         cleanup();
         log->log("TCP", Log::DEBUG, "too many writes");
+        pthread_mutex_unlock(&sendLock);
         return 0;
       }
     }
   }
 }
-
-
-
 
 void TCP::dump(unsigned char* data, USHORT size)
 {

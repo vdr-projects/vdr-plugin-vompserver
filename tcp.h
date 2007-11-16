@@ -36,6 +36,7 @@
 #include <arpa/inet.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <pthread.h>
 
 #include "log.h"
 
@@ -59,7 +60,8 @@ class TCP
     int connectTo(char *host, unsigned short port);
     int sendPacket(UCHAR*, size_t size);
     UCHAR* receivePacket();
-
+    int readData(UCHAR* buffer, int totalBytes);
+    
     // Get methods
     int isConnected();
     int getDataLength();
@@ -73,9 +75,9 @@ class TCP
     int connected;
     int readTimeoutEnabled;
     int dataLength;
-
+    pthread_mutex_t sendLock;
+    
     void cleanup();
-    int readData(UCHAR* buffer, int totalBytes);
 };
 
 #endif
