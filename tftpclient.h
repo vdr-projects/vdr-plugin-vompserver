@@ -24,7 +24,9 @@
 #include <stdio.h>
 #include <signal.h>
 #include <ctype.h>
+#ifndef VOMPSTANDALONE
 #include <vdr/plugin.h>
+#endif
 
 #include "defines.h"
 #include "log.h"

@@ -18,7 +18,10 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
+#ifndef VOMPSTANDALONE
 #include <vdr/plugin.h>
+#endif
+#include <iostream>
 #include <getopt.h>
 
 #include "mvpserver.h"
@@ -27,6 +30,7 @@
 static const char *VERSION        = "0.2.7";
 static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
 
+#ifndef VOMPSTANDALONE
 class cPluginVompserver : public cPlugin
 {
 public:
@@ -123,3 +127,21 @@ cString cPluginVompserver::Active(void)
 
 VDRPLUGINCREATOR(cPluginVompserver); // Don't touch this!
 
+#else //VOMPSTANDALONE
+
+int main(int argc, char **argv) {
+  char *cdir=".";
+    if (argc > 1) {
+      cdir=argv[1];
+    }
+  std::cout << "Vompserver starting Version " << VERSION << " " << DESCRIPTION << std::endl;
+  MVPServer server;
+  if ( server.run(cdir) != 1) {
+	std::cerr << "unable to start vompserver" << std::endl;
+	return 1;
+    }
+  while (1) sleep(1);
+  return 0;
+}
+
+#endif //VOMPSTANDALONE

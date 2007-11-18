@@ -99,7 +99,11 @@ void Bootpd::processRequest(UCHAR* data, int length)
 
   // Open a config file for the given MAC
 
+#ifndef VOMPSTANDALONE
   const char* configDir = cPlugin::ConfigDirectory();
+#else
+  const char* configDir = ".";
+#endif
 //  char* configDir = "/opt/dvb/vdr-config-1.3/plugins";
   if (!configDir)
   {

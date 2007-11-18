@@ -27,9 +27,9 @@
 #include <endian.h>
 
 #include <unistd.h> // sleep
+#include <vector>
 
-#include <vdr/tools.h>
-
+using namespace std;
 //#include "defines.h"
 //#include "tcp.h"
 //#include "mvpreceiver.h"
@@ -47,7 +47,7 @@
 
 #define MEDIA_TYPE_ALL (1+2+4+8)
 
-class Media : public cListObject
+class Media 
 {
   public:
     /**
@@ -68,9 +68,10 @@ class Media : public cListObject
 
 };
 
-class MediaList : public cList<Media> {
+class MediaList : public vector<Media*> {
   public:
     static MediaList *readList(Config *cfg,const char * dirname,int type=MEDIA_TYPE_ALL);
+    ~MediaList();
   };
 
 #endif

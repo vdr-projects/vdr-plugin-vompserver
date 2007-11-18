@@ -19,6 +19,9 @@
 */
 
 #include "mvpserver.h"
+#ifdef VOMPSTANDALONE
+#include <iostream>
+#endif
 
 extern pthread_mutex_t threadClientMutex;
 
@@ -58,7 +61,12 @@ int MVPServer::run(char* tconfigDirExtra)
   configDirExtra = tconfigDirExtra;
 
   // Start config
+#ifndef VOMPSTANDALONE
   const char* configDir = cPlugin::ConfigDirectory(configDirExtra);
+#else
+  const char* configDir = ".";
+#define dsyslog(x) std::cout << x << std::endl;
+#endif
   if (!configDir)
   {
     dsyslog("VOMP: Could not get config dir from VDR");

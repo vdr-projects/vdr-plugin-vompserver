@@ -19,9 +19,11 @@
 */
 
 #include "media.h"
-//#include "tools.h"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <dirent.h>
+#include <iostream>
+
 
 
 
@@ -67,6 +69,19 @@ static struct mtype{
 //#define NUMTYPES (sizeof(mediatypes)/sizeof(mtype))
 #define NUMTYPES 6
 
+//helper from vdr tools.c
+bool endswith(const char *s, const char *p)
+{
+  const char *se = s + strlen(s) - 1;
+  const char *pe = p + strlen(p) - 1;
+  while (pe >= p) {
+        if (*pe-- != *se-- || (se < s && pe >= p))
+           return false;
+        }
+  return true;
+}
+
+
 MediaList * MediaList::readList(Config * cfg,const char * dirname, int type) {
   MediaList *rt=NULL;
   if (dirname == NULL) {
@@ -79,7 +94,7 @@ MediaList * MediaList::readList(Config * cfg,const char * dirname, int type) {
       if (dn != NULL) {
         if (rt == NULL) rt=new MediaList();
         Media *m=new Media(MEDIA_TYPE_DIR,dn,0);
-        rt->Add(m);
+        rt->push_back(m);
         Log::getInstance()->log("Media",Log::DEBUG,"added base dir %s",dn);
        }
      }
@@ -89,9 +104,14 @@ MediaList * MediaList::readList(Config * cfg,const char * dirname, int type) {
   if (dirname == NULL) dirname="/";
   rt=new MediaList();
   //open the directory and read out the entries
-  cReadDir d(dirname);
+  DIR *d=opendir(dirname);
   struct dirent *e;
-  while ((e=d.Next()) != NULL) {
+  union { // according to "The GNU C Library Reference Manual"
+    struct dirent d;
+    char b[offsetof(struct dirent, d_name) + NAME_MAX + 1];
+    } u;
+
+  while (d != NULL && (readdir_r(d,&u.d,&e) == 0) && e != NULL) {
     {
     const char * fname=e->d_name;
     if ( fname == NULL) continue;
@@ -117,16 +137,21 @@ MediaList * MediaList::readList(Config * cfg,const char * dirname, int type) {
     //only consider entries we accept by type here
     if (mtype & type) {
      Media * m =new Media(mtype,fname,(int)(st.st_mtime));
-     rt->Add(m);
+     rt->push_back(m);
      Log::getInstance()->log("Media",Log::DEBUG,"added entry %s, type=%d",fname,mtype);
      }
     }
   }
-  //test
-  //Media *m=new Media(MEDIA_TYPE_DIR,"testMedia1",0);
-  //rt->Add(m);
+  if (d != NULL) closedir(d);
   return rt;
   }
 
+MediaList::~MediaList() {
+  MediaList::iterator it=this->begin();
+  while (it < this->end()) {
+    delete *it;
+    it++;
+  }
+}
 
 

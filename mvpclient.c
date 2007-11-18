@@ -30,10 +30,12 @@ int MVPClient::nr_clients = 0;
 MVPClient::MVPClient(Config* cfgBase, char* tconfigDirExtra, int tsocket)
  : tcp(tsocket)
 {
+#ifndef VOMPSTANDALONE
   lp = NULL;
   rp = NULL;
-  imageFile = 0;
   recordingManager = NULL;
+#endif
+  imageFile = 0;
   log = Log::getInstance();
   loggedIn = false;
   configDirExtra = tconfigDirExtra;
@@ -44,6 +46,7 @@ MVPClient::MVPClient(Config* cfgBase, char* tconfigDirExtra, int tsocket)
 MVPClient::~MVPClient()
 {
   log->log("Client", Log::DEBUG, "MVP client destructor");
+#ifndef VOMPSTANDALONE
   if (lp)
   {
     delete lp;
@@ -58,7 +61,7 @@ MVPClient::~MVPClient()
     rp = NULL;
     recordingManager = NULL;
   }
-
+#endif
   if (loggedIn) cleanConfig();
   decClients();
 }
@@ -88,6 +91,7 @@ ULLONG MVPClient::htonll(ULLONG a)
   #endif
 }
 
+#ifndef VOMPSTANDALONE
 cChannel* MVPClient::channelFromNumber(ULONG channelNumber)
 {
   cChannel* channel = NULL;
@@ -126,6 +130,7 @@ void MVPClient::writeResumeData()
                           (char*)rp->getCurrentRecording()->FileName(),
                           rp->frameNumberFromPosition(rp->getLastPosition()) );
 }
+#endif
 
 void MVPClient::sendULONG(ULONG ul)
 {
@@ -244,6 +249,7 @@ void MVPClient::run2()
       case 1:
         result = processLogin(data, extraDataLength);
         break;
+#ifndef VOMPSTANDALONE
       case 2:
         result = processGetRecordingsList(data, extraDataLength);
         break;
@@ -268,12 +274,14 @@ void MVPClient::run2()
       case 10:
         result = processGetChannelSchedule(data, extraDataLength);
         break;
+#endif
       case 11:
         result = processConfigSave(data, extraDataLength);
         break;
       case 12:
         result = processConfigLoad(data, extraDataLength);
         break;
+#ifndef VOMPSTANDALONE
       case 13:
         result = processReScanRecording(data, extraDataLength);         // FIXME obselete
         break;
@@ -307,6 +315,7 @@ void MVPClient::run2()
       case 23:
         result = processDeleteTimer(data, extraDataLength);
         break;
+#endif
       case 30:
         result = processGetMediaList(data, extraDataLength);
         break;
@@ -329,7 +338,11 @@ int MVPClient::processLogin(UCHAR* buffer, int length)
 
   // Open the config
 
+#ifndef VOMPSTANDALONE
   const char* configDir = cPlugin::ConfigDirectory(configDirExtra);
+#else
+  const char* configDir = ".";
+#endif
   if (!configDir)
   {
     log->log("Client", Log::DEBUG, "No config dir!");
@@ -358,6 +371,7 @@ int MVPClient::processLogin(UCHAR* buffer, int length)
   return 1;
 }
 
+#ifndef VOMPSTANDALONE
 int MVPClient::processGetRecordingsList(UCHAR* data, int length)
 {
   UCHAR* sendBuffer = new UCHAR[50000]; // hope this is enough
@@ -1162,6 +1176,8 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
   return 1;
 }
 
+#endif //VOMPSTANDALONE
+
 int MVPClient::processConfigSave(UCHAR* buffer, int length)
 {
   char* section = (char*)buffer;
@@ -1243,6 +1259,7 @@ void MVPClient::cleanConfig()
 {
   log->log("Client", Log::DEBUG, "Clean config");
 
+#ifndef VOMPSTANDALONE
   cRecordings Recordings;
   Recordings.Load();
 
@@ -1270,6 +1287,7 @@ void MVPClient::cleanConfig()
   }
 
   delete[] resumes;
+#endif
 }
 
 
@@ -1583,6 +1601,7 @@ recording is a bool, 0 for not currently recording, 1 for currently recording
 pending is a bool, 0 for would not be trying to record this right now, 1 for would/is trying to record this right now
 */
 
+#ifndef VOMPSTANDALONE
 
 int MVPClient::processGetTimers(UCHAR* buffer, int length)
 {
@@ -1699,6 +1718,8 @@ int MVPClient::processSetTimer(UCHAR* buffer, int length)
   return 1;
 }
 
+#endif //VOMPSTANDALONE
+
 void MVPClient::incClients()
 {
   pthread_mutex_lock(&threadClientMutex);
@@ -1721,6 +1742,8 @@ int MVPClient::getNrClients()
   pthread_mutex_unlock(&threadClientMutex);
   return nrClients;
 }
+
+#ifndef VOMPSTANDALONE
 
 int MVPClient::processGetRecInfo(UCHAR* data, int length)
 {
@@ -1992,6 +2015,8 @@ int MVPClient::processGetMarks(UCHAR* data, int length)
   return 1;
 }
 
+#endif //VOMPSTANDALONE
+
 
 /**
   * media List Request:
@@ -2039,10 +2064,10 @@ int MVPClient::processGetMediaList(UCHAR* data, int length)
   *(ULONG*)&sendBuffer[count] = htonl(0);
   count += 4;
   //numentries
-  *(ULONG*)&sendBuffer[count] = htonl(ml->Count());
+  *(ULONG*)&sendBuffer[count] = htonl(ml->size());
   count += 4;
-  for (int nm=0;nm<ml->Count() && count < (MLISTBUF-1000);nm++) {
-      Media *m=ml->Get(nm);
+  for (MediaList::iterator nm=ml->begin();nm<ml->end() && count < (MLISTBUF-1000);nm++) {
+      Media *m=*nm;
       log->log("Client", Log::DEBUG, "found media entry %s, type=%d",m->getFilename(),m->getType());
       *(ULONG*)&sendBuffer[count] = htonl(m->getType());
       count += 4;
@@ -2075,8 +2100,6 @@ int MVPClient::processGetMediaList(UCHAR* data, int length)
 
 /**
   * get image Request:
-  * 4 length
-  * 4 VDR_GETIMAGE
   * 4 flags (currently unused)
   * 4 x size
   * 4 y size
@@ -2099,9 +2122,9 @@ int MVPClient::processGetPicture(UCHAR* data, int length)
     imageFile=NULL;
   }
   char * filename=NULL;
-  if (length > 4) {
+  if (length > 12) {
     //we have a dirname provided
-    filename=(char *)&data[4];
+    filename=(char *)&data[12];
     log->log("Client", Log::DEBUG, "getPicture  %s", filename);
   }
   else {
@@ -2177,6 +2200,8 @@ int MVPClient::processGetImageBlock(UCHAR* data, int length)
   return 1;
 }
 
+#ifndef VOMPSTANDALONE
+
 int MVPClient::processDeleteTimer(UCHAR* buffer, int length)
 {
   log->log("Client", Log::DEBUG, "Delete timer called");
@@ -2230,3 +2255,4 @@ int MVPClient::processDeleteTimer(UCHAR* buffer, int length)
   }  
 }
 
+#endif
