@@ -49,7 +49,7 @@ DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 OBJS = $(PLUGIN).o dsock.o mvpserver.o udpreplier.o bootpd.o tftpd.o mvpclient.o tcp.o \
                    ringbuffer.o mvprelay.o \
                    recplayer.o config.o log.o thread.o mvpreceiver.o tftpclient.o \
-                   media.o
+                   media.o responsepacket.o
 
 ### Implicit rules:
 
