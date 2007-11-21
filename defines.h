@@ -26,6 +26,7 @@
 typedef uint8_t  UCHAR;
 typedef uint16_t USHORT;
 typedef uint32_t UINT;
+typedef int32_t  LONG;
 typedef uint32_t ULONG;
 typedef uint64_t ULLONG;
 

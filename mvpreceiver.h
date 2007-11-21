@@ -28,14 +28,16 @@
 #include "log.h"
 #include "thread.h"
 #include "ringbuffer.h"
+#include "tcp.h"
+#include "thread.h"
 
-class MVPReceiver : public cReceiver
+class MVPReceiver : public cReceiver, public Thread
 {
   public:
     static MVPReceiver* create(cChannel*, int priority);
     virtual ~MVPReceiver();
-    int init();
-    unsigned long getBlock(unsigned char* buffer, unsigned long amount);
+    int init(TCP* tcp, ULONG streamID);
+    ULONG getBlock(unsigned char* buffer, unsigned long amount);
     bool isVdrActivated();
 
   private:
@@ -47,9 +49,17 @@ class MVPReceiver : public cReceiver
     Ringbuffer processed;    // A simpler deleting ringbuffer for processed data
     pthread_mutex_t processedRingLock; // needs outside locking
 
+    TCP* tcp;
+    ULONG streamID;
+    ULONG streamDataCollected;
+    const static int streamChunkSize = 50000;
+
     // cReciever stuff
     void Activate(bool On);
     void Receive(UCHAR *Data, int Length);
+    
+  protected:
+    void threadMethod();
 };
 
 #endif

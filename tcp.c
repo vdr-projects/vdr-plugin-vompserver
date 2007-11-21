@@ -253,6 +253,7 @@ int TCP::sendPacket(UCHAR* buf, size_t count)
     }
 
     thisWrite = write(sock, &buf[bytesWritten], count - bytesWritten);
+          log->log("TCP", Log::DEBUG, "written %i", thisWrite);
     if (!thisWrite)
     {
       // if write returns 0 then connection is closed ?

@@ -34,6 +34,8 @@ MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
   logger = Log::getInstance();
   vdrActivated = false;
   inittedOK = 0;
+  streamID = 0;
+  tcp = NULL;
 
 //  logger->log("MVPReceiver", Log::DEBUG, "Channel has VPID %i APID %i", channel->Vpid(), channel->Apid(0));
 
@@ -47,21 +49,32 @@ MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
   device->AttachReceiver(this);
 }
 
-int MVPReceiver::init()
+int MVPReceiver::init(TCP* ttcp, ULONG tstreamID)
 {
+  tcp = ttcp;
+  streamID = tstreamID;
   return inittedOK;
 }
 
 MVPReceiver::~MVPReceiver()
 {
   Detach();
+  threadStop();
 }
 
 void MVPReceiver::Activate(bool on)
 {
   vdrActivated = on;
-  if (on) logger->log("MVPReceiver", Log::DEBUG, "VDR active");
-  else logger->log("MVPReceiver", Log::DEBUG, "VDR inactive");
+  if (on) 
+  {
+    logger->log("MVPReceiver", Log::DEBUG, "VDR active");
+    threadStart();
+  }
+  else
+  {
+    logger->log("MVPReceiver", Log::DEBUG, "VDR inactive");
+    threadStop();
+  }
 }
 
 bool MVPReceiver::isVdrActivated()
@@ -73,11 +86,36 @@ void MVPReceiver::Receive(UCHAR* data, int length)
 {
   pthread_mutex_lock(&processedRingLock);
   processed.put(data, length);
+  if (processed.getContent() > streamChunkSize) threadSignal();
   pthread_mutex_unlock(&processedRingLock);
 }
 
-unsigned long MVPReceiver::getBlock(unsigned char* buffer, unsigned long amount)
+void MVPReceiver::threadMethod()
 {
+  UCHAR buffer[streamChunkSize + 12];
+  int amountReceived;
+
+//   threadSetKillable(); ??
+
+  while(1)
+  {
+    threadWaitForSignal();
+    threadCheckExit();
+    
+    pthread_mutex_lock(&processedRingLock);
+    amountReceived = processed.get(buffer+12, streamChunkSize);
+    pthread_mutex_unlock(&processedRingLock);
+    
+    *(ULONG*)&buffer[0] = htonl(2); // stream channel
+    *(ULONG*)&buffer[4] = htonl(streamID);
+    *(ULONG*)&buffer[8] = htonl(amountReceived);
+    tcp->sendPacket(buffer, amountReceived + 12);
+  }  
+}
+
+ULONG MVPReceiver::getBlock(unsigned char* buffer, unsigned long amount)
+{
+/*
   pthread_mutex_lock(&processedRingLock);
 
   int numTries = 0;
@@ -97,4 +135,7 @@ unsigned long MVPReceiver::getBlock(unsigned char* buffer, unsigned long amount)
   unsigned long amountReceived = processed.get(buffer, amount);
   pthread_mutex_unlock(&processedRingLock);
   return amountReceived;
+  */
+  sleep(10);
+  return 0;
 }
