@@ -948,7 +948,7 @@ int MVPClient::processStartStreamingRecording(UCHAR* data, int length, ResponseP
   {
     recplayer = new RecPlayer(recording);
 
-    rp->addULONG(recplayer->getLengthBytes());
+    rp->addULLONG(recplayer->getLengthBytes());
     rp->addULONG(recplayer->getLengthFrames());
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
@@ -980,7 +980,7 @@ int MVPClient::processPositionFromFrameNumber(UCHAR* data, int length, ResponseP
     retval = recplayer->positionFromFrameNumber(frameNumber);
   }
 
-  rp->addULONG(retval);
+  rp->addULLONG(retval);
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
   delete rp;
