@@ -20,6 +20,8 @@
 
 #include "mvpclient.h"
 
+#include "responsepacket.h"
+
 // This is here else it causes compile errors with something in libdvbmpeg
 //#include <vdr/menu.h>
 
@@ -32,7 +34,7 @@ MVPClient::MVPClient(Config* cfgBase, char* tconfigDirExtra, int tsocket)
 {
 #ifndef VOMPSTANDALONE
   lp = NULL;
-  rp = NULL;
+  recplayer = NULL;
   recordingManager = NULL;
 #endif
   imageFile = 0;
@@ -46,24 +48,47 @@ MVPClient::MVPClient(Config* cfgBase, char* tconfigDirExtra, int tsocket)
 MVPClient::~MVPClient()
 {
   log->log("Client", Log::DEBUG, "MVP client destructor");
-#ifndef VOMPSTANDALONE
+#ifndef VOMPSTANDALONE  
   if (lp)
   {
     delete lp;
     lp = NULL;
   }
-  else if (rp)
+  else if (recplayer)
   {
     writeResumeData();
 
-    delete rp;
+    delete recplayer;
     delete recordingManager;
-    rp = NULL;
+    recplayer = NULL;
     recordingManager = NULL;
   }
 #endif
   if (loggedIn) cleanConfig();
   decClients();
+}
+
+void MVPClient::incClients()
+{
+  pthread_mutex_lock(&threadClientMutex);
+  MVPClient::nr_clients++;
+  pthread_mutex_unlock(&threadClientMutex);
+}
+
+void MVPClient::decClients()
+{
+  pthread_mutex_lock(&threadClientMutex);
+  MVPClient::nr_clients--;
+  pthread_mutex_unlock(&threadClientMutex);
+}
+
+int MVPClient::getNrClients()
+{
+  int nrClients;
+  pthread_mutex_lock(&threadClientMutex);
+  nrClients = MVPClient::nr_clients;
+  pthread_mutex_unlock(&threadClientMutex);
+  return nrClients;
 }
 
 ULLONG MVPClient::ntohll(ULLONG a)
@@ -127,19 +152,45 @@ cChannel* MVPClient::channelFromNumber(ULONG channelNumber)
 void MVPClient::writeResumeData()
 {
   config.setValueLong("ResumeData",
-                          (char*)rp->getCurrentRecording()->FileName(),
-                          rp->frameNumberFromPosition(rp->getLastPosition()) );
+                          (char*)recplayer->getCurrentRecording()->FileName(),
+                          recplayer->frameNumberFromPosition(recplayer->getLastPosition()) );
 }
 #endif
 
-void MVPClient::sendULONG(ULONG ul)
+void MVPClient::cleanConfig()
 {
-  UCHAR sendBuffer[8];
-  *(ULONG*)&sendBuffer[0] = htonl(4);
-  *(ULONG*)&sendBuffer[4] = htonl(ul);
+  log->log("Client", Log::DEBUG, "Clean config");
 
-  tcp.sendPacket(sendBuffer, 8);
-  log->log("Client", Log::DEBUG, "written ULONG %lu", ul);
+#ifndef VOMPSTANDALONE
+
+  cRecordings Recordings;
+  Recordings.Load();
+
+  int numReturns;
+  int length;
+  char* resumes = config.getSectionKeyNames("ResumeData", numReturns, length);
+  char* position = resumes;
+  for(int k = 0; k < numReturns; k++)
+  {
+    log->log("Client", Log::DEBUG, "EXAMINING: %i %i %p %s", k, numReturns, position, position);
+
+    cRecording* recording = Recordings.GetByName(position);
+    if (!recording)
+    {
+      // doesn't exist anymore
+      log->log("Client", Log::DEBUG, "Found a recording that doesn't exist anymore");
+      config.deleteValue("ResumeData", position);
+    }
+    else
+    {
+      log->log("Client", Log::DEBUG, "This recording still exists");
+    }
+
+    position += strlen(position) + 1;
+  }
+
+  delete[] resumes;
+#endif
 }
 
 void MVPClientStartThread(void* arg)
@@ -173,7 +224,7 @@ void MVPClient::run2()
   tcp.setNonBlocking();
 
   ULONG channelID;
-  ULONG serialNumber;
+  ULONG requestID;
   ULONG opcode;
   ULONG extraDataLength;
   UCHAR* data;
@@ -194,8 +245,8 @@ void MVPClient::run2()
 
     log->log("Client", Log::DEBUG, "Got chan");
     
-    if (!tcp.readData((UCHAR*)&serialNumber, sizeof(ULONG))) break;
-    serialNumber = ntohl(serialNumber);
+    if (!tcp.readData((UCHAR*)&requestID, sizeof(ULONG))) break;
+    requestID = ntohl(requestID);
 
     log->log("Client", Log::DEBUG, "Got ser");
 
@@ -235,7 +286,7 @@ void MVPClient::run2()
       data = NULL;
     }
 
-    log->log("Client", Log::DEBUG, "Received chan=%lu, ser=%lu, op=%lu, edl=%lu", channelID, serialNumber, opcode, extraDataLength);
+    log->log("Client", Log::DEBUG, "Received chan=%lu, ser=%lu, op=%lu, edl=%lu", channelID, requestID, opcode, extraDataLength);
 
     if (!loggedIn && (opcode != 1))
     {
@@ -244,86 +295,93 @@ void MVPClient::run2()
       break;
     }
 
+    ResponsePacket* rp = new ResponsePacket();
+    if (!rp->init(requestID))
+    {
+      log->log("Client", Log::ERR, "response packet init fail");      
+      break;
+    }
+    
     switch(opcode)
     {
       case 1:
-        result = processLogin(data, extraDataLength);
+        result = processLogin(data, extraDataLength, rp);
         break;
-#ifndef VOMPSTANDALONE
+#ifndef VOMPSTANDALONE        
       case 2:
-        result = processGetRecordingsList(data, extraDataLength);
+        result = processGetRecordingsList(data, extraDataLength, rp);
         break;
       case 3:
-        result = processDeleteRecording(data, extraDataLength);
+        result = processDeleteRecording(data, extraDataLength, rp);
         break;
       case 5:
-        result = processGetChannelsList(data, extraDataLength);
+        result = processGetChannelsList(data, extraDataLength, rp);
         break;
       case 6:
-        result = processStartStreamingChannel(data, extraDataLength);
+        result = processStartStreamingChannel(data, extraDataLength, requestID, rp);
         break;
       case 7:
-        result = processGetBlock(data, extraDataLength);
+        result = processGetBlock(data, extraDataLength, rp);
         break;
       case 8:
-        result = processStopStreaming(data, extraDataLength);
+        result = processStopStreaming(data, extraDataLength, rp);
         break;
       case 9:
-        result = processStartStreamingRecording(data, extraDataLength);
+        result = processStartStreamingRecording(data, extraDataLength, rp);
         break;
+#endif     
       case 10:
-        result = processGetChannelSchedule(data, extraDataLength);
+        result = processGetChannelSchedule(data, extraDataLength, rp);
         break;
-#endif
       case 11:
-        result = processConfigSave(data, extraDataLength);
+        result = processConfigSave(data, extraDataLength, rp);
         break;
       case 12:
-        result = processConfigLoad(data, extraDataLength);
+        result = processConfigLoad(data, extraDataLength, rp);
         break;
-#ifndef VOMPSTANDALONE
+#ifndef VOMPSTANDALONE        
       case 13:
-        result = processReScanRecording(data, extraDataLength);         // FIXME obselete
+        result = processReScanRecording(data, extraDataLength, rp);         // FIXME obselete
         break;
       case 14:
-        result = processGetTimers(data, extraDataLength);
+        result = processGetTimers(data, extraDataLength, rp);
         break;
       case 15:
-        result = processSetTimer(data, extraDataLength);
+        result = processSetTimer(data, extraDataLength, rp);
         break;
       case 16:
-        result = processPositionFromFrameNumber(data, extraDataLength);
+        result = processPositionFromFrameNumber(data, extraDataLength, rp);
         break;
       case 17:
-        result = processFrameNumberFromPosition(data, extraDataLength);
+        result = processFrameNumberFromPosition(data, extraDataLength, rp);
         break;
       case 18:
-        result = processMoveRecording(data, extraDataLength);
+        result = processMoveRecording(data, extraDataLength, rp);
         break;
       case 19:
-        result = processGetIFrame(data, extraDataLength);
+        result = processGetIFrame(data, extraDataLength, rp);
         break;
       case 20:
-        result = processGetRecInfo(data, extraDataLength);
+        result = processGetRecInfo(data, extraDataLength, rp);
         break;
       case 21:
-        result = processGetMarks(data, extraDataLength);
+        result = processGetMarks(data, extraDataLength, rp);
         break;
       case 22:
-        result = processGetChannelPids(data, extraDataLength);
+        result = processGetChannelPids(data, extraDataLength, rp);
         break;
       case 23:
-        result = processDeleteTimer(data, extraDataLength);
+        result = processDeleteTimer(data, extraDataLength, rp);
         break;
-#endif
+#endif        
       case 30:
-        result = processGetMediaList(data, extraDataLength);
+        result = processGetMediaList(data, extraDataLength, rp);
         break;
       case 31:
-        result = processGetPicture(data, extraDataLength);
+        result = processGetPicture(data, extraDataLength, rp);
         break;
       case 32:
-        result = processGetImageBlock(data, extraDataLength);
+        result = processGetImageBlock(data, extraDataLength, rp);
         break;
     }
 
@@ -332,7 +390,7 @@ void MVPClient::run2()
   }
 }
 
-int MVPClient::processLogin(UCHAR* buffer, int length)
+int MVPClient::processLogin(UCHAR* buffer, int length, ResponsePacket* rp)
 {
   if (length != 6) return 0;
 
@@ -359,68 +417,48 @@ int MVPClient::processLogin(UCHAR* buffer, int length)
   struct tm* timeStruct = localtime(&timeNow);
   int timeOffset = timeStruct->tm_gmtoff;
 
-  UCHAR sendBuffer[12];
-  *(ULONG*)&sendBuffer[0] = htonl(8);
-  *(ULONG*)&sendBuffer[4] = htonl(timeNow);
-  *(signed int*)&sendBuffer[8] = htonl(timeOffset);
-
-  tcp.sendPacket(sendBuffer, 12);
-  log->log("Client", Log::DEBUG, "written login reply");
-
+  rp->addULONG(timeNow);
+  rp->addLONG(timeOffset);
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  log->log("Client", Log::DEBUG, "written login reply len %lu", rp->getLen());
+  delete rp;
+  
   loggedIn = true;
   return 1;
 }
 
 #ifndef VOMPSTANDALONE
-int MVPClient::processGetRecordingsList(UCHAR* data, int length)
+int MVPClient::processGetRecordingsList(UCHAR* data, int length, ResponsePacket* rp)
 {
-  UCHAR* sendBuffer = new UCHAR[50000]; // hope this is enough
-  int count = 4; // leave space for the packet length
-  char* point;
-
-
   int FreeMB;
   int Percent = VideoDiskSpace(&FreeMB);
   int Total = (FreeMB / (100 - Percent)) * 100;
-
-  *(ULONG*)&sendBuffer[count] = htonl(Total);
-  count += sizeof(ULONG);
-  *(ULONG*)&sendBuffer[count] = htonl(FreeMB);
-  count += sizeof(ULONG);
-  *(ULONG*)&sendBuffer[count] = htonl(Percent);
-  count += sizeof(ULONG);
-
+  
+  rp->addULONG(Total);
+  rp->addULONG(FreeMB);
+  rp->addULONG(Percent);
 
   cRecordings Recordings;
   Recordings.Load();
 
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
   {
-    if (count > 49000) break; // just how big is that hard disk?!
-    *(ULONG*)&sendBuffer[count] = htonl(recording->start);// + timeOffset);
-    count += 4;
-
-    point = (char*)recording->Name();
-    strcpy((char*)&sendBuffer[count], point);
-    count += strlen(point) + 1;
-
-    point = (char*)recording->FileName();
-    strcpy((char*)&sendBuffer[count], point);
-    count += strlen(point) + 1;
+    rp->addULONG(recording->start);
+    rp->addString(recording->Name());
+    rp->addString(recording->FileName());
   }
 
-  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
-
-  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
-
-  tcp.sendPacket(sendBuffer, count);
-  delete[] sendBuffer;
-  log->log("Client", Log::DEBUG, "Written list");
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
+  log->log("Client", Log::DEBUG, "Written recordings list");
 
   return 1;
 }
 
-int MVPClient::processDeleteRecording(UCHAR* data, int length)
+int MVPClient::processDeleteRecording(UCHAR* data, int length, ResponsePacket* rp)
 {
   // data is a pointer to the fileName string
 
@@ -444,27 +482,31 @@ int MVPClient::processDeleteRecording(UCHAR* data, int length)
 #if VDRVERSNUM > 10300
         ::Recordings.DelByName(recording->FileName());
 #endif
-        sendULONG(1);
+        rp->addULONG(1);
       }
       else
       {
-        sendULONG(2);
+        rp->addULONG(2);
       }
     }
     else
     {
-      sendULONG(3);
+      rp->addULONG(3);
     }
   }
   else
   {
-    sendULONG(4);
+    rp->addULONG(4);
   }
 
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
   return 1;
 }
 
-int MVPClient::processMoveRecording(UCHAR* data, int length)
+int MVPClient::processMoveRecording(UCHAR* data, int length, ResponsePacket* rp)
 {
   log->log("Client", Log::DEBUG, "Process move recording");
   char* fileName = (char*)data;
@@ -552,7 +594,11 @@ int MVPClient::processMoveRecording(UCHAR* data, int length)
           delete[] dateDirName;
           delete[] titleDirName;
           delete[] newContainer;
-          sendULONG(5);
+
+          rp->addULONG(5);          
+          rp->finalise();
+          tcp.sendPacket(rp->getPtr(), rp->getLen());
+          delete rp;
           return 1;
         }
       }
@@ -561,7 +607,11 @@ int MVPClient::processMoveRecording(UCHAR* data, int length)
         delete[] dateDirName;
         delete[] titleDirName;
         delete[] newContainer;
-        sendULONG(5);
+
+        rp->addULONG(5);          
+        rp->finalise();
+        tcp.sendPacket(rp->getPtr(), rp->getLen());
+        delete rp;
         return 1;
       }
 
@@ -590,18 +640,17 @@ int MVPClient::processMoveRecording(UCHAR* data, int length)
         ::Recordings.Update();
 #endif
         // Success. Send a different packet from just a ulong
-        int totalLength = 4 + 4 + strlen(newDir) + 1;
-        UCHAR* sendBuffer = new UCHAR[totalLength];
-        *(ULONG*)&sendBuffer[0] = htonl(totalLength - 4);
-        *(ULONG*)&sendBuffer[4] = htonl(1); // success
-        strcpy((char*)&sendBuffer[8], newDir);
-        tcp.sendPacket(sendBuffer, totalLength);
-        delete[] sendBuffer;
+        rp->addULONG(1); // success
+        rp->addString(newDir);
       }
       else
       {
-        sendULONG(5);
+        rp->addULONG(5);          
       }
+
+      rp->finalise();
+      tcp.sendPacket(rp->getPtr(), rp->getLen());
+      delete rp;
 
       delete[] dateDirName;
       delete[] titleDirName;
@@ -610,22 +659,25 @@ int MVPClient::processMoveRecording(UCHAR* data, int length)
     }
     else
     {
-      sendULONG(3);
+      rp->addULONG(3);          
+      rp->finalise();
+      tcp.sendPacket(rp->getPtr(), rp->getLen());
+      delete rp;
     }
   }
   else
   {
-    sendULONG(4);
+    rp->addULONG(4);          
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
   }
 
   return 1;
 }
 
-int MVPClient::processGetChannelsList(UCHAR* data, int length)
+int MVPClient::processGetChannelsList(UCHAR* data, int length, ResponsePacket* rp)
 {
-  UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
-  int count = 4; // leave space for the packet length
-  char* point;
   ULONG type;
 
   char* chanConfig = config.getValueString("General", "Channels");
@@ -650,44 +702,36 @@ int MVPClient::processGetChannelsList(UCHAR* data, int length)
       else continue;
 #endif
 
-      if (count > 49000) break;
-      *(ULONG*)&sendBuffer[count] = htonl(channel->Number());
-      count += 4;
-
-      *(ULONG*)&sendBuffer[count] = htonl(type);
-      count += 4;
-
-      point = (char*)channel->Name();
-      strcpy((char*)&sendBuffer[count], point);
-      count += strlen(point) + 1;
+      rp->addULONG(channel->Number());
+      rp->addULONG(type);      
+      rp->addString(channel->Name());
     }
   }
 
-  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
 
-  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
-
-  tcp.sendPacket(sendBuffer, count);
-  delete[] sendBuffer;
   log->log("Client", Log::DEBUG, "Written channels list");
 
   return 1;
 }
 
-int MVPClient::processGetChannelPids(UCHAR* data, int length)
+int MVPClient::processGetChannelPids(UCHAR* data, int length, ResponsePacket* rp)
 {
   ULONG channelNumber = ntohl(*(ULONG*)data);
 
   cChannel* channel = channelFromNumber(channelNumber);
   if (!channel)
   {
-    sendULONG(0);
+    rp->addULONG(0);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
     return 1;
   }
 
   ULONG numApids = 0;
-  ULONG spaceRequired = 12; // 4 for length field, 4 for vpid, 4 for number of apids
-  // Work out space required and number of Apids
 
 #if VDRVERSNUM < 10300
 
@@ -695,25 +739,16 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length)
   log->log("Client", Log::DEBUG, "Apid2: %i", channel->Apid2());
 
   if (channel->Apid2())
-  {
     numApids = 2;
-    spaceRequired += 10; // 8 + 2 nulls
-  }
   else if (channel->Apid1())
-  {
     numApids = 1;
-    spaceRequired += 5; // 4 + 1 null
-  }
   else
-  {
     numApids = 0;
-  }
 
 #else
 
   for (const int *Apid = channel->Apids(); *Apid; Apid++)
   {
-    spaceRequired += 4 + strlen(channel->Alang(numApids)) + 1; // 4 for pid, length of string + \0
     numApids++;
   }
 #endif
@@ -727,42 +762,38 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length)
   //    lang string
   // }
 
-  UCHAR* sendBuffer = new UCHAR[spaceRequired];
-  ULONG point = 0;
-  *(ULONG*)&sendBuffer[point] = htonl(spaceRequired - 4);   point += 4;   // take off first 4 bytes
-  *(ULONG*)&sendBuffer[point] = htonl(channel->Vpid());     point += 4;
-  *(ULONG*)&sendBuffer[point] = htonl(numApids);            point += 4;
+  rp->addULONG(channel->Vpid());
+  rp->addULONG(numApids);
 
 #if VDRVERSNUM < 10300
   if (numApids >= 1)
   {
-    *(ULONG*)&sendBuffer[point] = htonl(channel->Apid1());  point += 4;
-    sendBuffer[point] = '\0';                               point += 1;
+    rp->addULONG(channel->Apid1());
+    rp->addString("");
   }
   if (numApids == 2)
   {
-    *(ULONG*)&sendBuffer[point] = htonl(channel->Apid2());  point += 4;
-    sendBuffer[point] = '\0';                               point += 1;
+    rp->addULONG(channel->Apid2());
+    rp->addString("");
   }
 #else
   for (ULONG i = 0; i < numApids; i++)
   {
-    *(ULONG*)&sendBuffer[point] = htonl(channel->Apid(i));  point += 4;
-    strcpy((char*)&sendBuffer[point], channel->Alang(i));   point += strlen(channel->Alang(i)) + 1;
+    rp->addULONG(channel->Apid(i));
+    rp->addString(channel->Alang(i));
   }
 #endif
 
-//  printf("About to send getchannelpids response. length = %u\n", spaceRequired);
-  //tcp.dump(sendBuffer, spaceRequired);
-
-  tcp.sendPacket(sendBuffer, spaceRequired);
-  delete[] sendBuffer;
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
   log->log("Client", Log::DEBUG, "Written channels pids");
 
   return 1;
 }
 
-int MVPClient::processStartStreamingChannel(UCHAR* data, int length)
+int MVPClient::processStartStreamingChannel(UCHAR* data, int length, ULONG streamID, ResponsePacket* rp)
 {
   log->log("Client", Log::DEBUG, "length = %i", length);
   ULONG channelNumber = ntohl(*(ULONG*)data);
@@ -770,7 +801,10 @@ int MVPClient::processStartStreamingChannel(UCHAR* data, int length)
   cChannel* channel = channelFromNumber(channelNumber);
   if (!channel)
   {
-    sendULONG(0);
+    rp->addULONG(0);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
     return 1;
   }
 
@@ -796,23 +830,32 @@ int MVPClient::processStartStreamingChannel(UCHAR* data, int length)
 
   if (!lp)
   {
-    sendULONG(0);
+    rp->addULONG(0);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
     return 1;
   }
 
-  if (!lp->init())
+  if (!lp->init(&tcp, streamID))
   {
     delete lp;
     lp = NULL;
-    sendULONG(0);
+    rp->addULONG(0);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
     return 1;
   }
 
-  sendULONG(1);
+  rp->addULONG(1);
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
   return 1;
 }
 
-int MVPClient::processStopStreaming(UCHAR* data, int length)
+int MVPClient::processStopStreaming(UCHAR* data, int length, ResponsePacket* rp)
 {
   log->log("Client", Log::DEBUG, "STOP STREAMING RECEIVED");
   if (lp)
@@ -820,23 +863,26 @@ int MVPClient::processStopStreaming(UCHAR* data, int length)
     delete lp;
     lp = NULL;
   }
-  else if (rp)
+  else if (recplayer)
   {
     writeResumeData();
 
-    delete rp;
+    delete recplayer;
     delete recordingManager;
-    rp = NULL;
+    recplayer = NULL;
     recordingManager = NULL;
   }
 
-  sendULONG(1);
+  rp->addULONG(1);
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
   return 1;
 }
 
-int MVPClient::processGetBlock(UCHAR* data, int length)
+int MVPClient::processGetBlock(UCHAR* data, int length, ResponsePacket* rp)
 {
-  if (!lp && !rp)
+  if (!lp && !recplayer)
   {
     log->log("Client", Log::DEBUG, "Get block called when no streaming happening!");
     return 0;
@@ -848,12 +894,12 @@ int MVPClient::processGetBlock(UCHAR* data, int length)
 
   log->log("Client", Log::DEBUG, "getblock pos = %llu length = %lu", position, amount);
 
-  UCHAR sendBuffer[amount + 4];
+  UCHAR sendBuffer[amount];
   ULONG amountReceived = 0; // compiler moan.
   if (lp)
   {
     log->log("Client", Log::DEBUG, "getting from live");
-    amountReceived = lp->getBlock(&sendBuffer[4], amount);
+    amountReceived = lp->getBlock(&sendBuffer[0], amount);
 
     if (!amountReceived)
     {
@@ -863,28 +909,31 @@ int MVPClient::processGetBlock(UCHAR* data, int length)
       lp = NULL;
     }
   }
-  else if (rp)
+  else if (recplayer)
   {
     log->log("Client", Log::DEBUG, "getting from recording");
-    amountReceived = rp->getBlock(&sendBuffer[4], position, amount);
+    amountReceived = recplayer->getBlock(&sendBuffer[0], position, amount);
   }
 
   if (!amountReceived)
   {
-    sendULONG(0);
+    rp->addULONG(0);
     log->log("Client", Log::DEBUG, "written 4(0) as getblock got 0");
   }
   else
   {
-    *(ULONG*)&sendBuffer[0] = htonl(amountReceived);
-    tcp.sendPacket(sendBuffer, amountReceived + 4);
-    log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
+    rp->copyin(sendBuffer, amountReceived);
+    log->log("Client", Log::DEBUG, "written %lu", amountReceived);
   }
 
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  log->log("Client", Log::DEBUG, "Finished getblock, have sent %lu", rp->getLen());
+  delete rp;
   return 1;
 }
 
-int MVPClient::processStartStreamingRecording(UCHAR* data, int length)
+int MVPClient::processStartStreamingRecording(UCHAR* data, int length, ResponsePacket* rp)
 {
   // data is a pointer to the fileName string
 
@@ -897,14 +946,14 @@ int MVPClient::processStartStreamingRecording(UCHAR* data, int length)
 
   if (recording)
   {
-    rp = new RecPlayer(recording);
+    recplayer = new RecPlayer(recording);
 
-    UCHAR sendBuffer[16];
-    *(ULONG*)&sendBuffer[0] = htonl(12);
-    *(ULLONG*)&sendBuffer[4] = htonll(rp->getLengthBytes());
-    *(ULONG*)&sendBuffer[12] = htonl(rp->getLengthFrames());
-
-    tcp.sendPacket(sendBuffer, 16);
+    rp->addULONG(recplayer->getLengthBytes());
+    rp->addULONG(recplayer->getLengthFrames());
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
+    
     log->log("Client", Log::DEBUG, "written totalLength");
   }
   else
@@ -915,57 +964,57 @@ int MVPClient::processStartStreamingRecording(UCHAR* data, int length)
   return 1;
 }
 
-int MVPClient::processPositionFromFrameNumber(UCHAR* data, int length)
+int MVPClient::processPositionFromFrameNumber(UCHAR* data, int length, ResponsePacket* rp)
 {
   ULLONG retval = 0;
 
   ULONG frameNumber = ntohl(*(ULONG*)data);
   data += 4;
 
-  if (!rp)
+  if (!recplayer)
   {
     log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
   }
   else
   {
-    retval = rp->positionFromFrameNumber(frameNumber);
+    retval = recplayer->positionFromFrameNumber(frameNumber);
   }
 
-  UCHAR sendBuffer[12];
-  *(ULONG*)&sendBuffer[0] = htonl(8);
-  *(ULLONG*)&sendBuffer[4] = htonll(retval);
+  rp->addULONG(retval);
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
 
-  tcp.sendPacket(sendBuffer, 12);
   log->log("Client", Log::DEBUG, "Wrote posFromFrameNum reply to client");
   return 1;
 }
 
-int MVPClient::processFrameNumberFromPosition(UCHAR* data, int length)
+int MVPClient::processFrameNumberFromPosition(UCHAR* data, int length, ResponsePacket* rp)
 {
   ULONG retval = 0;
 
   ULLONG position = ntohll(*(ULLONG*)data);
   data += 8;
 
-  if (!rp)
+  if (!recplayer)
   {
     log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
   }
   else
   {
-    retval = rp->frameNumberFromPosition(position);
+    retval = recplayer->frameNumberFromPosition(position);
   }
 
-  UCHAR sendBuffer[8];
-  *(ULONG*)&sendBuffer[0] = htonl(4);
-  *(ULONG*)&sendBuffer[4] = htonl(retval);
+  rp->addULONG(retval);
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
 
-  tcp.sendPacket(sendBuffer, 8);
   log->log("Client", Log::DEBUG, "Wrote frameNumFromPos reply to client");
   return 1;
 }
 
-int MVPClient::processGetIFrame(UCHAR* data, int length)
+int MVPClient::processGetIFrame(UCHAR* data, int length, ResponsePacket* rp)
 {
   bool success = false;
 
@@ -978,43 +1027,37 @@ int MVPClient::processGetIFrame(UCHAR* data, int length)
   ULONG rframeNumber = 0;
   ULONG rframeLength = 0;
 
-  if (!rp)
+  if (!recplayer)
   {
     log->log("Client", Log::DEBUG, "GetIFrame recording called when no recording being played!");
   }
   else
   {
-    success = rp->getNextIFrame(frameNumber, direction, &rfilePosition, &rframeNumber, &rframeLength);
+    success = recplayer->getNextIFrame(frameNumber, direction, &rfilePosition, &rframeNumber, &rframeLength);
   }
 
   // returns file position, frame number, length
 
-  UCHAR sendBuffer[20];
-  int packetLength;
-
   if (success)
   {
-    packetLength = 20;
-    *(ULONG*)&sendBuffer[0] = htonl(16);
-    *(ULLONG*)&sendBuffer[4] = htonll(rfilePosition);
-    *(ULONG*)&sendBuffer[12] = htonl(rframeNumber);
-    *(ULONG*)&sendBuffer[16] = htonl(rframeLength);
+    rp->addULLONG(rfilePosition);
+    rp->addULONG(rframeNumber);
+    rp->addULONG(rframeLength);
   }
   else
   {
-    packetLength = 8;
-    *(ULONG*)&sendBuffer[0] = htonl(4);
-    *(ULONG*)&sendBuffer[4] = 0;
+    rp->addULONG(0);
   }
 
-  log->log("Client", Log::DEBUG, "%llu %lu %lu", rfilePosition, rframeNumber, rframeLength);
-
-  tcp.sendPacket(sendBuffer, packetLength);
-  log->log("Client", Log::DEBUG, "Wrote GNIF reply to client");
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
+  log->log("Client", Log::DEBUG, "Wrote GNIF reply to client %llu %lu %lu", rfilePosition, rframeNumber, rframeLength);
   return 1;
 }
 
-int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
+int MVPClient::processGetChannelSchedule(UCHAR* data, int length, ResponsePacket* rp)
 {
   ULONG channelNumber = ntohl(*(ULONG*)data);
   data += 4;
@@ -1027,7 +1070,11 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
   cChannel* channel = channelFromNumber(channelNumber);
   if (!channel)
   {
-    sendULONG(0);
+    rp->addULONG(0);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
+  
     log->log("Client", Log::DEBUG, "written 0 because channel = NULL");
     return 1;
   }
@@ -1043,7 +1090,11 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
 #endif
   if (!Schedules)
   {
-    sendULONG(0);
+    rp->addULONG(0);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
+    
     log->log("Client", Log::DEBUG, "written 0 because Schedule!s! = NULL");
     return 1;
   }
@@ -1053,29 +1104,26 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
   const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
   if (!Schedule)
   {
-    sendULONG(0);
+    rp->addULONG(0);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
+    
     log->log("Client", Log::DEBUG, "written 0 because Schedule = NULL");
     return 1;
   }
 
   log->log("Client", Log::DEBUG, "Got schedule object");
 
-  UCHAR* sendBuffer = (UCHAR*)malloc(100000);
-  ULONG sendBufferLength = 100000;
-  ULONG sendBufferUsed = sizeof(ULONG); // leave a hole for the entire packet length
-
   const char* empty = "";
+  bool atLeastOneEvent = false;
 
-  // assign all the event info to temp vars then we know exactly what size they are
   ULONG thisEventID;
   ULONG thisEventTime;
   ULONG thisEventDuration;
   const char* thisEventTitle;
   const char* thisEventSubTitle;
   const char* thisEventDescription;
-
-  ULONG constEventLength = sizeof(thisEventID) + sizeof(thisEventTime) + sizeof(thisEventDuration);
-  ULONG thisEventLength;
 
 #if VDRVERSNUM < 10300
 
@@ -1119,66 +1167,38 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length)
     if (!thisEventSubTitle) thisEventSubTitle = empty;
     if (!thisEventDescription) thisEventDescription = empty;
 
-    thisEventLength = constEventLength + strlen(thisEventTitle) + 1 + strlen(thisEventSubTitle) + 1 + strlen(thisEventDescription) + 1;
+    rp->addULONG(thisEventID);
+    rp->addULONG(thisEventTime);
+    rp->addULONG(thisEventDuration);
 
-    log->log("Client", Log::DEBUG, "Done s1");
+    rp->addString(thisEventTitle);
+    rp->addString(thisEventSubTitle);
+    rp->addString(thisEventDescription);
 
-    // now extend the buffer if necessary
-    if ((sendBufferUsed + thisEventLength) > sendBufferLength)
-    {
-      log->log("Client", Log::DEBUG, "Extending buffer");
-      sendBufferLength += 100000;
-      UCHAR* temp = (UCHAR*)realloc(sendBuffer, sendBufferLength);
-      if (temp == NULL)
-      {
-        free(sendBuffer);
-        UCHAR sendBuffer2[8];
-        *(ULONG*)&sendBuffer2[0] = htonl(4);
-        *(ULONG*)&sendBuffer2[4] = htonl(0);
-        tcp.sendPacket(sendBuffer2, 8);
-        log->log("Client", Log::DEBUG, "written 0 because failed to realloc packet");
-        return 1;
-      }
-      sendBuffer = temp;
-    }
-
-    log->log("Client", Log::DEBUG, "Done s2");
-
-    *(ULONG*)&sendBuffer[sendBufferUsed] = htonl(thisEventID);       sendBufferUsed += sizeof(ULONG);
-    *(ULONG*)&sendBuffer[sendBufferUsed] = htonl(thisEventTime);     sendBufferUsed += sizeof(ULONG);
-    *(ULONG*)&sendBuffer[sendBufferUsed] = htonl(thisEventDuration); sendBufferUsed += sizeof(ULONG);
-
-    strcpy((char*)&sendBuffer[sendBufferUsed], thisEventTitle);       sendBufferUsed += strlen(thisEventTitle) + 1;
-    strcpy((char*)&sendBuffer[sendBufferUsed], thisEventSubTitle);    sendBufferUsed += strlen(thisEventSubTitle) + 1;
-    strcpy((char*)&sendBuffer[sendBufferUsed], thisEventDescription); sendBufferUsed += strlen(thisEventDescription) + 1;
-
-    log->log("Client", Log::DEBUG, "Done s3 %lu", sendBufferUsed);
+    atLeastOneEvent = true;
+    log->log("Client", Log::DEBUG, "Done s3");
   }
 
   log->log("Client", Log::DEBUG, "Got all event data");
 
-  if (sendBufferUsed == sizeof(ULONG))
+  if (!atLeastOneEvent)
   {
-    // No data
-    sendULONG(0);
+    rp->addULONG(0);
     log->log("Client", Log::DEBUG, "Written 0 because no data");
   }
-  else
-  {
-    // Write the length into the first 4 bytes. It's sendBufferUsed - 4 because of the hole!
-    *(ULONG*)&sendBuffer[0] = htonl(sendBufferUsed - sizeof(ULONG));
-    tcp.sendPacket(sendBuffer, sendBufferUsed);
-    log->log("Client", Log::DEBUG, "written %lu schedules packet", sendBufferUsed);
-  }
-
-  free(sendBuffer);
+  
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+    
+  log->log("Client", Log::DEBUG, "written schedules packet");
 
   return 1;
 }
 
 #endif //VOMPSTANDALONE
 
-int MVPClient::processConfigSave(UCHAR* buffer, int length)
+int MVPClient::processConfigSave(UCHAR* buffer, int length, ResponsePacket* rp)
 {
   char* section = (char*)buffer;
   char* key = NULL;
@@ -1206,17 +1226,21 @@ int MVPClient::processConfigSave(UCHAR* buffer, int length)
   log->log("Client", Log::DEBUG, "Config save: %s %s %s", section, key, value);
   if (config.setValueString(section, key, value))
   {
-    sendULONG(1);
+    rp->addULONG(1);
   }
   else
   {
-    sendULONG(0);
+    rp->addULONG(0);
   }
 
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
   return 1;
 }
 
-int MVPClient::processConfigLoad(UCHAR* buffer, int length)
+int MVPClient::processConfigLoad(UCHAR* buffer, int length, ResponsePacket* rp)
 {
   char* section = (char*)buffer;
   char* key = NULL;
@@ -1234,61 +1258,592 @@ int MVPClient::processConfigLoad(UCHAR* buffer, int length)
 
   if (value)
   {
-    UCHAR sendBuffer[4 + strlen(value) + 1];
-    *(ULONG*)&sendBuffer[0] = htonl(strlen(value) + 1);
-    strcpy((char*)&sendBuffer[4], value);
-    tcp.sendPacket(sendBuffer, 4 + strlen(value) + 1);
-
+    rp->addString(value);
     log->log("Client", Log::DEBUG, "Written config load packet");
     delete[] value;
   }
   else
   {
-    UCHAR sendBuffer[8];
-    *(ULONG*)&sendBuffer[0] = htonl(4);
-    *(ULONG*)&sendBuffer[4] = htonl(0);
-    tcp.sendPacket(sendBuffer, 8);
-
+    rp->addULONG(0);
     log->log("Client", Log::DEBUG, "Written config load failed packet");
   }
+
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
+  return 1;
+}
+
+#ifndef VOMPSTANDALONE
+
+int MVPClient::processGetTimers(UCHAR* buffer, int length, ResponsePacket* rp)
+{
+  cTimer *timer;
+  int numTimers = Timers.Count();
+
+  rp->addULONG(numTimers);
+
+  for (int i = 0; i < numTimers; i++)
+  {
+    timer = Timers.Get(i);
+
+#if VDRVERSNUM < 10300
+    rp->addULONG(timer->Active());
+#else
+    rp->addULONG(timer->HasFlags(tfActive));
+#endif
+    rp->addULONG(timer->Recording());
+    rp->addULONG(timer->Pending());
+    rp->addULONG(timer->Priority());
+    rp->addULONG(timer->Lifetime());
+    rp->addULONG(timer->Channel()->Number());
+    rp->addULONG(timer->StartTime());
+    rp->addULONG(timer->StopTime());
+    rp->addULONG(timer->Day());
+    rp->addULONG(timer->WeekDays());
+    rp->addString(timer->File());
+  }
+
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
+  log->log("Client", Log::DEBUG, "Written timers list");
 
   return 1;
 }
 
-void MVPClient::cleanConfig()
+int MVPClient::processSetTimer(UCHAR* buffer, int length, ResponsePacket* rp)
 {
-  log->log("Client", Log::DEBUG, "Clean config");
+  char* timerString = new char[strlen((char*)buffer) + 1];
+  strcpy(timerString, (char*)buffer);
 
-#ifndef VOMPSTANDALONE
-  cRecordings Recordings;
-  Recordings.Load();
+#if VDRVERSNUM < 10300
 
-  int numReturns;
-  int length;
-  char* resumes = config.getSectionKeyNames("ResumeData", numReturns, length);
-  char* position = resumes;
-  for(int k = 0; k < numReturns; k++)
+  // If this is VDR 1.2 the date part of the timer string must be reduced
+  // to just DD rather than YYYY-MM-DD
+
+  int s = 0; // source
+  int d = 0; // destination
+  int c = 0; // count
+  while(c != 2) // copy up to date section, including the second ':'
   {
-    log->log("Client", Log::DEBUG, "EXAMINING: %i %i %p %s", k, numReturns, position, position);
+    timerString[d] = buffer[s];
+    if (buffer[s] == ':') c++;
+    ++s;
+    ++d;
+  }
+  // now it has copied up to the date section
+  c = 0;
+  while(c != 2) // waste YYYY-MM-
+  {
+    if (buffer[s] == '-') c++;
+    ++s;
+  }
+  // now source is at the DD
+  memcpy(&timerString[d], &buffer[s], length - s);
+  d += length - s;
+  timerString[d] = '\0';
 
-    cRecording* recording = Recordings.GetByName(position);
-    if (!recording)
+  log->log("Client", Log::DEBUG, "Timer string after 1.2 conversion:");
+  log->log("Client", Log::DEBUG, "%s", timerString);
+
+#endif
+
+  cTimer *timer = new cTimer;
+  if (timer->Parse((char*)timerString))
+  {
+    cTimer *t = Timers.GetTimer(timer);
+    if (!t)
     {
-      // doesn't exist anymore
-      log->log("Client", Log::DEBUG, "Found a recording that doesn't exist anymore");
-      config.deleteValue("ResumeData", position);
+      Timers.Add(timer);
+#if VDRVERSNUM < 10300
+      Timers.Save();
+#else
+      Timers.SetModified();
+#endif
+      rp->addULONG(0);
+      rp->finalise();
+      tcp.sendPacket(rp->getPtr(), rp->getLen());
+      delete rp;
+      return 1;
     }
     else
     {
-      log->log("Client", Log::DEBUG, "This recording still exists");
+      rp->addULONG(1);
+      rp->finalise();
+      tcp.sendPacket(rp->getPtr(), rp->getLen());
+      delete rp;
     }
+  }
+  else
+  {
+    rp->addULONG(2);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
+  }
+  delete timer;
+  return 1;
+}
 
-    position += strlen(position) + 1;
+int MVPClient::processDeleteTimer(UCHAR* buffer, int length, ResponsePacket* rp)
+{
+  log->log("Client", Log::DEBUG, "Delete timer called");
+  // get timer
+  
+  int position = 0;
+  
+  INT delChannel = ntohl(*(ULONG*)&buffer[position]); position += 4;
+  INT delWeekdays = ntohl(*(ULONG*)&buffer[position]); position += 4;
+  INT delDay = ntohl(*(ULONG*)&buffer[position]); position += 4;  
+  INT delStart = ntohl(*(ULONG*)&buffer[position]); position += 4;  
+  INT delStop = ntohl(*(ULONG*)&buffer[position]); position += 4;
+    
+  cTimer* ti = NULL;
+  for (ti = Timers.First(); ti; ti = Timers.Next(ti))
+  {
+    if  ( (ti->Channel()->Number() == delChannel)
+     &&   ((ti->WeekDays() && (ti->WeekDays() == delWeekdays)) || (!ti->WeekDays() && (ti->Day() == delDay)))
+     &&   (ti->StartTime() == delStart)
+     &&   (ti->StopTime() == delStop) )
+       break;
+  }
+  
+  if (!ti)
+  {
+    rp->addULONG(4);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
+    return 1;
+  }
+          
+  if (!Timers.BeingEdited())
+  {
+    if (!ti->Recording())
+    {
+      Timers.Del(ti);
+      Timers.SetModified();
+      rp->addULONG(10);
+      rp->finalise();
+      tcp.sendPacket(rp->getPtr(), rp->getLen());
+      delete rp;
+      return 1;
+    }
+    else
+    {
+      log->log("Client", Log::ERR, "Unable to delete timer - timer is running");
+      rp->addULONG(3);
+      rp->finalise();
+      tcp.sendPacket(rp->getPtr(), rp->getLen());
+      delete rp;
+      return 1;
+    }  
+  }
+  else
+  {
+    log->log("Client", Log::ERR, "Unable to delete timer - timers being edited at VDR");
+    rp->addULONG(1);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
+    return 1;
+  }  
+}
+
+int MVPClient::processGetRecInfo(UCHAR* data, int length, ResponsePacket* rp)
+{
+  // data is a pointer to the fileName string
+
+  cRecordings Recordings;
+  Recordings.Load(); // probably have to do this
+
+  cRecording *recording = Recordings.GetByName((char*)data);
+
+  time_t timerStart = 0;
+  time_t timerStop = 0;
+  char* summary = NULL;
+  ULONG resumePoint = 0;
+
+  if (!recording)
+  {
+    log->log("Client", Log::ERR, "GetRecInfo found no recording");
+    rp->addULONG(0);
+    rp->finalise();
+    tcp.sendPacket(rp->getPtr(), rp->getLen());
+    delete rp;
+    return 1;
   }
 
-  delete[] resumes;
+  /* Return packet:
+  4 bytes: start time for timer
+  4 bytes: end time for timer
+  4 bytes: resume point
+  string: summary
+  4 bytes: num components
+  {
+    1 byte: stream
+    1 byte: type
+    string: language
+    string: description
+  }
+
+  */
+
+  // Get current timer
+
+  cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
+  if (rc)
+  {
+    timerStart = rc->Timer()->StartTime();
+    timerStop = rc->Timer()->StopTime();
+    log->log("Client", Log::DEBUG, "GRI: RC: %lu %lu", timerStart, timerStop);
+  }
+
+  rp->addULONG(timerStart);
+  rp->addULONG(timerStop);
+
+  // Get resume point
+
+  char* value = config.getValueString("ResumeData", (char*)data);
+  if (value)
+  {
+    resumePoint = strtoul(value, NULL, 10);
+    delete[] value;
+  }
+  log->log("Client", Log::DEBUG, "GRI: RP: %lu", resumePoint);
+
+  rp->addULONG(resumePoint);
+
+
+  // Get summary
+
+#if VDRVERSNUM < 10300
+  summary = (char*)recording->Summary();
+#else
+  const cRecordingInfo *Info = recording->Info();
+  summary = (char*)Info->ShortText();
+  if (isempty(summary)) summary = (char*)Info->Description();
 #endif
+  log->log("Client", Log::DEBUG, "GRI: S: %s", summary);
+  if (summary)
+  {
+    rp->addString(summary);
+  }
+  else
+  {
+    rp->addString("");
+  }
+
+  // Get channels
+
+#if VDRVERSNUM < 10300
+
+  // Send 0 for numchannels - this signals the client this info is not available
+  rp->addULONG(0);
+
+#else
+  const cComponents* components = Info->Components();
+
+  log->log("Client", Log::DEBUG, "GRI: D1: %p", components);
+
+  if (!components)
+  {
+    rp->addULONG(0);
+  }
+  else
+  {
+    rp->addULONG(components->NumComponents());
+  
+    tComponent* component;
+    for (int i = 0; i < components->NumComponents(); i++)
+    {
+      component = components->Component(i);
+
+      log->log("Client", Log::DEBUG, "GRI: C: %i %u %u %s %s", i, component->stream, component->type, component->language, component->description);
+      
+      rp->addUCHAR(component->stream);
+      rp->addUCHAR(component->type);
+
+      if (component->language)
+      {
+        rp->addString(component->language);
+      }
+      else
+      {
+        rp->addString("");
+      }
+      if (component->description)
+      {
+        rp->addString(component->description);
+      }
+      else
+      {
+        rp->addString("");
+      }
+    }
+  }
+
+#endif
+
+  // Done. send it
+
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+
+  log->log("Client", Log::DEBUG, "Written getrecinfo");
+
+  return 1;
 }
+
+
+
+
+// FIXME obselete
+
+int MVPClient::processReScanRecording(UCHAR* data, int length, ResponsePacket* rp)
+{
+  if (!recplayer)
+  {
+    log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
+    return 0;
+  }
+
+  recplayer->scan();
+
+  rp->addULLONG(recplayer->getLengthBytes());
+  rp->addULONG(recplayer->getLengthFrames());
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
+  return 1;
+}
+
+// FIXME without client calling rescan, getblock wont work even tho more data is avail
+
+
+int MVPClient::processGetMarks(UCHAR* data, int length, ResponsePacket* rp)
+{
+  // data is a pointer to the fileName string
+
+  cMarks Marks;
+  cRecordings Recordings;
+  Recordings.Load(); // probably have to do this
+
+  cRecording *recording = Recordings.GetByName((char*)data);
+
+  log->log("Client", Log::DEBUG, "recording pointer %p", recording);
+
+  if (recording)
+  {
+    Marks.Load(recording->FileName());
+    if (Marks.Count())
+    {
+      for (const cMark *m = Marks.First(); m; m = Marks.Next(m))
+      {
+        log->log("Client", Log::DEBUG, "found Mark %i", m->position);
+
+        rp->addULONG(m->position);
+      }
+    }
+    else
+    {
+      log->log("Client", Log::DEBUG, "no marks found, sending 0-mark");
+      rp->addULONG(0);
+    }
+  }
+
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
+  log->log("Client", Log::DEBUG, "Written Marks list");
+
+  return 1;
+}
+
+#endif //VOMPSTANDALONE
+
+/**
+  * media List Request:
+  * 4 length
+  * 4 VDR_GETMEDIALIST
+  * 4 flags (currently unused)
+  * n dirname
+  * n+1 0
+  * Media List response:
+  * 4 length
+  * 4 VDR_
+  * 4 numentries
+  * per entry:
+  * 4 media type
+  * 4 time stamp
+  * 4 flags
+  * 4 strlen (incl. 0 Byte)
+  * string
+  * 0
+*/
+
+int MVPClient::processGetMediaList(UCHAR* data, int length, ResponsePacket* rp)
+{
+  if (length < 4) {
+    log->log("Client", Log::ERR, "getMediaList packet too short %d", length);
+    return 0;
+  }
+  char * dirname=NULL;
+  if (length > 4) {
+    //we have a dirname provided
+    dirname=(char *)&data[4];
+    log->log("Client", Log::DEBUG, "getMediaList for %s", dirname);
+  }
+
+  MediaList * ml=MediaList::readList(baseConfig,dirname);
+  if (ml == NULL) {
+     log->log("Client", Log::ERR, "getMediaList returned NULL");
+     return 0;
+  }
+
+  //response code (not yet set)
+  rp->addULONG(0);
+
+  //numentries
+  rp->addULONG(ml->size());
+
+  for (MediaList::iterator nm=ml->begin(); nm<ml->end(); nm++)
+  {
+    Media *m=*nm;
+    log->log("Client", Log::DEBUG, "found media entry %s, type=%d",m->getFilename(),m->getType());
+    rp->addULONG(m->getType());
+    //time stamp
+    rp->addULONG(m->getTime());
+    //flags
+    rp->addULONG(0);
+    int len=strlen(m->getFilename());
+    //strlen
+    rp->addULONG(len+1);
+    rp->addString(m->getFilename());
+  }
+  delete ml;
+
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  
+  log->log("Client", Log::DEBUG, "Written Media list");
+  return 1;
+}
+
+/**
+  * get image Request:
+  * 4 flags (currently unused)
+  * 4 x size
+  * 4 y size
+  * n filename
+  * n+1 0
+  * get image response:
+  * 4 length
+  * 4 VDR_GETIMAGE
+  * 4 len of image
+*/
+
+int MVPClient::processGetPicture(UCHAR* data, int length, ResponsePacket* rp)
+{
+  if (length < 12) {
+    log->log("Client", Log::ERR, "getPicture packet too short %d", length);
+    return 0;
+  }
+  if (imageFile) {
+    fclose(imageFile);
+    imageFile=NULL;
+  }
+  char * filename=NULL;
+  if (length > 12) {
+    //we have a dirname provided
+    filename=(char *)&data[12];
+    log->log("Client", Log::DEBUG, "getPicture  %s", filename);
+  }
+  else {
+    log->log("Client", Log::ERR, "getPicture  empty filename");
+  }
+  if (filename) {
+    imageFile=fopen(filename,"r");
+    if (!imageFile) log->log("Client", Log::ERR, "getPicture unable to open %s",filename);
+  }
+  int size=0;
+  if (imageFile) {
+    struct stat st;
+    if ( fstat(fileno(imageFile),&st) == 0) size=st.st_size;
+  }
+  //response code (not yet set)
+  rp->addULONG(31);
+  //size
+  rp->addULONG(size);
+
+  log->log("Client", Log::DEBUG, "getPicture size  %u", size);
+
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+
+  log->log("Client", Log::DEBUG, "Written getPicture");
+
+  return 1;
+}
+
+
+int MVPClient::processGetImageBlock(UCHAR* data, int length, ResponsePacket* rp)
+{
+  if (!imageFile)
+  {
+    log->log("Client", Log::DEBUG, "Get image block called when no image active");
+    return 0;
+  }
+
+  ULLONG position = ntohll(*(ULLONG*)data);
+  data += sizeof(ULLONG);
+  ULONG amount = ntohl(*(ULONG*)data);
+
+  log->log("Client", Log::DEBUG, "getImageblock pos = %llu length = %lu", position, amount);
+
+  UCHAR sendBuffer[amount];
+  ULONG amountReceived = 0; // compiler moan.
+  ULLONG cpos=ftell(imageFile);
+  if (position != cpos) {
+    fseek(imageFile,position-cpos,SEEK_CUR);
+  }
+  if (position != (ULLONG)ftell(imageFile)) {
+    log->log("Client", Log::DEBUG, "getImageblock pos = %llu not available", position);
+  }
+  else {
+    amountReceived=fread(&sendBuffer[0],1,amount,imageFile);
+  }
+
+  if (!amountReceived)
+  {
+    rp->addULONG(0);
+    log->log("Client", Log::DEBUG, "written 4(0) as getblock got 0");
+  }
+  else
+  {
+    rp->copyin(sendBuffer, amount);
+    log->log("Client", Log::DEBUG, "written %lu", amountReceived);
+  }
+  
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+
+  return 1;
+}
+
+
+
+
+
 
 
 
@@ -1315,18 +1870,14 @@ void MVPClient::cleanConfig()
     fprintf(f, "Event %i isFollowing = %i, isPresent = %i\n", 0, event->IsFollowing(), event->IsPresent());
 
     fprintf(f, "\n\n");
-*/
 
-/*
     fprintf(f, "Event %i eventid = %u time = %lu duration = %li\n", eventNumber, event->GetEventID(), event->GetTime(), event->GetDuration());
     fprintf(f, "Event %i title = %s subtitle = %s\n", eventNumber, event->GetTitle(), event->GetSubtitle());
     fprintf(f, "Event %i extendeddescription = %s\n", eventNumber, event->GetExtendedDescription());
     fprintf(f, "Event %i isFollowing = %i, isPresent = %i\n", eventNumber, event->IsFollowing(), event->IsPresent());
 
     fprintf(f, "\n\n");
-*/
 
-/*
 
 
 void MVPClient::test2()
@@ -1432,11 +1983,6 @@ void MVPClient::test2()
 
 
 
-
-
-
-
-
     fprintf(f, "End of current Schedule\n\n\n");
 
     Schedule = (const cSchedule *)Schedules->Next(Schedule);
@@ -1447,12 +1993,6 @@ void MVPClient::test2()
 }
 
 
-
-*/
-
-
-
-/*
   const cEventInfo *GetPresentEvent(void) const;
   const cEventInfo *GetFollowingEvent(void) const;
   const cEventInfo *GetEvent(unsigned short uEventID, time_t tTime = 0) const;
@@ -1477,10 +2017,8 @@ void MVPClient::test2()
   void SetChannelNumber(int ChannelNumber) const { ((cEventInfo *)this)->nChannelNumber = ChannelNumber; } // doesn't modify the EIT data, so it's ok to make it 'const'
   void Dump(FILE *f, const char *Prefix = "") const;
 
-*/
 
 
-/*
 void MVPClient::test(int channelNumber)
 {
   FILE* f = fopen("/tmp/test.txt", "w");
@@ -1543,11 +2081,6 @@ void MVPClient::test(int channelNumber)
   fclose(f);
 }
 
-*/
-
-
-
-/*
 
 
 Right, so
@@ -1568,9 +2101,7 @@ Description
 
 IsPresent ? easy to work out tho. Oh it doesn't always work
 
-*/
 
-/*
 void MVPClient::test2()
 {
   log->log("-", Log::DEBUG, "Timers List");
@@ -1593,666 +2124,10 @@ void MVPClient::test2()
 //            active, (UseChannelID ? Channel()->GetChannelID().ToString() : itoa(Channel()->Number())),
 //            PrintDay(day, firstday), start, stop, priority, lifetime, file, summary ? summary : "");
 }
-*/
 
-/*
+
 Active seems to be a bool - whether the timer should be done or not. If set to inactive it stays around after its time
 recording is a bool, 0 for not currently recording, 1 for currently recording
 pending is a bool, 0 for would not be trying to record this right now, 1 for would/is trying to record this right now
 */
 
-#ifndef VOMPSTANDALONE
-
-int MVPClient::processGetTimers(UCHAR* buffer, int length)
-{
-  UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
-  int count = 4; // leave space for the packet length
-
-  const char* fileName;
-  cTimer *timer;
-  int numTimers = Timers.Count();
-
-  *(ULONG*)&sendBuffer[count] = htonl(numTimers);    count += 4;
-
-  for (int i = 0; i < numTimers; i++)
-  {
-    if (count > 49000) break;
-
-    timer = Timers.Get(i);
-
-#if VDRVERSNUM < 10300
-    *(ULONG*)&sendBuffer[count] = htonl(timer->Active());                 count += 4;
-#else
-    *(ULONG*)&sendBuffer[count] = htonl(timer->HasFlags(tfActive));       count += 4;
-#endif
-    *(ULONG*)&sendBuffer[count] = htonl(timer->Recording());              count += 4;
-    *(ULONG*)&sendBuffer[count] = htonl(timer->Pending());                count += 4;
-    *(ULONG*)&sendBuffer[count] = htonl(timer->Priority());               count += 4;
-    *(ULONG*)&sendBuffer[count] = htonl(timer->Lifetime());               count += 4;
-    *(ULONG*)&sendBuffer[count] = htonl(timer->Channel()->Number());      count += 4;
-    *(ULONG*)&sendBuffer[count] = htonl(timer->StartTime());              count += 4;
-    *(ULONG*)&sendBuffer[count] = htonl(timer->StopTime());               count += 4;
-    *(ULONG*)&sendBuffer[count] = htonl(timer->Day());                    count += 4;
-    *(ULONG*)&sendBuffer[count] = htonl(timer->WeekDays());               count += 4;
-
-    fileName = timer->File();
-    strcpy((char*)&sendBuffer[count], fileName);
-    count += strlen(fileName) + 1;
-  }
-
-  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
-
-  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
-
-//tcp.dump(sendBuffer, count);
-
-  tcp.sendPacket(sendBuffer, count);
-  delete[] sendBuffer;
-  log->log("Client", Log::DEBUG, "Written timers list");
-
-  return 1;
-}
-
-int MVPClient::processSetTimer(UCHAR* buffer, int length)
-{
-  char* timerString = new char[strlen((char*)buffer) + 1];
-  strcpy(timerString, (char*)buffer);
-
-#if VDRVERSNUM < 10300
-
-  // If this is VDR 1.2 the date part of the timer string must be reduced
-  // to just DD rather than YYYY-MM-DD
-
-  int s = 0; // source
-  int d = 0; // destination
-  int c = 0; // count
-  while(c != 2) // copy up to date section, including the second ':'
-  {
-    timerString[d] = buffer[s];
-    if (buffer[s] == ':') c++;
-    ++s;
-    ++d;
-  }
-  // now it has copied up to the date section
-  c = 0;
-  while(c != 2) // waste YYYY-MM-
-  {
-    if (buffer[s] == '-') c++;
-    ++s;
-  }
-  // now source is at the DD
-  memcpy(&timerString[d], &buffer[s], length - s);
-  d += length - s;
-  timerString[d] = '\0';
-
-  log->log("Client", Log::DEBUG, "Timer string after 1.2 conversion:");
-  log->log("Client", Log::DEBUG, "%s", timerString);
-
-#endif
-
-  cTimer *timer = new cTimer;
-  if (timer->Parse((char*)timerString))
-  {
-    cTimer *t = Timers.GetTimer(timer);
-    if (!t)
-    {
-      Timers.Add(timer);
-#if VDRVERSNUM < 10300
-      Timers.Save();
-#else
-      Timers.SetModified();
-#endif
-      sendULONG(0);
-      return 1;
-    }
-    else
-    {
-      sendULONG(1);
-    }
-  }
-  else
-  {
-     sendULONG(2);
-  }
-  delete timer;
-  return 1;
-}
-
-#endif //VOMPSTANDALONE
-
-void MVPClient::incClients()
-{
-  pthread_mutex_lock(&threadClientMutex);
-  MVPClient::nr_clients++;
-  pthread_mutex_unlock(&threadClientMutex);
-}
-
-void MVPClient::decClients()
-{
-  pthread_mutex_lock(&threadClientMutex);
-  MVPClient::nr_clients--;
-  pthread_mutex_unlock(&threadClientMutex);
-}
-
-int MVPClient::getNrClients()
-{
-  int nrClients;
-  pthread_mutex_lock(&threadClientMutex);
-  nrClients = MVPClient::nr_clients;
-  pthread_mutex_unlock(&threadClientMutex);
-  return nrClients;
-}
-
-#ifndef VOMPSTANDALONE
-
-int MVPClient::processGetRecInfo(UCHAR* data, int length)
-{
-  // data is a pointer to the fileName string
-
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
-
-  cRecording *recording = Recordings.GetByName((char*)data);
-
-  time_t timerStart = 0;
-  time_t timerStop = 0;
-  char* summary = NULL;
-  ULONG resumePoint = 0;
-
-  if (!recording)
-  {
-    log->log("Client", Log::ERR, "GetRecInfo found no recording");
-    sendULONG(0);
-    return 1;
-  }
-
-  ULONG sendBufferSize = 10000;
-  UCHAR* sendBuffer = (UCHAR*)malloc(sendBufferSize);
-  ULONG pos = 4; // leave first 4 bytes for size field
-
-
-  /* Return packet:
-  4 bytes: start time for timer
-  4 bytes: end time for timer
-  4 bytes: resume point
-  string: summary
-  4 bytes: num components
-  {
-    1 byte: stream
-    1 byte: type
-    string: language
-    string: description
-  }
-
-  */
-
-  // Get current timer
-
-  cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
-  if (rc)
-  {
-    timerStart = rc->Timer()->StartTime();
-    timerStop = rc->Timer()->StopTime();
-    log->log("Client", Log::DEBUG, "GRI: RC: %lu %lu", timerStart, timerStop);
-  }
-
-  *(time_t*)&sendBuffer[pos] = htonl(timerStart);    pos += 4;
-  *(time_t*)&sendBuffer[pos] = htonl(timerStop);     pos += 4;
-
-  // Get resume point
-
-  char* value = config.getValueString("ResumeData", (char*)data);
-  if (value)
-  {
-    resumePoint = strtoul(value, NULL, 10);
-    delete[] value;
-  }
-  log->log("Client", Log::DEBUG, "GRI: RP: %lu", resumePoint);
-
-  *(ULONG*)&sendBuffer[pos] = htonl(resumePoint);    pos += 4;
-
-
-  // Get summary
-
-#if VDRVERSNUM < 10300
-  summary = (char*)recording->Summary();
-#else
-  const cRecordingInfo *Info = recording->Info();
-  summary = (char*)Info->ShortText();
-  if (isempty(summary)) summary = (char*)Info->Description();
-#endif
-  log->log("Client", Log::DEBUG, "GRI: S: %s", summary);
-  if (summary)
-  {
-    // memory insanity...
-    if ((sendBufferSize - pos) < (strlen(summary) + 500)) // random
-    {
-      UCHAR* newBuffer = (UCHAR*)realloc(sendBuffer, sendBufferSize + strlen(summary) + 10000);
-      if (newBuffer)
-      {
-        sendBuffer = newBuffer;
-        sendBufferSize += strlen(summary) + 10000;
-      }
-      else
-      {
-        free(sendBuffer);
-        sendULONG(0);
-        return 1;
-      }
-    }
-
-    strcpy((char*)&sendBuffer[pos], summary);
-    pos += strlen(summary) + 1;
-  }
-  else
-  {
-    strcpy((char*)&sendBuffer[pos], "");
-    pos += 1;
-  }
-
-
-  // Get channels
-
-#if VDRVERSNUM < 10300
-
-  // Send 0 for numchannels - this signals the client this info is not available
-  *(ULONG*)&sendBuffer[pos] = 0;    pos += 4;
-
-#else
-  const cComponents* components = Info->Components();
-
-  log->log("Client", Log::DEBUG, "GRI: D1: %p", components);
-
-  if (!components)
-  {
-    *(ULONG*)&sendBuffer[pos] = htonl(0);    pos += 4;
-  }
-  else
-  {
-    *(ULONG*)&sendBuffer[pos] = htonl(components->NumComponents());    pos += 4;
-
-    tComponent* component;
-    for (int i = 0; i < components->NumComponents(); i++)
-    {
-      component = components->Component(i);
-
-      // memory insanity...
-      ULONG extraNeeded = 2 + (component->language ? strlen(component->language) : 0)
-                            + (component->description ? strlen(component->description) : 0) + 2;
-
-      if ((sendBufferSize - pos) < extraNeeded)
-      {
-        UCHAR* newBuffer = (UCHAR*)realloc(sendBuffer, sendBufferSize + extraNeeded + 10000);
-        if (newBuffer)
-        {
-          sendBuffer = newBuffer;
-          sendBufferSize += extraNeeded + 10000;
-        }
-        else
-        {
-          free(sendBuffer);
-          sendULONG(0);
-          return 1;
-        }
-      }
-
-      log->log("Client", Log::DEBUG, "GRI: C: %i %u %u %s %s", i, component->stream, component->type, component->language, component->description);
-      sendBuffer[pos] = component->stream;  pos += 1;
-      sendBuffer[pos] = component->type;    pos += 1;
-      if (component->language)
-      {
-        strcpy((char*)&sendBuffer[pos], component->language);
-        pos += strlen(component->language) + 1;
-      }
-      else
-      {
-        strcpy((char*)&sendBuffer[pos], "");
-        pos += 1;
-      }
-      if (component->description)
-      {
-        strcpy((char*)&sendBuffer[pos], component->description);
-        pos += strlen(component->description) + 1;
-      }
-      else
-      {
-        strcpy((char*)&sendBuffer[pos], "");
-        pos += 1;
-      }
-
-    }
-  }
-
-#endif
-
-  // Done. send it
-
-  *(ULONG*)&sendBuffer[0] = htonl(pos - 4); // -4 :  take off the size field
-
-  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
-
-  tcp.sendPacket(sendBuffer, pos);
-  delete[] sendBuffer;
-  log->log("Client", Log::DEBUG, "Written getrecinfo");
-
-  return 1;
-}
-
-
-
-
-// FIXME obselete
-
-int MVPClient::processReScanRecording(UCHAR* data, int length)
-{
-  if (!rp)
-  {
-    log->log("Client", Log::DEBUG, "Rescan recording called when no recording being played!");
-    return 0;
-  }
-
-  rp->scan();
-
-  UCHAR sendBuffer[16];
-  *(ULONG*)&sendBuffer[0] = htonl(12);
-  *(ULLONG*)&sendBuffer[4] = htonll(rp->getLengthBytes());
-  *(ULONG*)&sendBuffer[12] = htonl(rp->getLengthFrames());
-
-  tcp.sendPacket(sendBuffer, 16);
-  log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
-  return 1;
-}
-
-// FIXME without client calling rescan, getblock wont work even tho more data is avail
-
-
-int MVPClient::processGetMarks(UCHAR* data, int length)
-{
-  // data is a pointer to the fileName string
-
-  UCHAR* sendBuffer = new UCHAR[50000]; // FIXME hope this is enough
-  int count = 4; // leave space for the packet length
-
-
-  cMarks Marks;
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
-
-  cRecording *recording = Recordings.GetByName((char*)data);
-
-  log->log("Client", Log::DEBUG, "recording pointer %p", recording);
-
-  if (recording)
-  {
-    Marks.Load(recording->FileName());
-    if (Marks.Count())
-    {
-      for (const cMark *m = Marks.First(); m; m = Marks.Next(m))
-      {
-        log->log("Client", Log::DEBUG, "found Mark %i", m->position);
-
-        if (count > 49000) break;
-        *(ULONG*)&sendBuffer[count] = htonl(m->position);
-        count += 4;
-      }
-    }
-    else
-    {
-      log->log("Client", Log::DEBUG, "no marks found, sending 0-mark");
-      *(ULONG*)&sendBuffer[count] = htonl(0);
-      count += 4;
-    }
-  }
-
-  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
-
-  log->log("Client", Log::DEBUG, "recorded size as %u", ntohl(*(ULONG*)&sendBuffer[0]));
-
-  tcp.sendPacket(sendBuffer, count);
-  delete[] sendBuffer;
-  log->log("Client", Log::DEBUG, "Written Marks list");
-
-  return 1;
-}
-
-#endif //VOMPSTANDALONE
-
-
-/**
-  * media List Request:
-  * 4 length
-  * 4 VDR_GETMEDIALIST
-  * 4 flags (currently unused)
-  * n dirname
-  * n+1 0
-  * Media List response:
-  * 4 length
-  * 4 VDR_
-  * 4 numentries
-  * per entry:
-  * 4 media type
-  * 4 time stamp
-  * 4 flags
-  * 4 strlen (incl. 0 Byte)
-  * string
-  * 0
-*/
-#define MLISTBUF 500000
-int MVPClient::processGetMediaList(UCHAR* data, int length)
-{
-  if (length < 4) {
-    log->log("Client", Log::ERR, "getMediaList packet too short %d", length);
-    return 0;
-  }
-  char * dirname=NULL;
-  if (length > 4) {
-    //we have a dirname provided
-    dirname=(char *)&data[4];
-    log->log("Client", Log::DEBUG, "getMediaList for %s", dirname);
-  }
-
-
-  UCHAR* sendBuffer = new UCHAR[MLISTBUF]; // FIXME hope this is enough
-  int count = 4; // leave space for the header
-
-  MediaList * ml=MediaList::readList(baseConfig,dirname);
-  if (ml == NULL) {
-     log->log("Client", Log::ERR, "getMediaList returned NULL");
-     return 0;
-  }
-  //response code (not yet set)
-  *(ULONG*)&sendBuffer[count] = htonl(0);
-  count += 4;
-  //numentries
-  *(ULONG*)&sendBuffer[count] = htonl(ml->size());
-  count += 4;
-  for (MediaList::iterator nm=ml->begin();nm<ml->end() && count < (MLISTBUF-1000);nm++) {
-      Media *m=*nm;
-      log->log("Client", Log::DEBUG, "found media entry %s, type=%d",m->getFilename(),m->getType());
-      *(ULONG*)&sendBuffer[count] = htonl(m->getType());
-      count += 4;
-      //time stamp
-      *(ULONG*)&sendBuffer[count] = htonl(m->getTime());
-      count += 4;
-      //flags
-      *(ULONG*)&sendBuffer[count] = htonl(0);
-      count += 4;
-      int len=strlen(m->getFilename());
-      //strlen
-      *(ULONG*)&sendBuffer[count] = htonl(len+1);
-      count += 4;
-      //should have a check for strlen > 1000...
-      strcpy((char *)&sendBuffer[count],m->getFilename());
-      count+=len+1;
-  }
-  delete ml;
-
-  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
-
-  log->log("Client", Log::DEBUG, "getMediaList size  %u", ntohl(*(ULONG*)&sendBuffer[0]));
-
-  tcp.sendPacket(sendBuffer, count);
-  delete[] sendBuffer;
-  log->log("Client", Log::DEBUG, "Written Media list");
-
-  return 1;
-}
-
-/**
-  * get image Request:
-  * 4 flags (currently unused)
-  * 4 x size
-  * 4 y size
-  * n filename
-  * n+1 0
-  * get image response:
-  * 4 length
-  * 4 VDR_GETIMAGE
-  * 4 len of image
-*/
-#define MLISTBUF 500000
-int MVPClient::processGetPicture(UCHAR* data, int length)
-{
-  if (length < 12) {
-    log->log("Client", Log::ERR, "getPicture packet too short %d", length);
-    return 0;
-  }
-  if (imageFile) {
-    fclose(imageFile);
-    imageFile=NULL;
-  }
-  char * filename=NULL;
-  if (length > 12) {
-    //we have a dirname provided
-    filename=(char *)&data[12];
-    log->log("Client", Log::DEBUG, "getPicture  %s", filename);
-  }
-  else {
-    log->log("Client", Log::ERR, "getPicture  empty filename");
-  }
-  if (filename) {
-    imageFile=fopen(filename,"r");
-    if (!imageFile) log->log("Client", Log::ERR, "getPicture unable to open %s",filename);
-  }
-  int size=0;
-  if (imageFile) {
-    struct stat st;
-    if ( fstat(fileno(imageFile),&st) == 0) size=st.st_size;
-  }
-  UCHAR* sendBuffer = new UCHAR[12];
-  int count = 4; // leave space for the header
-  //response code (not yet set)
-  *(ULONG*)&sendBuffer[count] = htonl(31);
-  count += 4;
-  //size
-  *(ULONG*)&sendBuffer[count] = htonl(size);
-  count += 4;
-  *(ULONG*)&sendBuffer[0] = htonl(count - 4); // -4 :  take off the size field
-  log->log("Client", Log::DEBUG, "getPicture size  %u", size);
-
-  tcp.sendPacket(sendBuffer, count);
-  delete[] sendBuffer;
-  log->log("Client", Log::DEBUG, "Written Media list");
-
-  return 1;
-}
-
-
-int MVPClient::processGetImageBlock(UCHAR* data, int length)
-{
-  if (!imageFile)
-  {
-    log->log("Client", Log::DEBUG, "Get image block called when no image active");
-    return 0;
-  }
-
-  ULLONG position = ntohll(*(ULLONG*)data);
-  data += sizeof(ULLONG);
-  ULONG amount = ntohl(*(ULONG*)data);
-
-  log->log("Client", Log::DEBUG, "getImageblock pos = %llu length = %lu", position, amount);
-
-  UCHAR sendBuffer[amount + 4];
-  ULONG amountReceived = 0; // compiler moan.
-  ULLONG cpos=ftell(imageFile);
-  if (position != cpos) {
-    fseek(imageFile,position-cpos,SEEK_CUR);
-  }
-  if (position != (ULLONG)ftell(imageFile)) {
-    log->log("Client", Log::DEBUG, "getImageblock pos = %llu not available", position);
-  }
-  else {
-    amountReceived=fread(&sendBuffer[4],1,amount,imageFile);
-  }
-
-  if (!amountReceived)
-  {
-    sendULONG(0);
-    log->log("Client", Log::DEBUG, "written 4(0) as getblock got 0");
-  }
-  else
-  {
-    *(ULONG*)&sendBuffer[0] = htonl(amountReceived);
-    tcp.sendPacket(sendBuffer, amountReceived + 4);
-    log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
-  }
-
-  return 1;
-}
-
-#ifndef VOMPSTANDALONE
-
-int MVPClient::processDeleteTimer(UCHAR* buffer, int length)
-{
-  log->log("Client", Log::DEBUG, "Delete timer called");
-  // get timer
-  
-  int position = 0;
-  
-  INT delChannel = ntohl(*(ULONG*)&buffer[position]); position += 4;
-  INT delWeekdays = ntohl(*(ULONG*)&buffer[position]); position += 4;
-  INT delDay = ntohl(*(ULONG*)&buffer[position]); position += 4;  
-  INT delStart = ntohl(*(ULONG*)&buffer[position]); position += 4;  
-  INT delStop = ntohl(*(ULONG*)&buffer[position]); position += 4;
-    
-  cTimer* ti = NULL;
-  for (ti = Timers.First(); ti; ti = Timers.Next(ti))
-  {
-    if  ( (ti->Channel()->Number() == delChannel)
-     &&   ((ti->WeekDays() && (ti->WeekDays() == delWeekdays)) || (!ti->WeekDays() && (ti->Day() == delDay)))
-     &&   (ti->StartTime() == delStart)
-     &&   (ti->StopTime() == delStop) )
-       break;
-  }
-  
-  if (!ti)
-  {
-    sendULONG(4);
-    return 1;
-  }
-          
-  if (!Timers.BeingEdited())
-  {
-    if (!ti->Recording())
-    {
-      Timers.Del(ti);
-      Timers.SetModified();
-      sendULONG(10);
-      return 1;
-    }
-    else
-    {
-      log->log("Client", Log::ERR, "Unable to delete timer - timer is running");
-      sendULONG(3);
-      return 1;
-    }  
-  }
-  else
-  {
-    log->log("Client", Log::ERR, "Unable to delete timer - timers being edited at VDR");
-    sendULONG(1);
-    return 1;
-  }  
-}
-
-#endif
