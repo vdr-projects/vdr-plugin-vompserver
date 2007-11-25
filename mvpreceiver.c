@@ -102,14 +102,17 @@ void MVPReceiver::threadMethod()
     threadWaitForSignal();
     threadCheckExit();
     
-    pthread_mutex_lock(&processedRingLock);
-    amountReceived = processed.get(buffer+12, streamChunkSize);
-    pthread_mutex_unlock(&processedRingLock);
+    do
+    {
+      pthread_mutex_lock(&processedRingLock);
+      amountReceived = processed.get(buffer+12, streamChunkSize);
+      pthread_mutex_unlock(&processedRingLock);
     
-    *(ULONG*)&buffer[0] = htonl(2); // stream channel
-    *(ULONG*)&buffer[4] = htonl(streamID);
-    *(ULONG*)&buffer[8] = htonl(amountReceived);
-    tcp->sendPacket(buffer, amountReceived + 12);
+      *(ULONG*)&buffer[0] = htonl(2); // stream channel
+      *(ULONG*)&buffer[4] = htonl(streamID);
+      *(ULONG*)&buffer[8] = htonl(amountReceived);
+      tcp->sendPacket(buffer, amountReceived + 12);
+    } while(processed.getContent());
   }  
 }
 
