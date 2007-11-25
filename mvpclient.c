@@ -795,6 +795,12 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length, ResponsePacket* rp
 
 int MVPClient::processStartStreamingChannel(UCHAR* data, int length, ULONG streamID, ResponsePacket* rp)
 {
+  if (lp)
+  {
+    log->log("Client", Log::ERR, "Client called start streaming twice");
+    return 0;
+  }
+  
   log->log("Client", Log::DEBUG, "length = %i", length);
   ULONG channelNumber = ntohl(*(ULONG*)data);
 
