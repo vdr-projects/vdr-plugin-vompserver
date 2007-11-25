@@ -112,7 +112,7 @@ void MVPReceiver::threadMethod()
       *(ULONG*)&buffer[4] = htonl(streamID);
       *(ULONG*)&buffer[8] = htonl(amountReceived);
       tcp->sendPacket(buffer, amountReceived + 12);
-    } while(processed.getContent());
+    } while(processed.getContent() >= streamChunkSize);
   }  
 }
 
