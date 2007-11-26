@@ -54,36 +54,27 @@ int MVPServer::stop()
   return 1;
 }
 
-int MVPServer::run(char* tconfigDirExtra)
+int MVPServer::run(char* tconfigDir)
 {
   if (threadIsActive()) return 1;
 
-  configDirExtra = tconfigDirExtra;
+  configDir = tconfigDir;
 
   // Start config
-#ifndef VOMPSTANDALONE
-  const char* configDir = cPlugin::ConfigDirectory(configDirExtra);
-#else
-  const char* configDir = ".";
+#ifdef VOMPSTANDALONE
 #define dsyslog(x) std::cout << x << std::endl;
 #endif
-  if (!configDir)
+
+  char configFileName[PATH_MAX];
+  snprintf(configFileName, PATH_MAX, "%s/vomp.conf", configDir);
+
+  if (config.init(configFileName))
   {
-    dsyslog("VOMP: Could not get config dir from VDR");
+    dsyslog("VOMP: Config file found");
   }
   else
   {
-    char configFileName[PATH_MAX];
-    snprintf(configFileName, PATH_MAX, "%s/vomp.conf", configDir);
-
-    if (config.init(configFileName))
-    {
-      dsyslog("VOMP: Config file found");
-    }
-    else
-    {
-      dsyslog("VOMP: Config file not found");
-    }
+    dsyslog("VOMP: Config file not found");
   }
 
   // Start logging
@@ -158,7 +149,6 @@ int MVPServer::run(char* tconfigDirExtra)
   if (tftpEnabled)
   {
     char tftpPath[PATH_MAX];
-//    snprintf(configFileName, PATH_MAX, "%s/vomp.conf", configDir);
 
     configString = config.getValueString("General", "TFTP directory");
     if (configString)
@@ -258,7 +248,7 @@ void MVPServer::threadMethod()
   while(1)
   {
     clientSocket = accept(listeningSocket,(struct sockaddr *)&address, &length);
-    MVPClient* m = new MVPClient(&config, configDirExtra, clientSocket);
+    MVPClient* m = new MVPClient(&config, configDir, clientSocket);
     m->run();
   }
 }

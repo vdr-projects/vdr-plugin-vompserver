@@ -53,7 +53,7 @@ class MVPServer : public Thread
     Tftpd tftpd;
     MVPRelay mvprelay;
     int listeningSocket;
-    char* configDirExtra;
+    char* configDir;
 };
 
 #endif

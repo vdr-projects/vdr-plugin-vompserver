@@ -29,7 +29,7 @@ pthread_mutex_t threadClientMutex;
 int MVPClient::nr_clients = 0;
 
 
-MVPClient::MVPClient(Config* cfgBase, char* tconfigDirExtra, int tsocket)
+MVPClient::MVPClient(Config* cfgBase, char* tconfigDir, int tsocket)
  : tcp(tsocket)
 {
 #ifndef VOMPSTANDALONE
@@ -40,7 +40,7 @@ MVPClient::MVPClient(Config* cfgBase, char* tconfigDirExtra, int tsocket)
   imageFile = 0;
   log = Log::getInstance();
   loggedIn = false;
-  configDirExtra = tconfigDirExtra;
+  configDir = tconfigDir;
   baseConfig = cfgBase;
   incClients();
 }
@@ -395,17 +395,6 @@ int MVPClient::processLogin(UCHAR* buffer, int length, ResponsePacket* rp)
   if (length != 6) return 0;
 
   // Open the config
-
-#ifndef VOMPSTANDALONE
-  const char* configDir = cPlugin::ConfigDirectory(configDirExtra);
-#else
-  const char* configDir = ".";
-#endif
-  if (!configDir)
-  {
-    log->log("Client", Log::DEBUG, "No config dir!");
-    return 0;
-  }
 
   char configFileName[PATH_MAX];
   snprintf(configFileName, PATH_MAX, "%s/vomp-%02X-%02X-%02X-%02X-%02X-%02X.conf", configDir, buffer[0], buffer[1], buffer[2], buffer[3], buffer[4], buffer[5]);

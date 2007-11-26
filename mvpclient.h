@@ -49,7 +49,7 @@ class ResponsePacket;
 class MVPClient
 {
   public:
-    MVPClient(Config* baseConfig, char* configDirExtra, int tsocket);
+    MVPClient(Config* baseConfig, char* configDir, int tsocket);
     ~MVPClient();
 
     int run();
@@ -66,7 +66,7 @@ class MVPClient
     Config config;
     Config* baseConfig;
     bool loggedIn;
-    char* configDirExtra;
+    char* configDir;
     FILE* imageFile;
 
 #ifndef VOMPSTANDALONE
