@@ -46,7 +46,7 @@ DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 ### The object files (add further files here):
 
-OBJS = $(PLUGIN).o dsock.o mvpserver.o udpreplier.o bootpd.o tftpd.o mvpclient.o tcp.o \
+OBJS = $(PLUGIN).o dsock.o mvpserver.o udpreplier.o bootpd.o tftpd.o i18n.o mvpclient.o tcp.o \
                    ringbuffer.o mvprelay.o \
                    recplayer.o config.o log.o thread.o mvpreceiver.o tftpclient.o \
                    media.o responsepacket.o

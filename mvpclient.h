@@ -43,6 +43,7 @@
 #include "tcp.h"
 #include "config.h"
 #include "media.h"
+#include "i18n.h"
 
 class ResponsePacket;
 
@@ -65,6 +66,7 @@ class MVPClient
     TCP tcp;
     Config config;
     Config* baseConfig;
+    I18n i18n;
     bool loggedIn;
     char* configDir;
     FILE* imageFile;
@@ -103,6 +105,8 @@ class MVPClient
     int processGetMediaList(UCHAR* data, int length, ResponsePacket* rp);
     int processGetPicture(UCHAR* data, int length, ResponsePacket* rp);
     int processGetImageBlock(UCHAR* data, int length, ResponsePacket* rp);
+    int processGetLanguageList(UCHAR* data, int length, ResponsePacket* rp);
+    int processGetLanguageContent(UCHAR* data, int length, ResponsePacket* rp);
 
     void incClients();
     void decClients();

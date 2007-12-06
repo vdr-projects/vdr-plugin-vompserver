@@ -30,7 +30,7 @@ int MVPClient::nr_clients = 0;
 
 
 MVPClient::MVPClient(Config* cfgBase, char* tconfigDir, int tsocket)
- : tcp(tsocket)
+ : tcp(tsocket), i18n(tconfigDir)
 {
 #ifndef VOMPSTANDALONE
   lp = NULL;
@@ -41,6 +41,7 @@ MVPClient::MVPClient(Config* cfgBase, char* tconfigDir, int tsocket)
   log = Log::getInstance();
   loggedIn = false;
   configDir = tconfigDir;
+  log->log("Client", Log::DEBUG, "Config dir: %s", configDir);
   baseConfig = cfgBase;
   incClients();
 }
@@ -382,6 +383,12 @@ void MVPClient::run2()
         break;
       case 32:
         result = processGetImageBlock(data, extraDataLength, rp);
+        break;
+      case 33:
+        result = processGetLanguageList(data, extraDataLength, rp);
+        break;
+      case 34:
+        result = processGetLanguageContent(data, extraDataLength, rp);
         break;
     }
 
@@ -1834,6 +1841,46 @@ int MVPClient::processGetImageBlock(UCHAR* data, int length, ResponsePacket* rp)
 
   return 1;
 }
+
+
+int MVPClient::processGetLanguageList(UCHAR* data, int length, ResponsePacket* rp)
+{
+  i18n.findLanguages();
+  const I18n::lang_code_list& languages = i18n.getLanguageList();
+  std::string result;
+  I18n::lang_code_list::const_iterator iter;
+  for (iter = languages.begin(); iter != languages.end(); ++iter)
+  {
+    rp->addString(iter->first.c_str());
+    rp->addString(iter->second.c_str());
+  }
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  return 1;
+}
+
+int MVPClient::processGetLanguageContent(UCHAR* data, int length, ResponsePacket* rp)
+{
+  if (length <= 0) return 0;
+  std::string code, result;
+  code.assign((char*)data, length - 1);
+  i18n.findLanguages();
+  I18n::trans_table texts = i18n.getLanguageContent(code);
+  I18n::trans_table::const_iterator iter;
+  for (iter = texts.begin(); iter != texts.end(); ++iter)
+  {
+    rp->addString(iter->first.c_str());
+    rp->addString(iter->second.c_str());
+  }
+  rp->finalise();
+  tcp.sendPacket(rp->getPtr(), rp->getLen());
+  delete rp;
+  return 1;
+}
+
+
+
 
 
 
