@@ -91,7 +91,7 @@ I18n::trans_table I18n::getLanguageContent(const string code)
       while (fgets(line, 1000, f))
       {
         int linetype = 0;
-	string::size_type offset = 0;
+        string::size_type offset = 0;
         string fileline = line;
         if (fileline.compare(0, 2, "x:") == 0)
         { // New key to be translated
@@ -105,19 +105,19 @@ I18n::trans_table I18n::getLanguageContent(const string code)
         if (linetype != 0)
         {
           string::size_type start, end;
-	  start = fileline.find_first_not_of(" \t\r\n",offset);
+          start = fileline.find_first_not_of(" \t\r\n",offset);
           if (start == string::npos)
-	  {
-	    if (linetype == 2) Translations[key].clear();
-	    continue;
-	  }
+          {
+            if (linetype == 2) Translations[key].clear();
+            continue;
+          }
           end = fileline.find_last_not_of(" \t\r\n");
           string text = fileline.substr(start, end + 1 - start);
-	  if (text.length() > 1) // Strip quotes if at both ends
-	  {
-	    if (text[0] == '"' && text[text.length()-1] == '"')
-	      text = text.substr(1, text.length()-2);
-	  }
+          if (text.length() > 1) // Strip quotes if at both ends
+          {
+            if (text[0] == '"' && text[text.length()-1] == '"')
+              text = text.substr(1, text.length()-2);
+          }
           if (linetype == 1) key = text;
           if (linetype == 2) Translations[key] = text;
         }
