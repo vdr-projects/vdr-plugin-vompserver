@@ -229,12 +229,12 @@ void MVPClient::run2()
   ULONG opcode;
   ULONG extraDataLength;
   UCHAR* data;
-    
-  int result = 0;
+  int result;
 
   while(1)
   {
     log->log("Client", Log::DEBUG, "Waiting");
+    result = 0;
     
     if (!tcp.readData((UCHAR*)&channelID, sizeof(ULONG))) break;
     channelID = ntohl(channelID);
@@ -299,7 +299,8 @@ void MVPClient::run2()
     ResponsePacket* rp = new ResponsePacket();
     if (!rp->init(requestID))
     {
-      log->log("Client", Log::ERR, "response packet init fail");      
+      log->log("Client", Log::ERR, "response packet init fail");     
+      delete rp; 
       break;
     }
     
@@ -392,6 +393,7 @@ void MVPClient::run2()
         break;
     }
 
+    delete rp;
     if (data) free(data);
     if (!result) break;
   }
@@ -418,8 +420,7 @@ int MVPClient::processLogin(UCHAR* buffer, int length, ResponsePacket* rp)
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
   log->log("Client", Log::DEBUG, "written login reply len %lu", rp->getLen());
-  delete rp;
-  
+    
   loggedIn = true;
   return 1;
 }
@@ -447,7 +448,6 @@ int MVPClient::processGetRecordingsList(UCHAR* data, int length, ResponsePacket*
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   log->log("Client", Log::DEBUG, "Written recordings list");
 
@@ -497,7 +497,6 @@ int MVPClient::processDeleteRecording(UCHAR* data, int length, ResponsePacket* r
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   return 1;
 }
@@ -594,7 +593,6 @@ int MVPClient::processMoveRecording(UCHAR* data, int length, ResponsePacket* rp)
           rp->addULONG(5);          
           rp->finalise();
           tcp.sendPacket(rp->getPtr(), rp->getLen());
-          delete rp;
           return 1;
         }
       }
@@ -607,7 +605,6 @@ int MVPClient::processMoveRecording(UCHAR* data, int length, ResponsePacket* rp)
         rp->addULONG(5);          
         rp->finalise();
         tcp.sendPacket(rp->getPtr(), rp->getLen());
-        delete rp;
         return 1;
       }
 
@@ -646,7 +643,6 @@ int MVPClient::processMoveRecording(UCHAR* data, int length, ResponsePacket* rp)
 
       rp->finalise();
       tcp.sendPacket(rp->getPtr(), rp->getLen());
-      delete rp;
 
       delete[] dateDirName;
       delete[] titleDirName;
@@ -658,7 +654,6 @@ int MVPClient::processMoveRecording(UCHAR* data, int length, ResponsePacket* rp)
       rp->addULONG(3);          
       rp->finalise();
       tcp.sendPacket(rp->getPtr(), rp->getLen());
-      delete rp;
     }
   }
   else
@@ -666,7 +661,6 @@ int MVPClient::processMoveRecording(UCHAR* data, int length, ResponsePacket* rp)
     rp->addULONG(4);          
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
   }
 
   return 1;
@@ -706,7 +700,6 @@ int MVPClient::processGetChannelsList(UCHAR* data, int length, ResponsePacket* r
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
 
   log->log("Client", Log::DEBUG, "Written channels list");
 
@@ -723,7 +716,6 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length, ResponsePacket* rp
     rp->addULONG(0);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     return 1;
   }
 
@@ -782,7 +774,6 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length, ResponsePacket* rp
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   log->log("Client", Log::DEBUG, "Written channels pids");
 
@@ -806,7 +797,6 @@ int MVPClient::processStartStreamingChannel(UCHAR* data, int length, ULONG strea
     rp->addULONG(0);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     return 1;
   }
 
@@ -835,7 +825,6 @@ int MVPClient::processStartStreamingChannel(UCHAR* data, int length, ULONG strea
     rp->addULONG(0);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     return 1;
   }
 
@@ -846,14 +835,12 @@ int MVPClient::processStartStreamingChannel(UCHAR* data, int length, ULONG strea
     rp->addULONG(0);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     return 1;
   }
 
   rp->addULONG(1);
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   return 1;
 }
 
@@ -878,7 +865,6 @@ int MVPClient::processStopStreaming(UCHAR* data, int length, ResponsePacket* rp)
   rp->addULONG(1);
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   return 1;
 }
 
@@ -931,7 +917,6 @@ int MVPClient::processGetBlock(UCHAR* data, int length, ResponsePacket* rp)
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
   log->log("Client", Log::DEBUG, "Finished getblock, have sent %lu", rp->getLen());
-  delete rp;
   return 1;
 }
 
@@ -954,7 +939,6 @@ int MVPClient::processStartStreamingRecording(UCHAR* data, int length, ResponseP
     rp->addULONG(recplayer->getLengthFrames());
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     
     log->log("Client", Log::DEBUG, "written totalLength");
   }
@@ -985,7 +969,6 @@ int MVPClient::processPositionFromFrameNumber(UCHAR* data, int length, ResponseP
   rp->addULLONG(retval);
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
 
   log->log("Client", Log::DEBUG, "Wrote posFromFrameNum reply to client");
   return 1;
@@ -1010,7 +993,6 @@ int MVPClient::processFrameNumberFromPosition(UCHAR* data, int length, ResponseP
   rp->addULONG(retval);
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
 
   log->log("Client", Log::DEBUG, "Wrote frameNumFromPos reply to client");
   return 1;
@@ -1053,7 +1035,6 @@ int MVPClient::processGetIFrame(UCHAR* data, int length, ResponsePacket* rp)
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   log->log("Client", Log::DEBUG, "Wrote GNIF reply to client %llu %lu %lu", rfilePosition, rframeNumber, rframeLength);
   return 1;
@@ -1075,7 +1056,6 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length, ResponsePacket
     rp->addULONG(0);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
   
     log->log("Client", Log::DEBUG, "written 0 because channel = NULL");
     return 1;
@@ -1095,7 +1075,6 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length, ResponsePacket
     rp->addULONG(0);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     
     log->log("Client", Log::DEBUG, "written 0 because Schedule!s! = NULL");
     return 1;
@@ -1109,7 +1088,6 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length, ResponsePacket
     rp->addULONG(0);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     
     log->log("Client", Log::DEBUG, "written 0 because Schedule = NULL");
     return 1;
@@ -1191,7 +1169,6 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length, ResponsePacket
   
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
     
   log->log("Client", Log::DEBUG, "written schedules packet");
 
@@ -1237,7 +1214,6 @@ int MVPClient::processConfigSave(UCHAR* buffer, int length, ResponsePacket* rp)
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   return 1;
 }
@@ -1272,7 +1248,6 @@ int MVPClient::processConfigLoad(UCHAR* buffer, int length, ResponsePacket* rp)
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   return 1;
 }
@@ -1309,7 +1284,6 @@ int MVPClient::processGetTimers(UCHAR* buffer, int length, ResponsePacket* rp)
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   log->log("Client", Log::DEBUG, "Written timers list");
 
@@ -1368,7 +1342,6 @@ int MVPClient::processSetTimer(UCHAR* buffer, int length, ResponsePacket* rp)
       rp->addULONG(0);
       rp->finalise();
       tcp.sendPacket(rp->getPtr(), rp->getLen());
-      delete rp;
       return 1;
     }
     else
@@ -1376,7 +1349,6 @@ int MVPClient::processSetTimer(UCHAR* buffer, int length, ResponsePacket* rp)
       rp->addULONG(1);
       rp->finalise();
       tcp.sendPacket(rp->getPtr(), rp->getLen());
-      delete rp;
     }
   }
   else
@@ -1384,7 +1356,6 @@ int MVPClient::processSetTimer(UCHAR* buffer, int length, ResponsePacket* rp)
     rp->addULONG(2);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
   }
   delete timer;
   return 1;
@@ -1418,7 +1389,6 @@ int MVPClient::processDeleteTimer(UCHAR* buffer, int length, ResponsePacket* rp)
     rp->addULONG(4);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     return 1;
   }
           
@@ -1431,7 +1401,6 @@ int MVPClient::processDeleteTimer(UCHAR* buffer, int length, ResponsePacket* rp)
       rp->addULONG(10);
       rp->finalise();
       tcp.sendPacket(rp->getPtr(), rp->getLen());
-      delete rp;
       return 1;
     }
     else
@@ -1440,7 +1409,6 @@ int MVPClient::processDeleteTimer(UCHAR* buffer, int length, ResponsePacket* rp)
       rp->addULONG(3);
       rp->finalise();
       tcp.sendPacket(rp->getPtr(), rp->getLen());
-      delete rp;
       return 1;
     }  
   }
@@ -1450,7 +1418,6 @@ int MVPClient::processDeleteTimer(UCHAR* buffer, int length, ResponsePacket* rp)
     rp->addULONG(1);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     return 1;
   }  
 }
@@ -1475,7 +1442,6 @@ int MVPClient::processGetRecInfo(UCHAR* data, int length, ResponsePacket* rp)
     rp->addULONG(0);
     rp->finalise();
     tcp.sendPacket(rp->getPtr(), rp->getLen());
-    delete rp;
     return 1;
   }
 
@@ -1594,7 +1560,6 @@ int MVPClient::processGetRecInfo(UCHAR* data, int length, ResponsePacket* rp)
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
 
   log->log("Client", Log::DEBUG, "Written getrecinfo");
 
@@ -1620,7 +1585,6 @@ int MVPClient::processReScanRecording(UCHAR* data, int length, ResponsePacket* r
   rp->addULONG(recplayer->getLengthFrames());
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   log->log("Client", Log::DEBUG, "Rescan recording, wrote new length to client");
   return 1;
 }
@@ -1661,7 +1625,6 @@ int MVPClient::processGetMarks(UCHAR* data, int length, ResponsePacket* rp)
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   log->log("Client", Log::DEBUG, "Written Marks list");
 
@@ -1733,7 +1696,6 @@ int MVPClient::processGetMediaList(UCHAR* data, int length, ResponsePacket* rp)
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   
   log->log("Client", Log::DEBUG, "Written Media list");
   return 1;
@@ -1789,7 +1751,6 @@ int MVPClient::processGetPicture(UCHAR* data, int length, ResponsePacket* rp)
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
 
   log->log("Client", Log::DEBUG, "Written getPicture");
 
@@ -1837,7 +1798,6 @@ int MVPClient::processGetImageBlock(UCHAR* data, int length, ResponsePacket* rp)
   
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
 
   return 1;
 }
@@ -1856,7 +1816,6 @@ int MVPClient::processGetLanguageList(UCHAR* data, int length, ResponsePacket* r
   }
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   return 1;
 }
 
@@ -1875,7 +1834,6 @@ int MVPClient::processGetLanguageContent(UCHAR* data, int length, ResponsePacket
   }
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
-  delete rp;
   return 1;
 }
 
