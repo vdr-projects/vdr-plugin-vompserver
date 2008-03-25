@@ -20,6 +20,9 @@
 
 #include "recplayer.h"
 
+#define _XOPEN_SOURCE 600
+#include <fcntl.h>
+
 RecPlayer::RecPlayer(cRecording* rec)
 {
   log = Log::getInstance();
@@ -163,7 +166,10 @@ unsigned long RecPlayer::getBlock(unsigned char* buffer, ULLONG position, unsign
     filePosition = currentPosition - segments[segmentNumber]->start;
     fseek(file, filePosition, SEEK_SET);
     if (fread(&buffer[got], getFromThisSegment, 1, file) != 1) return 0; // umm, big problem.
-
+ 
+    // Tell linux not to bother keeping the data in the FS cache
+    posix_fadvise(file->_fileno, filePosition, getFromThisSegment, POSIX_FADV_DONTNEED);
+ 
     got += getFromThisSegment;
     currentPosition += getFromThisSegment;
     yetToGet -= getFromThisSegment;
