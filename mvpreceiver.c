@@ -2,8 +2,12 @@
 
 MVPReceiver* MVPReceiver::create(cChannel* channel, int priority)
 {
-  bool NeedsDetachReceivers;
-  cDevice* device = cDevice::GetDevice(channel, priority, &NeedsDetachReceivers);
+#if VDRVERSNUM < 10500
+   bool NeedsDetachReceivers;
+   cDevice* device = cDevice::GetDevice(channel, priority, &NeedsDetachReceivers);
+#else
+  cDevice* device = cDevice::GetDevice(channel, priority, true); // last param is live-view
+#endif
 
   if (!device)
   {
@@ -11,12 +15,14 @@ MVPReceiver* MVPReceiver::create(cChannel* channel, int priority)
     return NULL;
   }
 
+#if VDRVERSNUM < 10500
   if (NeedsDetachReceivers)
   {
     Log::getInstance()->log("MVPReceiver", Log::DEBUG, "Needs detach receivers");
 
     // Need to detach other receivers or VDR will shut down??
   }
+#endif
 
   MVPReceiver* m = new MVPReceiver(channel, device);
   return m;
