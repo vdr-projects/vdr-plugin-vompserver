@@ -28,3 +28,9 @@
 ## path will be used - i.e. where this file is
 
 # TFTP directory = /tftpboot
+
+## Change the following to "no" to disable the
+## built in mvprelay server
+
+# MVPRelay enabled = yes
+

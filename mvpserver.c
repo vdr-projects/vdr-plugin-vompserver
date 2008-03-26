@@ -122,6 +122,7 @@ int MVPServer::run(char* tconfigDir)
   char* configString;
   int bootpEnabled = 0;
   int tftpEnabled = 0;
+  int mvprelayEnabled = 1;
 
   configString = config.getValueString("General", "Bootp server enabled");
   if (configString && (!strcasecmp(configString, "yes"))) bootpEnabled = 1;
@@ -129,6 +130,10 @@ int MVPServer::run(char* tconfigDir)
 
   configString = config.getValueString("General", "TFTP server enabled");
   if (configString && (!strcasecmp(configString, "yes"))) tftpEnabled = 1;
+  if (configString) delete[] configString;
+
+  configString = config.getValueString("General", "MVPRelay enabled");
+  if (configString && (strcasecmp(configString, "yes"))) mvprelayEnabled = 0;
   if (configString) delete[] configString;
 
 
@@ -189,17 +194,24 @@ int MVPServer::run(char* tconfigDir)
   }
 
   // Start mvprelay thread
-  if (!mvprelay.run())
+  if (mvprelayEnabled)
   {
-    log.log("Main", Log::CRIT, "Could not start MVPRelay");
-    stop();
-    return 0;
+    if (!mvprelay.run())
+    {
+      log.log("Main", Log::CRIT, "Could not start MVPRelay");
+      stop();
+      return 0;
+    }
+    else
+    {
+      log.log("Main", Log::INFO, "MVPRelay started");
+    }
   }
   else
   {
-    log.log("Main", Log::INFO, "MVPRelay started");
+    log.log("Main", Log::INFO, "Not starting MVPRelay");
   }
-
+  
   // start thread here
   if (!threadStart())
   {
