@@ -87,10 +87,28 @@ class MVPReceiver : public cReceiver, public Thread
 
   cDevice docs
 
+(VDR 1.4)
   static cDevice *GetDevice(const cChannel *Channel, int Priority = -1, bool *NeedsDetachReceivers = NULL);
      ///< Returns a device that is able to receive the given Channel at the
      ///< given Priority.
      ///< See ProvidesChannel() for more information on how
      ///< priorities are handled, and the meaning of NeedsDetachReceivers.
+
+(VDR >1.5)
+  static cDevice *GetDevice(const cChannel *Channel, int Priority, bool LiveView);
+     ///< Returns a device that is able to receive the given Channel at the
+     ///< given Priority, with the least impact on active recordings and
+     ///< live viewing. The LiveView parameter tells whether the device will
+     ///< be used for live viewing or a recording.
+     ///< If the Channel is encrypted, a CAM slot that claims to be able to
+     ///< decrypt the channel is automatically selected and assigned to the
+     ///< returned device. Whether or not this combination of device and CAM
+     ///< slot is actually able to decrypt the channel can only be determined
+     ///< by checking the "scrambling control" bits of the received TS packets.
+     ///< The Action() function automatically does this and takes care that
+     ///< after detaching any receivers because the channel can't be decrypted,
+     ///< this device/CAM combination will be skipped in the next call to
+     ///< GetDevice().
+     ///< See also ProvidesChannel().
 
 */
