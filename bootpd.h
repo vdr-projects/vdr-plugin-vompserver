@@ -40,7 +40,7 @@ class Bootpd : public Thread
     Bootpd();
     virtual ~Bootpd();
 
-    int run();
+    int run(const char* tconfigDir);
     int shutdown();
 
   private:
@@ -50,6 +50,7 @@ class Bootpd : public Thread
 
     DatagramSocket ds;
     Log* log;
+    const char* configDir;
 };
 
 #endif

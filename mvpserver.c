@@ -139,7 +139,7 @@ int MVPServer::run(char* tconfigDir)
 
   if (bootpEnabled)
   {
-    if (!bootpd.run())
+    if (!bootpd.run(configDir))
     {
       log.log("Main", Log::CRIT, "Could not start Bootpd");
       stop();

@@ -41,10 +41,12 @@ int Bootpd::shutdown()
   return 1;
 }
 
-int Bootpd::run()
+int Bootpd::run(const char* tconfigDir)
 {
   if (threadIsActive()) return 1;
   log->log("BOOTPD", Log::DEBUG, "Starting bootpd");
+
+  configDir = tconfigDir;
 
   if (!ds.init(16867))
   {
@@ -96,16 +98,14 @@ void Bootpd::processRequest(UCHAR* data, int length)
 
   if (data[0] != 1) return;  // Check it's a request
 
-
   // Open a config file for the given MAC
 
 #ifndef VOMPSTANDALONE
-  const char* configDir = cPlugin::ConfigDirectory();
+  const char* useConfigDir = configDir;
 #else
-  const char* configDir = ".";
+  const char* useConfigDir = ".";
 #endif
-//  char* configDir = "/opt/dvb/vdr-config-1.3/plugins";
-  if (!configDir)
+  if (!useConfigDir)
   {
     log->log("BOOTPD", Log::ERR, "No config dir!");
     return;
@@ -113,7 +113,7 @@ void Bootpd::processRequest(UCHAR* data, int length)
 
   Config config;
   char configFileName[PATH_MAX];
-  snprintf(configFileName, PATH_MAX, "%s/vomp-%02X-%02X-%02X-%02X-%02X-%02X.conf", configDir, data[28], data[29], data[30], data[31], data[32], data[33]);
+  snprintf(configFileName, PATH_MAX, "%s/vomp-%02X-%02X-%02X-%02X-%02X-%02X.conf", useConfigDir, data[28], data[29], data[30], data[31], data[32], data[33]);
   if (config.init(configFileName))
   {
     log->log("BOOTPD", Log::DEBUG, "Opened config file: %s", configFileName);
