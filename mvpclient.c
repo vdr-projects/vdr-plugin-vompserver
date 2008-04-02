@@ -566,17 +566,19 @@ int MVPClient::processMoveRecording(UCHAR* data, int length, ResponsePacket* rp)
 
       log->log("Client", Log::DEBUG, "datedirname: %s", dateDirName);
       log->log("Client", Log::DEBUG, "titledirname: %s", titleDirName);
-
       log->log("Client", Log::DEBUG, "viddir: %s", VideoDirectory);
 
-      char* newContainer = new char[strlen(VideoDirectory) + strlen(newPath) + strlen(titleDirName) + 1];
-      log->log("Client", Log::DEBUG, "l10: %i", strlen(VideoDirectory) + strlen(newPath) + strlen(titleDirName) + 1);
-      sprintf(newContainer, "%s%s%s", VideoDirectory, newPath, titleDirName);
+      char* newPathConv = new char[strlen(newPath)+1];
+      strcpy(newPathConv, newPath);
+      ExchangeChars(newPathConv, true);
+      log->log("Client", Log::DEBUG, "EC: %s", newPathConv);
 
-      // FIXME Check whether this already exists before mkdiring it
+      char* newContainer = new char[strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1];
+      log->log("Client", Log::DEBUG, "l10: %i", strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1);
+      sprintf(newContainer, "%s%s%s", VideoDirectory, newPathConv, titleDirName);
+      delete[] newPathConv;
 
       log->log("Client", Log::DEBUG, "%s", newContainer);
-
 
       struct stat dstat;
       int statret = stat(newContainer, &dstat);

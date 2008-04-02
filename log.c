@@ -100,14 +100,16 @@ int Log::log(const char *fromModule, int level, const char* message, ...)
 
   if (level > logLevel) return 1;
 
-  char buffer[151];
-  int spaceLeft = 150;
+  int lineLength = 250;
+
+  char buffer[lineLength + 1];
+  int spaceLeft = lineLength;
 
   struct timeval tv;
   gettimeofday(&tv, NULL);
   struct tm* tm = localtime(&tv.tv_sec);
   spaceLeft -= strftime(buffer, spaceLeft, "%H:%M:%S.", tm);
-  spaceLeft -= snprintf(&buffer[150-spaceLeft], spaceLeft, "%06lu ", (unsigned long)tv.tv_usec);
+  spaceLeft -= snprintf(&buffer[lineLength-spaceLeft], spaceLeft, "%06lu ", (unsigned long)tv.tv_usec);
 
 
   char levelString[10];
@@ -121,23 +123,23 @@ int Log::log(const char *fromModule, int level, const char* message, ...)
   if (level == INFO)    strcpy(levelString, "[info]  ");
   if (level == DEBUG)   strcpy(levelString, "[debug] ");
 
-  spaceLeft -= snprintf(&buffer[150-spaceLeft], spaceLeft, "%s %s - ", levelString, fromModule);
+  spaceLeft -= snprintf(&buffer[lineLength-spaceLeft], spaceLeft, "%s %s - ", levelString, fromModule);
 
   va_list ap;
   va_start(ap, message);
-  spaceLeft = vsnprintf(&buffer[150-spaceLeft], spaceLeft, message, ap);
+  spaceLeft = vsnprintf(&buffer[lineLength-spaceLeft], spaceLeft, message, ap);
   va_end(ap);
 
   int messageLength = strlen(buffer);
-  if (messageLength < 150)
+  if (messageLength < lineLength)
   {
     buffer[messageLength] = '\n';
     buffer[messageLength+1] = '\0';
   }
   else
   {
-    buffer[149] = '\n';
-    buffer[150] = '\0';
+    buffer[lineLength-1] = '\n';
+    buffer[lineLength] = '\0';
   }
 
   int success = fputs(buffer, logfile);
