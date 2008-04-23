@@ -722,6 +722,9 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length, ResponsePacket* rp
   }
 
   ULONG numApids = 0;
+  ULONG numDpids = 0;
+  ULONG numSpids = 0;
+
 
 #if VDRVERSNUM < 10300
 
@@ -741,6 +744,14 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length, ResponsePacket* rp
   {
     numApids++;
   }
+  for (const int *Dpid = channel->Dpids(); *Dpid; Dpid++)
+  {
+    numDpids++;
+  }
+  for (const int *Spid = channel->Spids(); *Spid; Spid++)
+  {
+    numSpids++;
+  }
 #endif
 
 
@@ -751,6 +762,17 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length, ResponsePacket* rp
   //    apid
   //    lang string
   // }
+  // number of dpids
+  // {
+  //    dpid
+  //    lang string
+  // }
+  // number of spids
+  // {
+  //    spid
+  //    lang string
+  // }
+  // tpid
 
   rp->addULONG(channel->Vpid());
   rp->addULONG(numApids);
@@ -766,13 +788,29 @@ int MVPClient::processGetChannelPids(UCHAR* data, int length, ResponsePacket* rp
     rp->addULONG(channel->Apid2());
     rp->addString("");
   }
+  rp->addULONG(0);
+  rp->addULONG(0); 
 #else
   for (ULONG i = 0; i < numApids; i++)
   {
     rp->addULONG(channel->Apid(i));
     rp->addString(channel->Alang(i));
   }
+  rp->addULONG(numDpids);
+  for (ULONG i = 0; i < numDpids; i++)
+  {
+    rp->addULONG(channel->Dpid(i));
+    rp->addString(channel->Dlang(i));
+  }
+  rp->addULONG(numSpids);
+  for (ULONG i = 0; i < numSpids; i++)
+  {
+    rp->addULONG(channel->Spid(i));
+    rp->addString(channel->Slang(i));
+  }
 #endif
+  rp->addULONG(channel->Tpid());
+
 
   rp->finalise();
   tcp.sendPacket(rp->getPtr(), rp->getLen());
