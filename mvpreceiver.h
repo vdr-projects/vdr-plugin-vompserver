@@ -52,11 +52,14 @@ class MVPReceiver : public cReceiver, public Thread
     TCP* tcp;
     ULONG streamID;
     ULONG streamDataCollected;
-    const static int streamChunkSize = 50000;
+    int streamChunkSize;
 
     // cReciever stuff
     void Activate(bool On);
     void Receive(UCHAR *Data, int Length);
+    void sendStreamEnd();
+
+    static int numMVPReceivers;
     
   protected:
     void threadMethod();
