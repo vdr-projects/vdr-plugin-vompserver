@@ -1,5 +1,5 @@
 /*
-    Copyright 2004-2005 Chris Tallon
+    Copyright 2004-2008 Chris Tallon
 
     This file is part of VOMP.
 
@@ -244,27 +244,19 @@ void MVPClient::run2()
       break;
     }
 
-    log->log("Client", Log::DEBUG, "Got chan");
-    
     if (!tcp.readData((UCHAR*)&requestID, sizeof(ULONG))) break;
     requestID = ntohl(requestID);
-
-    log->log("Client", Log::DEBUG, "Got ser");
 
     if (!tcp.readData((UCHAR*)&opcode, sizeof(ULONG))) break;
     opcode = ntohl(opcode);
 
-    log->log("Client", Log::DEBUG, "Got op %lu", opcode);
-
     if (!tcp.readData((UCHAR*)&extraDataLength, sizeof(ULONG))) break;
     extraDataLength = ntohl(extraDataLength);
-    if (extraDataLength > 200000)
+    if (extraDataLength > 200000) // a random sanity limit
     {
       log->log("Client", Log::ERR, "ExtraDataLength > 200000!");
       break;
     }
-
-    log->log("Client", Log::DEBUG, "Got edl %lu", extraDataLength);
 
     if (extraDataLength)
     {
@@ -1172,8 +1164,6 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length, ResponsePacket
 
 #endif
 
-    log->log("Client", Log::DEBUG, "Got an event object %p", event);
-
     //in the past filter
     if ((thisEventTime + thisEventDuration) < (ULONG)time(NULL)) continue;
 
@@ -1196,7 +1186,6 @@ int MVPClient::processGetChannelSchedule(UCHAR* data, int length, ResponsePacket
     rp->addString(thisEventDescription);
 
     atLeastOneEvent = true;
-    log->log("Client", Log::DEBUG, "Done s3");
   }
 
   log->log("Client", Log::DEBUG, "Got all event data");
