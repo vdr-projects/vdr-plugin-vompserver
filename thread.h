@@ -1,5 +1,5 @@
 /*
-    Copyright 2004-2005 Chris Tallon
+    Copyright 2004-2008 Chris Tallon
 
     This file is part of VOMP.
 
@@ -43,6 +43,8 @@ class Thread
     void threadCheckExit();      // terminates thread if threadStop() has been called
     void threadWaitForSignal();  // pauses thread until threadSignal() is called
     void threadDetach();         // Detaches the thread
+    void threadLock();           // locks the mutex used for internal cond/signal stuff
+    void threadUnlock();         // unlocks.
 
     // Internal bits and pieces
 

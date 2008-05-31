@@ -122,7 +122,9 @@ void MVPReceiver::threadMethod()
 
   while(1)
   {
+    threadLock();
     threadWaitForSignal();
+    threadUnlock();
     threadCheckExit();
     
     do

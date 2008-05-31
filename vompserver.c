@@ -25,7 +25,7 @@
 #include <getopt.h>
 
 #include "mvpserver.h"
-#include "mvpclient.h"
+//#include "vompclient.h"
 
 static const char *VERSION        = "0.2.7";
 static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
@@ -141,7 +141,7 @@ bool cPluginVompserver::SetupParse(const char *Name, const char *Value)
 
 cString cPluginVompserver::Active(void)
 {
-  if(MVPClient::getNrClients() != 0) return tr("VOMP client(s) connected");
+  if(VompClient::getNrClients() != 0) return tr("VOMP client(s) connected");
   return NULL;
 }
 

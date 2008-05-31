@@ -260,7 +260,7 @@ void MVPServer::threadMethod()
   while(1)
   {
     clientSocket = accept(listeningSocket,(struct sockaddr *)&address, &length);
-    MVPClient* m = new MVPClient(&config, configDir, clientSocket);
+    VompClient* m = new VompClient(&config, configDir, clientSocket);
     m->run();
   }
 }

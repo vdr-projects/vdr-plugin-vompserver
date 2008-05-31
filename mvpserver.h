@@ -30,7 +30,7 @@
 #include "mvprelay.h"
 #include "bootpd.h"
 #include "tftpd.h"
-#include "mvpclient.h"
+#include "vompclient.h"
 #include "thread.h"
 #include "config.h"
 

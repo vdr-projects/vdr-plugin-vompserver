@@ -1,5 +1,5 @@
 /*
-    Copyright 2004-2005 Chris Tallon
+    Copyright 2004-2008 Chris Tallon
 
     This file is part of VOMP.
 
@@ -93,12 +93,22 @@ void Thread::threadSignalNoLock()
 
 void Thread::threadWaitForSignal()
 {
-  pthread_mutex_lock(&threadCondMutex);
   pthread_cond_wait(&threadCond, &threadCondMutex);
-  pthread_mutex_unlock(&threadCondMutex);
 }
 
 void Thread::threadDetach()
 {
   pthread_detach(pthread);
 }
+
+void Thread::threadLock()
+{
+  pthread_mutex_lock(&threadCondMutex);
+}
+
+void Thread::threadUnlock()
+{
+  pthread_mutex_unlock(&threadCondMutex);
+}
+
+
