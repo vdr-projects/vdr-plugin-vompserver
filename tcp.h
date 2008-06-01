@@ -59,7 +59,7 @@ class TCP
 
     int connectTo(char *host, unsigned short port);
     int sendPacket(UCHAR*, size_t size);
-    UCHAR* receivePacket();
+//    UCHAR* receivePacket();
     int readData(UCHAR* buffer, int totalBytes);
     
     // Get methods

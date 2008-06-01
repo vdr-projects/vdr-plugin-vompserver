@@ -162,9 +162,9 @@ void VompClient::run2()
   pthread_sigmask(SIG_BLOCK, &sigset, NULL);
   pthread_detach(runThread);  // Detach
 
-  tcp.disableReadTimeout();
+//  tcp.disableReadTimeout();
 
-  tcp.setSoKeepTime(3);
+//  tcp.setSoKeepTime(3);
   tcp.setNonBlocking();
 
   ULONG channelID;
@@ -179,7 +179,18 @@ void VompClient::run2()
   {
     log->log("Client", Log::DEBUG, "Waiting");
     
-    if (!tcp.readData((UCHAR*)&channelID, sizeof(ULONG))) break;
+    if (!tcp.readData((UCHAR*)&channelID, sizeof(ULONG)))
+    {
+      // If this read fails then the client just hasn't sent anything.
+      // If any of the lower reads fail, then break, the connection is probably dead
+
+      // check connection is ok
+//      if (tcp.isConnected()) continue;
+      
+      log->log("Client", Log::DEBUG, "Disconnection detected");
+      break;
+    }     
+    
     channelID = ntohl(channelID);
     if (channelID == 1)
     {

@@ -125,6 +125,7 @@ int TCP::isConnected()
   return connected;
 }
 
+/*
 UCHAR* TCP::receivePacket()
 {
   if (!connected) return NULL;
@@ -157,6 +158,7 @@ UCHAR* TCP::receivePacket()
   dataLength = packetLength;
   return buffer;
 }
+*/
 
 int TCP::getDataLength()
 {
@@ -182,13 +184,13 @@ int TCP::readData(UCHAR* buffer, int totalBytes)
   {
     FD_ZERO(&readSet);
     FD_SET(sock, &readSet);
-    timeout.tv_sec = 10;
+    timeout.tv_sec = 20;
     timeout.tv_usec = 0;
     success = select(sock + 1, &readSet, NULL, NULL, passToSelect);
     if (success < 1)
     {
-      cleanup();
-      log->log("TCP", Log::DEBUG, "TCP: error or timeout");
+//      cleanup();
+      log->log("TCP", Log::DEBUG, "Select finished with %i", success);
       return 0;  // error, or timeout
     }
 
