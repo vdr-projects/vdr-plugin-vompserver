@@ -528,10 +528,6 @@ int VompClientRRProc::processGetLanguageContent()
 
 int VompClientRRProc::processGetRecordingsList()
 {
-  log->log("RRProc", Log::DEBUG, "Test sleep start");
-  sleep(20);
-  log->log("RRProc", Log::DEBUG, "Test sleep end");
-
   int FreeMB;
   int Percent = VideoDiskSpace(&FreeMB);
   int Total = (FreeMB / (100 - Percent)) * 100;
