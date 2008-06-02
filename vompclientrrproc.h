@@ -43,6 +43,8 @@ class VompClientRRProc : public Thread
 {
   public:
     VompClientRRProc(VompClient& x);
+    ~VompClientRRProc();
+    
     bool init();
     bool recvRequest(RequestPacket*);
 

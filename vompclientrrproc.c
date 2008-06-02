@@ -45,6 +45,11 @@ VompClientRRProc::VompClientRRProc(VompClient& x)
   resp = NULL;
 }
 
+VompClientRRProc::~VompClientRRProc()
+{
+  threadStop();
+}
+
 bool VompClientRRProc::init()
 {
   return threadStart();
@@ -94,7 +99,7 @@ void VompClientRRProc::threadMethod()
     threadWaitForSignal();
     if (!req)
     {
-      log->log("RRProc", Log::ERR, "threadMethod err 2");     
+      log->log("RRProc", Log::INFO, "threadMethod err 2 or quit");     
       threadUnlock();
       return;
     }
