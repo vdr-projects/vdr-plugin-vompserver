@@ -23,6 +23,9 @@
 
 #include "thread.h"
 #include "responsepacket.h"
+#include <queue>
+
+using namespace std;
 
 class VompClient;
 class Log;
@@ -38,6 +41,8 @@ class RequestPacket
     UCHAR* data;
     ULONG dataLength;
 };
+
+typedef queue<RequestPacket*> RequestPacketQueue;
 
 class VompClientRRProc : public Thread
 {
@@ -85,6 +90,7 @@ class VompClientRRProc : public Thread
 
     VompClient& x;
     RequestPacket* req;
+    RequestPacketQueue req_queue;
     ResponsePacket* resp;
     
     Log* log;
