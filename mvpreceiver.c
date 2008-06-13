@@ -154,29 +154,3 @@ void MVPReceiver::sendStreamEnd()
   tcp->sendPacket(buffer, bufferLength);
 }
 
-ULONG MVPReceiver::getBlock(unsigned char* buffer, unsigned long amount)
-{
-/*
-  pthread_mutex_lock(&processedRingLock);
-
-  int numTries = 0;
-
-  while ((unsigned long)processed.getContent() < amount)
-  {
-    pthread_mutex_unlock(&processedRingLock);
-    if (++numTries == 30) // 15s
-    {
-      logger->log("MVPReceiver", Log::DEBUG, "getBlock timeout");
-      return 0;
-    }
-    usleep(500000);
-    pthread_mutex_lock(&processedRingLock);
-  }
-
-  unsigned long amountReceived = processed.get(buffer, amount);
-  pthread_mutex_unlock(&processedRingLock);
-  return amountReceived;
-  */
-  sleep(10);
-  return 0;
-}

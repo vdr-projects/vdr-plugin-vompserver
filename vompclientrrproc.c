@@ -1033,9 +1033,15 @@ int VompClientRRProc::processStopStreaming()
 
 int VompClientRRProc::processGetBlock()
 {
-  if (!x.lp && !x.recplayer)
+  if (x.lp)
   {
-    log->log("RRProc", Log::DEBUG, "Get block called when no streaming happening!");
+    log->log("RRProc", Log::ERR, "Get block called during live streaming");
+    return 0;
+  }
+
+  if (!x.recplayer)
+  {
+    log->log("RRProc", Log::ERR, "Get block called when no recording open");
     return 0;
   }
 
@@ -1048,25 +1054,7 @@ int VompClientRRProc::processGetBlock()
   log->log("RRProc", Log::DEBUG, "getblock pos = %llu length = %lu", position, amount);
 
   UCHAR sendBuffer[amount];
-  ULONG amountReceived = 0; // compiler moan.
-  if (x.lp)
-  {
-    log->log("RRProc", Log::DEBUG, "getting from live");
-    amountReceived = x.lp->getBlock(&sendBuffer[0], amount);
-
-    if (!amountReceived)
-    {
-      // vdr has possibly disconnected the receiver
-      log->log("RRProc", Log::DEBUG, "VDR has disconnected the live receiver");
-      delete x.lp;
-      x.lp = NULL;
-    }
-  }
-  else if (x.recplayer)
-  {
-    log->log("RRProc", Log::DEBUG, "getting from recording");
-    amountReceived = x.recplayer->getBlock(&sendBuffer[0], position, amount);
-  }
+  ULONG amountReceived = x.recplayer->getBlock(&sendBuffer[0], position, amount);
 
   if (!amountReceived)
   {

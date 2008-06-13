@@ -37,7 +37,6 @@ class MVPReceiver : public cReceiver, public Thread
     static MVPReceiver* create(cChannel*, int priority);
     virtual ~MVPReceiver();
     int init(TCP* tcp, ULONG streamID);
-    ULONG getBlock(unsigned char* buffer, unsigned long amount);
     bool isVdrActivated();
 
   private:
