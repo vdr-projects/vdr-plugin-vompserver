@@ -90,12 +90,10 @@ void Thread::threadSignalNoLock()
 {
   pthread_cond_signal(&threadCond);
 }
-#include "log.h"
+
 void Thread::threadWaitForSignal()
 {
-  Log::getInstance()->log("Thread", Log::DEBUG, "Entering wait");
   pthread_cond_wait(&threadCond, &threadCondMutex);
-  Log::getInstance()->log("Thread", Log::DEBUG, "Leaving wait");
 }
 
 void Thread::threadDetach()
