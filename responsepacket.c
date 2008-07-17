@@ -64,7 +64,7 @@ bool ResponsePacket::init(ULONG requestID)
 void ResponsePacket::finalise()
 {
   *(ULONG*)&buffer[userDataLenPos] = htonl(bufUsed - headerLength);
-  Log::getInstance()->log("Client", Log::DEBUG, "RP finalise %lu", bufUsed - headerLength);
+  //Log::getInstance()->log("Client", Log::DEBUG, "RP finalise %lu", bufUsed - headerLength);
 }
 
 bool ResponsePacket::copyin(const UCHAR* src, ULONG len)

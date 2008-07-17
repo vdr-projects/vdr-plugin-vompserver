@@ -104,7 +104,7 @@ void VompClientRRProc::threadMethod()
 
     while (req_queue.size()) 
     {
-      log->log("RRProc", Log::DEBUG, "thread while");
+      //log->log("RRProc", Log::DEBUG, "thread while");
       req = req_queue.front();
       req_queue.pop();
       

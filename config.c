@@ -116,7 +116,7 @@ void Config::closeFile()
 int Config::readLine()
 {
   if (!initted || !file) { log->log("Config", Log::DEBUG, "1"); return 0; }
-  if (!fgets(buffer, BUFFER_LENGTH-1, file)) { log->log("Config", Log::DEBUG, "2"); return 0; }
+  if (!fgets(buffer, BUFFER_LENGTH-1, file)) { /*log->log("Config", Log::DEBUG, "2");*/ return 0; }
   lastLineLength = strlen(buffer);
 //  log->log("Config", Log::DEBUG, "buffer before trim: '%s'", buffer);
   trim(buffer);
