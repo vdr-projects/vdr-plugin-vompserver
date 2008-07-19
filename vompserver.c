@@ -1,5 +1,5 @@
 /*
-    Copyright 2004-2005 Chris Tallon
+    Copyright 2004-2008 Chris Tallon
 
     This file is part of VOMP.
 
@@ -27,7 +27,7 @@
 #include "mvpserver.h"
 //#include "vompclient.h"
 
-static const char *VERSION        = "0.2.7";
+static const char *VERSION        = "0.3.0";
 static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
 
 #ifndef VOMPSTANDALONE
