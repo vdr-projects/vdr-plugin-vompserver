@@ -24,6 +24,7 @@
 #include "thread.h"
 #include "responsepacket.h"
 #include <queue>
+#include "serialize.h"
 
 using namespace std;
 
@@ -55,6 +56,7 @@ class VompClientRRProc : public Thread
 
   private:
     bool processPacket();
+    void sendPacket(SerializeBuffer *b);
   
 #ifndef VOMPSTANDALONE
     int processGetRecordingsList();
@@ -81,8 +83,10 @@ class VompClientRRProc : public Thread
     int processConfigSave();
     int processConfigLoad();
     int processGetMediaList();
-    int processGetPicture();
-    int processGetImageBlock();
+    int processOpenMedia();
+    int processGetMediaBlock();
+    int processGetMediaInfo();
+    int processCloseMediaChannel();
     int processGetLanguageList();
     int processGetLanguageContent();
 

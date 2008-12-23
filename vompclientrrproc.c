@@ -35,7 +35,10 @@
 #include "vompclient.h"
 #include "log.h"
 #include "media.h"
+#include "mediaplayer.h"
+#include "servermediafile.h"
 #include "i18n.h"
+#include "vdrcommand.h"
 
 VompClientRRProc::VompClientRRProc(VompClient& x)
  : x(x)
@@ -167,10 +170,10 @@ bool VompClientRRProc::processPacket()
     case 9:
       result = processStartStreamingRecording();
       break;
-#endif     
     case 10:
       result = processGetChannelSchedule();
       break;
+#endif     
     case 11:
       result = processConfigSave();
       break;
@@ -212,14 +215,14 @@ bool VompClientRRProc::processPacket()
       result = processDeleteTimer();
       break;
 #endif        
-    case 30:
+    case VDR_GETMEDIALIST:
       result = processGetMediaList();
       break;
-    case 31:
-      result = processGetPicture();
+    case VDR_OPENMEDIA:
+      result = processOpenMedia();
       break;
-    case 32:
-      result = processGetImageBlock();
+    case VDR_GETMEDIABLOCK:
+      result = processGetMediaBlock();
       break;
     case 33:
       result = processGetLanguageList();
@@ -227,6 +230,13 @@ bool VompClientRRProc::processPacket()
     case 34:
       result = processGetLanguageContent();
       break;
+    case VDR_GETMEDIAINFO:
+	     result= processGetMediaInfo();
+	     break;
+    case VDR_CLOSECHANNEL:
+	     result= processCloseMediaChannel();
+	     break;
+
   }
 
   delete resp;
@@ -341,176 +351,199 @@ int VompClientRRProc::processConfigLoad()
   return 1;
 }
 
+
+//helper for sending from a serialize buffer
+//insert the used len into the first 4 Bytes of the buffer
+void VompClientRRProc::sendPacket(SerializeBuffer *b) {
+  resp->copyin(b->getStart(),b->getCurrent()-b->getStart());
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+}
+
 /**
   * media List Request:
-  * 4 length
-  * 4 VDR_GETMEDIALIST
-  * 4 flags (currently unused)
-  * n dirname
-  * n+1 0
   * Media List response:
-  * 4 length
-  * 4 VDR_
-  * 4 numentries
-  * per entry:
-  * 4 media type
-  * 4 time stamp
-  * 4 flags
-  * 4 strlen (incl. 0 Byte)
-  * string
-  * 0
+  * flags, mediaList
 */
-
+#define MLISTBUF 500000
 int VompClientRRProc::processGetMediaList()
 {
-  if (req->dataLength < 4) {
-    log->log("RRProc", Log::ERR, "getMediaList packet too short %d", req->dataLength);
+  SerializeBuffer buffer(req->data,req->dataLength);
+  MediaURI uri(0,NULL,NULL);
+  VDR_GetMediaListRequest request(&uri);
+  if (request.deserialize(&buffer) != 0) {
+    log->log("Client", Log::ERR, "getMediaList unable to deserialize");
     return 0;
   }
-  char * dirname=NULL;
-  if (req->dataLength > 4) {
-    //we have a dirname provided
-    dirname=(char *)&req->data[4];
-    log->log("RRProc", Log::DEBUG, "getMediaList for %s", dirname);
-  }
+  const char *dirname=uri.getName();
+  log->log("Client", Log::DEBUG, "getMediaList for %s", dirname);
 
-  MediaList * ml=MediaList::readList(x.baseConfig, dirname);
+  MediaList * ml=NULL;
+  if (dirname == NULL) {
+    ml=x.media->getRootList();
+  } else {
+    ml=x.media->getMediaList(&uri);
+  }
   if (ml == NULL) {
-     log->log("RRProc", Log::ERR, "getMediaList returned NULL");
+     log->log("Client", Log::ERR, "getMediaList returned NULL");
      return 0;
   }
-
-  //response code (not yet set)
-  resp->addULONG(0);
-
-  //numentries
-  resp->addULONG(ml->size());
-
-  for (MediaList::iterator nm=ml->begin(); nm<ml->end(); nm++)
-  {
-    Media *m=*nm;
-    log->log("RRProc", Log::DEBUG, "found media entry %s, type=%d",m->getFilename(),m->getType());
-    resp->addULONG(m->getType());
-    //time stamp
-    resp->addULONG(m->getTime());
-    //flags
-    resp->addULONG(0);
-    int len=strlen(m->getFilename());
-    //strlen
-    resp->addULONG(len+1);
-    resp->addString(m->getFilename());
+  SerializeBuffer rbuf(MLISTBUF,false,true);
+  ULONG flags=0; //TODO: real error handling by setting flags
+  VDR_GetMediaListResponse response(&flags,ml);
+  if (response.serialize(&rbuf) != 0) {
+     log->log("Client", Log::ERR, "getMediaList returned NULL");
+     delete ml;
+     return 0;
   }
+  log->log("Client", Log::DEBUG, "getMediaList size  %u", ml->size());
   delete ml;
-
-  resp->finalise();
-  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   
-  log->log("RRProc", Log::DEBUG, "Written Media list");
+
+  sendPacket(&rbuf);
+  log->log("Client", Log::DEBUG, "Written Media list");
   return 1;
 }
-
 /**
-  * get image Request:
-  * 4 flags (currently unused)
-  * 4 x size
-  * 4 y size
-  * n filename
-  * n+1 0
-  * get image response:
-  * 4 length
-  * 4 VDR_GETIMAGE
-  * 4 len of image
+  * openMedia Request:
+  * openMedia response:
 */
-
-int VompClientRRProc::processGetPicture()
+int VompClientRRProc::processOpenMedia()
 {
-  if (req->dataLength < 12) {
-    log->log("RRProc", Log::ERR, "getPicture packet too short %d", req->dataLength);
+  SerializeBuffer buffer(req->data,req->dataLength);
+  MediaURI uri(0,NULL,NULL);
+  ULONG channel=0;
+  ULONG xs=0;
+  ULONG ys=0;
+  VDR_OpenMediumRequest request(&channel,&uri,&xs,&ys);
+  if (request.deserialize(&buffer) != 0) {
+    log->log("Client", Log::ERR, "openMediaRequest unable to deserialize");
     return 0;
   }
-  if (x.imageFile) {
-    fclose(x.imageFile);
-    x.imageFile=NULL;
+  const char *name=uri.getName();
+  log->log("Client", Log::DEBUG, "openMediaRequest for %s", name);
+  ULLONG size=0;
+  int rt=x.media->openMedium(channel,&uri,&size,xs,ys);
+  ULONG flags=0;
+  if (rt != 0) {
+    size=0;
+    flags=1;
+    log->log("Client", Log::ERR, "openMediaRequest unable to open");
   }
-  char * filename=NULL;
-  if (req->dataLength > 12) {
-    //we have a dirname provided
-    filename=(char *)&req->data[12];
-    log->log("RRProc", Log::DEBUG, "getPicture  %s", filename);
+  VDR_OpenMediumResponse response(&flags,&size);
+  SerializeBuffer rbuf(response.getSerializedLen()+4,false,true);
+  if (response.serialize(&rbuf) != 0) {
+     log->log("Client", Log::ERR, "openMediaRequest cannot serialize");
+     return 0;
   }
-  else {
-    log->log("RRProc", Log::ERR, "getPicture  empty filename");
-  }
-  if (filename) {
-    x.imageFile=fopen(filename,"r");
-    if (!x.imageFile) log->log("RRProc", Log::ERR, "getPicture unable to open %s",filename);
-  }
-  int size=0;
-  if (x.imageFile) {
-    struct stat st;
-    if ( fstat(fileno(x.imageFile),&st) == 0) size=st.st_size;
-  }
-  //response code (not yet set)
-  resp->addULONG(31);
-  //size
-  resp->addULONG(size);
-
-  log->log("RRProc", Log::DEBUG, "getPicture size  %u", size);
-
-  resp->finalise();
-  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
-
-  log->log("RRProc", Log::DEBUG, "Written getPicture");
-
+  log->log("Client", Log::DEBUG, "openMediaRequest size  %llu", size);
+  sendPacket(&rbuf);
   return 1;
 }
-
-
-int VompClientRRProc::processGetImageBlock()
+/**
+  * VDR_GETMEDIABLOCK
+  * resp
+  * packet - no serialized response!
+  */
+int VompClientRRProc::processGetMediaBlock()
 {
-  if (!x.imageFile)
-  {
-    log->log("RRProc", Log::DEBUG, "Get image block called when no image active");
+  SerializeBuffer buffer(req->data,req->dataLength);
+  ULLONG position = 0;
+  ULONG amount = 0;
+  ULONG channel = 0;
+  VDR_GetMediaBlockRequest request(&channel,&position,&amount);
+  if (request.deserialize(&buffer) != 0) {
+    log->log("Client", Log::ERR, "getMediaBlock unable to deserialize");
     return 0;
   }
+  log->log("Client", Log::DEBUG, "getMediaBlock pos = %llu length = %lu,chan=%lu", position, amount,channel);
 
-  UCHAR* data = req->data;
-
-  ULLONG position = x.ntohll(*(ULLONG*)data);
-  data += sizeof(ULLONG);
-  ULONG amount = ntohl(*(ULONG*)data);
-
-  log->log("RRProc", Log::DEBUG, "getImageblock pos = %llu length = %lu", position, amount);
-
-  UCHAR sendBuffer[amount];
-  ULONG amountReceived = 0; // compiler moan.
-  ULLONG cpos=ftell(x.imageFile);
-  if (position != cpos) {
-    fseek(x.imageFile,position-cpos,SEEK_CUR);
-  }
-  if (position != (ULLONG)ftell(x.imageFile)) {
-    log->log("RRProc", Log::DEBUG, "getImageblock pos = %llu not available", position);
-  }
-  else {
-    amountReceived=fread(&sendBuffer[0],1,amount,x.imageFile);
-  }
-
-  if (!amountReceived)
+  UCHAR sendBuffer[amount ];
+  ULONG amountReceived = 0; 
+  UCHAR *rbuf=sendBuffer;
+  int rt=x.media->getMediaBlock(channel,position,amount,&amountReceived,&rbuf);
+  if (!amountReceived || rt != 0)
   {
-    resp->addULONG(0);
-    log->log("RRProc", Log::DEBUG, "written 4(0) as getblock got 0");
+    log->log("Client", Log::DEBUG, "written 4(0) as getblock got 0");
   }
   else
   {
-    resp->copyin(sendBuffer, amount);
-    log->log("RRProc", Log::DEBUG, "written %lu", amountReceived);
+    if (rbuf != sendBuffer) {
+      //the provider did not use the optimized handling with using my buffer
+      resp->copyin(rbuf,amountReceived);
+      free(rbuf);
+    } else {
+      // the provider did not allocate a new buffer
+      resp->copyin(sendBuffer,amountReceived);
+    }
   }
-  
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
-
+  log->log("Client", Log::DEBUG, "written ok %lu", amountReceived);
   return 1;
 }
+/**
+  * VDR_GETMEDIAINFO
+  */
+
+int VompClientRRProc::processGetMediaInfo()
+{
+  SerializeBuffer buffer(req->data,req->dataLength);
+  ULONG channel=0;
+  VDR_GetMediaInfoRequest request(&channel);
+  if (request.deserialize(&buffer) != 0) {
+    log->log("Client", Log::ERR, "getMediaInfo unable to deserialize");
+    return 0;
+  }
+  log->log("Client", Log::DEBUG, "getMediaInfo chan=%lu", channel);
+  ULONG flags=0;
+  MediaInfo mi;
+  int rt=x.media->getMediaInfo(channel,&mi);
+  if (rt != 0) {
+    flags=1;
+    log->log("Client", Log::ERR, "getMediaInfo unable to get");
+  }
+  VDR_GetMediaInfoResponse response(&flags,&mi);
+  SerializeBuffer rbuf(response.getSerializedLen()+4,false,true);
+  if (response.serialize(&rbuf) != 0) {
+     log->log("Client", Log::ERR, "getMediaInfo cannot serialize");
+     return 0;
+  }
+  sendPacket(&rbuf);
+  return 1;
+}
+
+/**
+  * VDR_CLOSECHANNEL
+  */
+
+
+int VompClientRRProc::processCloseMediaChannel()
+{
+  SerializeBuffer buffer(req->data,req->dataLength);
+  ULONG channel=0;
+  VDR_CloseMediaChannelRequest request(&channel);
+  if (request.deserialize(&buffer) != 0) {
+    log->log("Client", Log::ERR, "closeMediaChannel unable to deserialize");
+    return 0;
+  }
+  ULONG flags=0;
+  log->log("Client", Log::DEBUG, "closeMediaChannel chan=%lu", channel);
+  int rt=x.media->closeMediaChannel(channel);
+  if (rt != 0) {
+    flags=1;
+    log->log("Client", Log::ERR, "closeMediaChannel unable to get");
+  }
+  VDR_CloseMediaChannelResponse response(&flags);
+  SerializeBuffer rbuf(response.getSerializedLen()+4,false,true);
+  if (response.serialize(&rbuf) != 0) {
+     log->log("Client", Log::ERR, "closeMediaChannel cannot serialize");
+     return 0;
+  }
+  sendPacket(&rbuf);
+  return 1;
+}
+
 
 
 int VompClientRRProc::processGetLanguageList()

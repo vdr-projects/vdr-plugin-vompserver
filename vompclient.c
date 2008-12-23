@@ -18,6 +18,10 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#include "mediaplayer.h"
+#include "media.h"
+#include "servermediafile.h"
+#include "vdrcommand.h"
 #include "vompclient.h"
 
 #include "responsepacket.h"
@@ -43,13 +47,14 @@ VompClient::VompClient(Config* cfgBase, char* tconfigDir, int tsocket)
   recplayer = NULL;
   recordingManager = NULL;
 #endif
-  imageFile = 0;
   log = Log::getInstance();
   loggedIn = false;
   configDir = tconfigDir;
   log->log("Client", Log::DEBUG, "Config dir: %s", configDir);
   baseConfig = cfgBase;
   incClients();
+  media=new MediaPlayer();
+  mediaprovider=new ServerMediaFile(cfgBase,media);
   
   rrproc.init();
 }

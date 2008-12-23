@@ -16,7 +16,11 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 ### The C++ compiler and options:
 
 CXX      ?= g++
-CXXFLAGS ?= -O2 -fPIC -Wall -Woverloaded-virtual -Werror
+ifdef DEBUG
+CXXFLAGS ?= -g -fPIC -Wall -Woverloaded-virtual #-Werror
+else
+CXXFLAGS ?= -O2 -fPIC -Wall -Woverloaded-virtual #-Werror
+endif
 
 ### The directory environment:
 
@@ -27,6 +31,9 @@ TMPDIR = /tmp
 ### Allow user defined options to overwrite defaults:
 
 -include $(VDRDIR)/Make.config
+
+### read standlone settings if there
+-include .standalone
 
 ### The version number of VDR (taken from VDR's "config.h"):
 
@@ -42,14 +49,17 @@ PACKAGE = vdr-$(ARCHIVE)
 
 INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include
 
-DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
+DEFINES += -D_GNU_SOURCE -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -DVOMPSERVER
 
 ### The object files (add further files here):
 
 OBJS = $(PLUGIN).o dsock.o mvpserver.o udpreplier.o bootpd.o tftpd.o i18n.o vompclient.o tcp.o \
                    ringbuffer.o mvprelay.o vompclientrrproc.o \
-                   recplayer.o config.o log.o thread.o mvpreceiver.o tftpclient.o \
-                   media.o responsepacket.o
+                   config.o log.o thread.o tftpclient.o \
+                   media.o responsepacket.o \
+                   mediafile.o mediaplayer.o servermediafile.o serialize.o medialauncher.o
+
+OBJS2 = recplayer.o mvpreceiver.o
 
 ### Implicit rules:
 
@@ -67,11 +77,24 @@ $(DEPFILE): Makefile
 
 ### Targets:
 
-all: libvdr-$(PLUGIN).so
+all: allbase libvdr-$(PLUGIN).so
+standalone: standalonebase vompserver-standalone
 
-libvdr-$(PLUGIN).so: $(OBJS)
-	$(CXX) $(CXXFLAGS) -shared $(OBJS) -o $@
+objectsstandalone: $(OBJS)
+objects: $(OBJS) $(OBJS2)
+
+allbase:
+	( if [ -f .standalone ] ; then ( rm -f .standalone; make clean ; make objects ) ; else exit 0 ;fi )
+standalonebase:
+	( if [ ! -f .standalone ] ; then ( make clean; echo "DEFINES+=-DVOMPSTANDALONE" > .standalone; echo "DEFINES+=-D_FILE_OFFSET_BITS=64" >> .standalone; make objectsstandalone ) ; else exit 0 ;fi )
+
+libvdr-$(PLUGIN).so: objects
+	$(CXX) $(CXXFLAGS) -shared $(OBJS) $(OBJS2) -o $@
 	@cp $@ $(LIBDIR)/$@.$(APIVERSION)
+
+vompserver-standalone: objectsstandalone
+	$(CXX) $(CXXFLAGS) $(OBJS) -lpthread -o $@
+	chmod u+x $@
 
 dist: clean
 	@-rm -rf $(TMPDIR)/$(ARCHIVE)
@@ -82,4 +105,5 @@ dist: clean
 	@echo Distribution package created as $(PACKAGE).tgz
 
 clean:
-	rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~
+	rm -f $(OBJS) $(OBJS2) $(DEPFILE) libvdr*.so.* *.tgz core* *~ .standalone vompserver-standalone
+

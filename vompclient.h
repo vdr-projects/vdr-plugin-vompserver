@@ -54,8 +54,14 @@ class cRecordings;
 #include "defines.h"
 #include "tcp.h"
 #include "config.h"
+#include "media.h"
 #include "i18n.h"
 #include "vompclientrrproc.h"
+
+class ResponsePacket;
+class ServerMediaFile;
+class SerializeBuffer;
+class MediaPlayer;
 
 class VompClient
 {
@@ -88,7 +94,6 @@ class VompClient
     I18n i18n;
     bool loggedIn;
     char* configDir;
-    FILE* imageFile;
 
     void cleanConfig();
 
@@ -100,6 +105,8 @@ class VompClient
     cRecordings* recordingManager;
     RecPlayer* recplayer;
 #endif
+    MediaPlayer *media;
+    ServerMediaFile *mediaprovider;
 };
 
 #endif
