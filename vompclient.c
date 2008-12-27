@@ -80,6 +80,9 @@ VompClient::~VompClient()
 #endif
   if (loggedIn) cleanConfig();
   decClients();
+  
+  delete media;
+  delete mediaprovider;
 }
 
 void VompClient::incClients()
