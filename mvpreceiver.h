@@ -62,6 +62,8 @@ class MVPReceiver : public cReceiver, public Thread
     
   protected:
     void threadMethod();
+    int *mergeSpidsTpid(const int *spids,int tpid);
+    int  mergedSpidsTpid[MAXSPIDS+2];
 };
 
 #endif

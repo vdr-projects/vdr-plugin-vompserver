@@ -38,9 +38,9 @@ MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
 #if VDRVERSNUM < 10300
 : cReceiver(channel->Ca(), 0, 7, channel->Vpid(), channel->Ppid(), channel->Apid1(), channel->Apid2(), channel->Dpid1(), channel->Dpid2(), channel->Tpid())
 #elif VDRVERSNUM < 10500
-: cReceiver(channel->Ca(), 0, channel->Vpid(), channel->Apids(), channel->Dpids(), channel->Spids())
+: cReceiver(channel->Ca(), 0, channel->Vpid(), channel->Apids(), channel->Dpids(), mergeSpidsTpid(channel->Spids(),channel->Tpid()))
 #else
-: cReceiver(channel->GetChannelID(), 0, channel->Vpid(), channel->Apids(), channel->Dpids(), channel->Spids())
+: cReceiver(channel->GetChannelID(), 0, channel->Vpid(), channel->Apids(), channel->Dpids(), mergeSpidsTpid(channel->Spids(),channel->Tpid()))
 #endif
 {
   logger = Log::getInstance();
@@ -154,3 +154,16 @@ void MVPReceiver::sendStreamEnd()
   tcp->sendPacket(buffer, bufferLength);
 }
 
+
+int *MVPReceiver::mergeSpidsTpid(const int *spids,int tpid)
+{
+  int *destpids;
+  const int *runspid=spids;
+  for (runspid=spids,destpids=mergedSpidsTpid;*runspid;runspid++,destpids++) {
+       *destpids=*runspid;
+  }
+  *destpids=tpid;
+  destpids++;
+  *destpids=0;
+  return mergedSpidsTpid;
+}  
