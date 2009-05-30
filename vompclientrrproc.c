@@ -40,6 +40,8 @@
 #include "i18n.h"
 #include "vdrcommand.h"
 
+bool ResumeIDLock;
+
 VompClientRRProc::VompClientRRProc(VompClient& x)
  : x(x)
 {
@@ -1123,6 +1125,12 @@ int VompClientRRProc::processStartStreamingRecording()
 
     resp->addULLONG(x.recplayer->getLengthBytes());
     resp->addULONG(x.recplayer->getLengthFrames());
+#if VDRVERSNUM < 10703
+    resp->addUCHAR(true);//added for TS
+#else
+    resp->addUCHAR(recording->IsPesRecording());//added for TS
+#endif
+
     resp->finalise();
     x.tcp.sendPacket(resp->getPtr(), resp->getLen());
     
@@ -1580,16 +1588,43 @@ int VompClientRRProc::processGetRecInfo()
 
   // Get resume point
 
-  char* value = x.config.getValueString("ResumeData", (char*)req->data);
+/*  char* value = x.config.getValueString("ResumeData", (char*)req->data);
   if (value)
   {
     resumePoint = strtoul(value, NULL, 10);
     delete[] value;
+  }*/
+
+  char* ResumeIdC = x.config.getValueString("General", "ResumeId");
+  int ResumeId;
+  if (ResumeIdC) {
+    ResumeId = atoi(ResumeIdC);
+    delete[] ResumeIdC;
   }
+  else
+    ResumeId = 0;  //default if not defined in vomp-MAC.conf
+
+  while (ResumeIDLock)
+    cCondWait::SleepMs(100);
+  ResumeIDLock = true;
+  int OldSetupResumeID = Setup.ResumeID;
+  Setup.ResumeID = ResumeId;				//UGLY: quickly change resumeid
+#if VDRVERSNUM < 10703
+  cResumeFile ResumeFile(recording->FileName());	//get corresponding resume file
+#else
+  cResumeFile ResumeFile(recording->FileName(), recording->IsPesRecording()); //get corresponding resume file
+#endif
+  Setup.ResumeID = OldSetupResumeID;			//and restore it back
+  ResumeIDLock = false;
+
+  int resume = ResumeFile.Read();
+  //isyslog("VOMPDEBUG: resumePoint = %i, resume = %i, ResumeId = %i",resumePoint, resume, ResumeId);
+  if (resume >= 0) 
+    resumePoint = ResumeFile.Read();
+
   log->log("RRProc", Log::DEBUG, "GRI: RP: %lu", resumePoint);
 
   resp->addULONG(resumePoint);
-
 
   // Get summary
 
@@ -1710,7 +1745,11 @@ int VompClientRRProc::processGetMarks()
 
   if (recording)
   {
+#if VDRVERSNUM < 10703
     Marks.Load(recording->FileName());
+#else
+    Marks.Load(recording->FileName(), recording->FramesPerSecond(), recording->IsPesRecording());
+#endif
     if (Marks.Count())
     {
       for (const cMark *m = Marks.First(); m; m = Marks.Next(m))

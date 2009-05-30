@@ -33,8 +33,11 @@ RecPlayer::RecPlayer(cRecording* rec)
   for(int i = 1; i < 1000; i++) segments[i] = NULL;
 
   // FIXME find out max file path / name lengths
-
+#if VDRVERSNUM < 10703
   indexFile = new cIndexFile(recording->FileName(), false);
+#else
+  indexFile = new cIndexFile(recording->FileName(), false,  recording->IsPesRecording());
+#endif
   if (!indexFile) log->log("RecPlayer", Log::ERR, "Failed to create indexfile!");
 
   scan();
@@ -51,9 +54,18 @@ void RecPlayer::scan()
   while(segments[i++]) delete segments[i];
 
   char fileName[2048];
-  for(i = 1; i < 1000; i++)
+#if VDRVERSNUM < 10703
+  for(i = 1; i < 255; i++)//maximum is 255 files instead of 1000, according to VDR HISTORY file...
   {
     snprintf(fileName, 2047, "%s/%03i.vdr", recording->FileName(), i);
+#else
+  for(i = 1; i < 65535; i++)
+  {
+    if (recording->IsPesRecording())
+      snprintf(fileName, 2047, "%s/%03i.vdr", recording->FileName(), i);
+    else
+      snprintf(fileName, 2047, "%s/%05i.ts", recording->FileName(), i);
+#endif
     log->log("RecPlayer", Log::DEBUG, "FILENAME: %s", fileName);
     file = fopen(fileName, "r");
     if (!file) break;
@@ -84,7 +96,14 @@ int RecPlayer::openFile(int index)
   if (file) fclose(file);
 
   char fileName[2048];
+#if VDRVERSNUM < 10703
   snprintf(fileName, 2047, "%s/%03i.vdr", recording->FileName(), index);
+#else
+  if (recording->IsPesRecording())
+    snprintf(fileName, 2047, "%s/%03i.vdr", recording->FileName(), index);
+  else
+    snprintf(fileName, 2047, "%s/%05i.ts", recording->FileName(), index);
+#endif
   log->log("RecPlayer", Log::DEBUG, "openFile called for index %i string:%s", index, fileName);
 
   file = fopen(fileName, "r");
@@ -192,11 +211,17 @@ cRecording* RecPlayer::getCurrentRecording()
 ULLONG RecPlayer::positionFromFrameNumber(ULONG frameNumber)
 {
   if (!indexFile) return 0;
-
+#if VDRVERSNUM < 10703
   uchar retFileNumber;
   int retFileOffset;
   uchar retPicType;
+#else
+  uint16_t retFileNumber;
+  off_t retFileOffset;
+  bool retPicType;
+#endif
   int retLength;
+
 
   if (!indexFile->Get((int)frameNumber, &retFileNumber, &retFileOffset, &retPicType, &retLength))
   {
@@ -240,8 +265,13 @@ bool RecPlayer::getNextIFrame(ULONG frameNumber, ULONG direction, ULLONG* rfileP
 
   if (!indexFile) return false;
 
+#if VDRVERSNUM < 10703
   uchar waste1;
   int waste2;
+#else
+  uint16_t waste1;
+  off_t waste2;
+#endif
 
   int iframeLength;
   int indexReturnFrameNumber;

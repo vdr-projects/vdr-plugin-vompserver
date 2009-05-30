@@ -78,7 +78,7 @@ VompClient::~VompClient()
     recordingManager = NULL;
   }
 #endif
-  if (loggedIn) cleanConfig();
+  //if (loggedIn) cleanConfig();
   decClients();
   
   delete media;
@@ -108,7 +108,7 @@ int VompClient::getNrClients()
   return nrClients;
 }
 
-
+/*
 void VompClient::cleanConfig()
 {
   log->log("Client", Log::DEBUG, "Clean config");
@@ -143,7 +143,7 @@ void VompClient::cleanConfig()
 
   delete[] resumes;
 #endif
-}
+} */
 
 void VompClientStartThread(void* arg)
 {
@@ -334,9 +334,33 @@ cChannel* VompClient::channelFromNumber(ULONG channelNumber)
 
 void VompClient::writeResumeData()
 {
-  config.setValueLong("ResumeData",
+  /*config.setValueLong("ResumeData",
                           (char*)recplayer->getCurrentRecording()->FileName(),
-                          recplayer->frameNumberFromPosition(recplayer->getLastPosition()) );
+                          recplayer->frameNumberFromPosition(recplayer->getLastPosition()) );*/
+
+  /* write to vdr resume file */
+  int resume = recplayer->frameNumberFromPosition(recplayer->getLastPosition());
+  char* ResumeIdC = config.getValueString("General", "ResumeId");
+  int ResumeId;
+  if (ResumeIdC)
+    ResumeId = atoi(ResumeIdC);
+  else
+    ResumeId = 0;
+
+  while (ResumeIDLock)
+	  cCondWait::SleepMs(100);
+  ResumeIDLock = true;
+  int OldSetupResumeID = Setup.ResumeID;
+  Setup.ResumeID = ResumeId;				//UGLY: quickly change resumeid
+#if VDRVERSNUM < 10703
+  cResumeFile ResumeFile((char*)recplayer->getCurrentRecording()->FileName());	//get corresponding resume file
+#else
+  cResumeFile ResumeFile((char*)recplayer->getCurrentRecording()->FileName(),(char*)recplayer->getCurrentRecording()->IsPesRecording());	//get corresponding resume file
+#endif
+  Setup.ResumeID = OldSetupResumeID;			//and restore it back
+  ResumeIDLock = false;
+  ResumeFile.Save(resume);
+  //isyslog("VOMPDEBUG: Saving resume = %i, ResumeId = %i",resume, ResumeId);
 }
 
 #endif

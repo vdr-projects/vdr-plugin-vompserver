@@ -26,6 +26,8 @@
 #include <queue>
 #include "serialize.h"
 
+extern bool ResumeIDLock;
+
 using namespace std;
 
 class VompClient;

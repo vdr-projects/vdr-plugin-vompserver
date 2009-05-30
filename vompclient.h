@@ -95,7 +95,7 @@ class VompClient
     bool loggedIn;
     char* configDir;
 
-    void cleanConfig();
+    //void cleanConfig();
 
 #ifndef VOMPSTANDALONE
     cChannel* channelFromNumber(ULONG channelNumber);
