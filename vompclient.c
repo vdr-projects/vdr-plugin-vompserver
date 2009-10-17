@@ -55,6 +55,7 @@ VompClient::VompClient(Config* cfgBase, char* tconfigDir, int tsocket)
   incClients();
   media=new MediaPlayer();
   mediaprovider=new ServerMediaFile(cfgBase,media);
+  netLogFile = NULL;
   
   rrproc.init();
 }
@@ -83,6 +84,12 @@ VompClient::~VompClient()
   
   delete media;
   delete mediaprovider;
+  
+  if (netLogFile)
+  {
+    fclose(netLogFile);
+    netLogFile = NULL;
+  }
 }
 
 void VompClient::incClients()
@@ -145,6 +152,31 @@ void VompClient::cleanConfig()
 #endif
 } */
 
+void VompClient::netLog()
+{
+  // Hook, called from rrproc login after client has logged in.
+  // See if this MVP config says to do network logging, if so open a log
+  // The config object will be usable now since it's set up in login
+  
+  char* doNetLogging = config.getValueString("Advanced", "Network logging");
+  if (doNetLogging)
+  {
+    if (!strcasecmp(doNetLogging, "on"))
+    {
+      char* netLogFileName = config.getValueString("Advanced", "Network logging file");
+      if (netLogFileName)
+      {
+        netLogFile = fopen(netLogFileName, "a");
+        if (netLogFile) log->log("Client", Log::DEBUG, "Client network logging started");
+
+        delete[] netLogFileName;
+      }
+    }
+    
+    delete[] doNetLogging;
+  }
+}
+
 void VompClientStartThread(void* arg)
 {
   VompClient* m = (VompClient*)arg;
@@ -182,6 +214,7 @@ void VompClient::run2()
   UCHAR* data;
   
   ULONG kaTimeStamp;
+  ULONG logStringLen;
 
   while(1)
   {
@@ -265,6 +298,27 @@ void VompClient::run2()
         break;
       }      
     }
+    else if (channelID == 4)
+    {
+      if (!tcp.readData((UCHAR*)&logStringLen, sizeof(ULONG))) break;
+      logStringLen = ntohl(logStringLen);
+
+      log->log("Client", Log::DEBUG, "Received chan=%lu loglen=%lu", channelID, logStringLen);    
+
+      UCHAR buffer[logStringLen + 1];
+      if (!tcp.readData((UCHAR*)&buffer, logStringLen)) break;
+      buffer[logStringLen] = '\0';
+
+//      log->log("Client", Log::INFO, "Client said: '%s'", buffer);
+      if (netLogFile)
+      {
+        if (fputs((const char*)buffer, netLogFile) == EOF)
+        {
+          fclose(netLogFile);
+          netLogFile = NULL;
+        }
+      }
+    }    
     else
     {
       log->log("Client", Log::ERR, "Incoming channel number unknown");

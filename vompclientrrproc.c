@@ -275,6 +275,8 @@ int VompClientRRProc::processLogin()
   log->log("RRProc", Log::DEBUG, "written login reply len %lu", resp->getLen());
     
   x.loggedIn = true;
+  x.netLog(); // safe to run here since the client won't start net logging for a while yet
+  
   return 1;
 }
 

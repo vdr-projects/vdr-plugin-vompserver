@@ -95,6 +95,9 @@ class VompClient
     bool loggedIn;
     char* configDir;
 
+    void netLog();
+    FILE* netLogFile;
+
     //void cleanConfig();
 
 #ifndef VOMPSTANDALONE
