@@ -317,6 +317,7 @@ void VompClient::run2()
           fclose(netLogFile);
           netLogFile = NULL;
         }
+        fflush(NULL);
       }
     }    
     else
@@ -392,7 +393,7 @@ void VompClient::writeResumeData()
                           (char*)recplayer->getCurrentRecording()->FileName(),
                           recplayer->frameNumberFromPosition(recplayer->getLastPosition()) );*/
 
-  /* write to vdr resume file */
+  /* write to vdrdeveldevel resume file */
   int resume = recplayer->frameNumberFromPosition(recplayer->getLastPosition());
   char* ResumeIdC = config.getValueString("General", "ResumeId");
   int ResumeId;

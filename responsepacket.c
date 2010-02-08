@@ -116,6 +116,17 @@ bool ResponsePacket::addULLONG(ULLONG ull)
   return true;
 }
 
+bool ResponsePacket::adddouble(double d)
+{
+  if (!checkExtend(sizeof(double))) return false;
+  ULLONG ull;
+  memcpy(&ull,&d,sizeof(double));
+  *(ULLONG*)&buffer[bufUsed] = htonll(ull);
+  bufUsed += sizeof(ULLONG);
+  return true;
+}
+
+
 bool ResponsePacket::checkExtend(ULONG by)
 {
   if ((bufUsed + by) < bufSize) return true;

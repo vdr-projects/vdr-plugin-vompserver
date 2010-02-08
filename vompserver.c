@@ -68,14 +68,14 @@ bool cPluginVompserver::Start(void)
   
   if (!configDir)
   {
-    const char* vdrret = cPlugin::ConfigDirectory("vompserver");
-    if (!vdrret)
+    const char* vdrdeveldevelret = cPlugin::ConfigDirectory("vompserver");
+    if (!vdrdeveldevelret)
     {
       dsyslog("VOMP: Could not get config dir from VDR");
       return false;
     }
-    configDir = new char[strlen(vdrret)+1];
-    strcpy(configDir, vdrret);
+    configDir = new char[strlen(vdrdeveldevelret)+1];
+    strcpy(configDir, vdrdeveldevelret);
   }
   
   int success = mvpserver.run(configDir);
@@ -106,15 +106,15 @@ bool cPluginVompserver::ProcessArgs(int argc, char *argv[])
   {
     if (c == 'c')
     {
-      const char* vdrret = cPlugin::ConfigDirectory(optarg);
-      if (!vdrret)
+      const char* vdrdeveldevelret = cPlugin::ConfigDirectory(optarg);
+      if (!vdrdeveldevelret)
       {
         dsyslog("VOMP: Could not get config dir from VDR");
         return false;
       }
     
-      configDir = new char[strlen(vdrret)+1];
-      strcpy(configDir, vdrret);
+      configDir = new char[strlen(vdrdeveldevelret)+1];
+      strcpy(configDir, vdrdeveldevelret);
     }
     else
     {

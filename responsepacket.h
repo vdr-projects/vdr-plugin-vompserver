@@ -37,6 +37,7 @@ class ResponsePacket
     bool addLONG(LONG l);
     bool addUCHAR(UCHAR c);
     bool addULLONG(ULLONG ull);
+    bool adddouble(double d);
 
     UCHAR* getPtr() { return buffer; }
     ULONG getLen() { return bufUsed; }

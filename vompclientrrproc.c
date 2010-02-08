@@ -634,7 +634,7 @@ int VompClientRRProc::processDeleteRecording()
     {
       if (recording->Delete())
       {
-        // Copy svdrp's way of doing this, see if it works
+        // Copy svdrdeveldevelp's way of doing this, see if it works
 #if VDRVERSNUM > 10300
         ::Recordings.DelByName(recording->FileName());
 #endif
@@ -857,6 +857,11 @@ int VompClientRRProc::processGetChannelsList()
       resp->addULONG(channel->Number());
       resp->addULONG(type);      
       resp->addString(channel->Name());
+#if VDRVERSNUM < 10703
+      resp->addULONG(2);
+#else
+      resp->addULONG(channel->Vtype());
+#endif      
     }
   }
 
@@ -935,6 +940,11 @@ int VompClientRRProc::processGetChannelPids()
   // tpid
 
   resp->addULONG(channel->Vpid());
+#if VDRVERSNUM < 10703
+  resp->addULONG(2);
+#else
+  resp->addULONG(channel->Vtype());
+#endif
   resp->addULONG(numApids);
 
 #if VDRVERSNUM < 10300
@@ -1127,8 +1137,9 @@ int VompClientRRProc::processStartStreamingRecording()
 
     resp->addULLONG(x.recplayer->getLengthBytes());
     resp->addULONG(x.recplayer->getLengthFrames());
+    
 #if VDRVERSNUM < 10703
-    resp->addUCHAR(true);//added for TS
+    resp->addUCHAR(true);//added for TS    
 #else
     resp->addUCHAR(recording->IsPesRecording());//added for TS
 #endif
@@ -1572,7 +1583,7 @@ int VompClientRRProc::processGetRecInfo()
     string: language
     string: description
   }
-
+  8 bytes: frames per second
   */
 
   // Get current timer
@@ -1697,6 +1708,13 @@ int VompClientRRProc::processGetRecInfo()
   }
 
 #endif
+  double framespersec;
+#if VDRVERSNUM < 10703
+  framespersec = FRAMESPERSEC;
+#else
+  framespersec = Info->FramesPerSecond();
+#endif
+  resp->adddouble(framespersec);
 
   // Done. send it
 
