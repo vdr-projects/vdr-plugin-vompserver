@@ -57,7 +57,9 @@ VompClientRRProc::~VompClientRRProc()
 
 bool VompClientRRProc::init()
 {
-  return threadStart();
+  int a = threadStart();
+  sleep(1);
+  return a;
 }
 
 bool VompClientRRProc::recvRequest(RequestPacket* newRequest)
@@ -71,6 +73,7 @@ bool VompClientRRProc::recvRequest(RequestPacket* newRequest)
      Marten
   */
 
+  log->log("RRProc", Log::DEBUG, "recvReq");
   threadLock();
   req_queue.push(newRequest);
   threadSignalNoLock();
@@ -601,7 +604,11 @@ int VompClientRRProc::processGetRecordingsList()
 
   for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
   {
+#if VDRVERSNUM < 10721
     resp->addULONG(recording->start);
+#else
+    resp->addULONG(recording->Start());
+#endif
     resp->addString(recording->Name());
     resp->addString(recording->FileName());
   }
@@ -1449,9 +1456,9 @@ int VompClientRRProc::processSetTimer()
   timerString[d] = '\0';
 
   log->log("RRProc", Log::DEBUG, "Timer string after 1.2 conversion:");
-  log->log("RRProc", Log::DEBUG, "%s", timerString);
 
 #endif
+  log->log("RRProc", Log::DEBUG, "%s", timerString);
 
   cTimer *timer = new cTimer;
   if (timer->Parse((char*)timerString))
@@ -1468,7 +1475,7 @@ int VompClientRRProc::processSetTimer()
       resp->addULONG(0);
       resp->finalise();
       x.tcp.sendPacket(resp->getPtr(), resp->getLen());
-      return 1;
+      return 1; // FIXME - cTimer* timer is leaked here!
     }
     else
     {
@@ -1774,9 +1781,14 @@ int VompClientRRProc::processGetMarks()
     {
       for (const cMark *m = Marks.First(); m; m = Marks.Next(m))
       {
-        log->log("RRProc", Log::DEBUG, "found Mark %i", m->position);
+#if VDRVERSNUM < 10721
+        ULLONG mposition = m->position;
+#else
+        ULLONG mposition = m->Position();
+#endif
+        log->log("RRProc", Log::DEBUG, "found Mark %i", mposition);
 
-        resp->addULONG(m->position);
+        resp->addULONG(mposition);
       }
     }
     else

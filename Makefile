@@ -1,7 +1,7 @@
 #
 # Makefile for a Video Disk Recorder plugin
 #
-# $Id$
+# $Id: Makefile,v 1.17 2009/05/30 14:22:59 christallon Exp $
 
 # The official name of this plugin.
 # This name will be used in the '-P...' option of VDR to load the plugin.
@@ -17,9 +17,9 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 
 CXX      ?= g++
 ifdef DEBUG
-CXXFLAGS ?= -g -fPIC -Wall -Woverloaded-virtual #-Werror
+CXXFLAGS ?= -g -Wall -Woverloaded-virtual -Wno-parentheses #-Werror
 else
-CXXFLAGS ?= -O2 -fPIC -Wall -Woverloaded-virtual #-Werror
+CXXFLAGS ?= -O2 -Wall -Woverloaded-virtual -Wno-parentheses #-Werror
 endif
 
 ### The directory environment:
@@ -27,6 +27,10 @@ endif
 VDRDIR = ../../..
 LIBDIR = ../../lib
 TMPDIR = /tmp
+
+### Make sure that necessary options are included:
+
+include $(VDRDIR)/Make.global
 
 ### Allow user defined options to overwrite defaults:
 
