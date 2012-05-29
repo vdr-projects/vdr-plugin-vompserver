@@ -18,16 +18,16 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 */
 
-#include "mediafile.h"
-#include "media.h"
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <iostream>
+#include <stddef.h>
+
+#include "mediafile.h"
+#include "media.h"
 #include "log.h"
-
-
 
 
 MediaFile::MediaFile(ULONG pid){
@@ -85,7 +85,8 @@ ULONG MediaFile::getMediaType(const char * filename) {
 Media * MediaFile::createMedia(const char * dirname, const char * filename, bool withURI) {
   Media * rt=NULL;
   char *buffer;
-  asprintf(&buffer, "%s/%s", dirname, filename);
+  int blen = asprintf(&buffer, "%s/%s", dirname, filename);
+  if (blen); // keep compiler happy because of unused result and unread variable warnings
   struct stat st;
   ULONG mtype=MEDIA_TYPE_UNKNOWN;
   if (stat(buffer, &st) == 0) {

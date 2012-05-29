@@ -110,5 +110,5 @@ dist: clean
 	@echo Distribution package created as $(PACKAGE).tgz
 
 clean:
-	rm -f $(OBJS) $(OBJS2) $(DEPFILE) libvdr*.so.* *.tgz core* *~ .standalone vompserver-standalone
+	rm -f $(OBJS) $(OBJS2) $(DEPFILE) libvdr*.so* *.tgz core* *~ .standalone vompserver-standalone
 
