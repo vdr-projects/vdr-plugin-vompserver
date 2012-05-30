@@ -110,6 +110,12 @@ class VompClient
 #endif
     MediaPlayer *media;
     ServerMediaFile *mediaprovider;
+    
+    void setCharset(int charset);
+    int charcoding; // 1= latin1 2= UTF-8
+    cCharSetConv *charconvutf8;
+    cCharSetConv *charconvsys;
+    
 };
 
 #endif

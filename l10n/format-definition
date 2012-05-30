@@ -11,13 +11,13 @@ vomp-l10n:[<wsp>]<lang-code><wsp><lang-name>
 <wsp> represents a whitespace string (spaces and/or tabs).
 <lang-code> can be any string of visible ASCII characters. It is intended to
 be a recognised language code or locale code.
-<lang-name> can be any Latin-1 string (TODO: UTF-8).
+<lang-name> can be any UTF-8 string.
 
 Example:
 
 vomp-l10n: cy Cymraeg
 vomp-l10n:ga-IE	Gaeilge
-vomp-l10n:	gd-GB G‡idhlig
+vomp-l10n:	gd-GB G√†idhlig
 
 The first line not of this form begins the main body of the translation file.
 
@@ -35,7 +35,7 @@ If there is no previous key, the translation is ignored.
 
 <lang-code> must match one of the codes introduced by the vomp-l10n:
 section; otherwise the line is ignored.
-<translation-text> can be any Latin-1 string (TODO: UTF-8).
+<translation-text> can be any UTF-8 string.
 
 Any other lines (blank or otherwise) are ignored. Nonblank lines should be
 treated as comments and preserved by tools written to manipulate these files.
@@ -49,8 +49,8 @@ gd:	Aon
 
 * This is a comment. Note the trailing whitespace below.
 x:"two "
-gd:		"d‡ "
-ga:		"dÛ "
+gd:		"d√† "
+ga:		"d√≥ "
 This is a comment, perhaps giving a good reason why the translation below
 has no trailing space. The quotation marks have no effect here.
 cy:	"dau"

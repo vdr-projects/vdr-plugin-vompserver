@@ -5,7 +5,7 @@ x:	VDR
 sv:	VDR
 
 x:	Welcome
-sv:	V‰lkommen
+sv:	V√§lkommen
 
 x:	1. Live TV
 sv:	1. TV
@@ -17,10 +17,10 @@ x:	3. Recordings
 sv:	3. Inspelningar
 
 x:	5. Options
-sv:	5. Inst‰llningar
+sv:	5. Inst√§llningar
 
 x:	6. Options
-sv:	6. Inst‰llningar
+sv:	6. Inst√§llningar
 
 x:	6. Reboot
 sv:	6. Starta om
@@ -29,7 +29,7 @@ x:	7. Reboot
 sv:	7. Starta om
 
 x:	Downloading recordings list
-sv:	Laddar lista ˆver inspelningar
+sv:	Laddar lista √∂ver inspelningar
 
 x:	Recordings - %s
 sv:	Inspelningar - %s
@@ -44,7 +44,7 @@ x:	[ok] = menu
 sv:	[ok] = meny
 
 x:	%lu%% used, %iGB free
-sv:	%lu%% anv‰nt, %iGB ledigt
+sv:	%lu%% anv√§nt, %iGB ledigt
 
 * Also used in channels list
 x:	%i to %i of %i
@@ -65,7 +65,7 @@ x:	Play
 sv:	Spela upp
 
 x:	Resume
-sv:	≈teruppta
+sv:	√Öteruppta
 
 x:	Summary
 sv:	Sammanfattning
@@ -77,45 +77,45 @@ x:	Programme summary
 sv:	Programsammanfattning
 
 x:	Summary unavailable
-sv:	Ingen sammanfattning tillg‰nglig
+sv:	Ingen sammanfattning tillg√§nglig
 
 x:	Delete recording
 sv:	Ta bort inspelning
 
 x:	Are you sure you want to delete this recording?
-sv:	ƒr du s‰ker att du vill ta bort den h‰r inspelningen
+sv:	√Ñr du s√§ker att du vill ta bort den h√§r inspelningen
 
 * SERVER SELECT *
 x:	Choose a VDR server
-sv:	V‰lj VDR server
+sv:	V√§lj VDR server
 
 * OPTION MENUS *
 x:	Options
-sv:	Inst‰llningar
+sv:	Inst√§llningar
 
 x:	TV connection type
 sv:	Typ av TV-anslutning
 
 x:	Remote control type
-sv:	Fj‰rrkontroll
+sv:	Fj√§rrkontroll
 
 x:	TV aspect ratio
 sv:	TV-format
 
 x:	16:9 on 4:3 display mode
-sv:	16:9 pÂ 4:3-sk‰rm
+sv:	16:9 p√• 4:3-sk√§rm
 
 x:	Power state after bootup
-sv:	L‰ge efter strˆmborfall
+sv:	L√§ge efter str√∂mborfall
 
 x:	Display channels
 sv:	Visa kanaler
 
 x:	Language
-sv:	SprÂk
+sv:	Spr√•k
 
 x:	Press back to exit, <, > or [ok] to change
-sv:	Tryck [back] fˆr att avsluta, eller [ok] fˆr att ‰ndra
+sv:	Tryck [back] f√∂r att avsluta, eller [ok] f√∂r att √§ndra
 
 x:	VDR-Pri 0=OK !See forums!
 sv:	VDR-Prio 0=OK !Se forum!
@@ -134,13 +134,13 @@ x:	S-Video
 sv:	S-Video
 
 x:	Chop sides
-sv:	Ta bort pÂ sidorna
+sv:	Ta bort p√• sidorna
 
 x:	Letterbox
 sv:	Letterbox
 
 x:	Last state
-sv:	≈tergÂ til senaste l‰ge
+sv:	√Öterg√• til senaste l√§ge
 
 x:	All
 sv:	Alla
@@ -149,7 +149,7 @@ x:	FTA only
 sv:	Endast FTA
 
 x:	On
-sv:	PÂ
+sv:	P√•
 
 x:	Off
 sv:	Av
@@ -163,13 +163,13 @@ sv:	Radiostationer
 
 * BANNERS *
 x:	No channel data available
-sv:	Ingen programinformation tillg‰nglig
+sv:	Ingen programinformation tillg√§nglig
 
 x:	info
 sv:	Info
 
 x:	Channel unavailable
-sv:	Kanalen ‰r inte tillg‰nglig
+sv:	Kanalen √§r inte tillg√§nglig
 
 * CONNECT SCREEN *
 x:	Locating server
@@ -196,10 +196,10 @@ x:	OK
 sv:	OK
 
 x:	Page up
-sv:	FˆregÂende sida
+sv:	F√∂reg√•ende sida
 
 x:	Page down
-sv:	N‰sta sida
+sv:	N√§sta sida
 
 x:	-24 hours
 sv:	-24 timmar
@@ -211,17 +211,17 @@ x:	Go: Preview
 sv:	Go: Visa
 
 x:	Guide / Back: Close
-sv:	Guide / Back: St‰ng
+sv:	Guide / Back: St√§ng
 
 x:	Rec: Set timer
 sv:	Rec: Programmera timer
 
 x:	Sel channel
-sv:	V‰lj kanal
+sv:	V√§lj kanal
 
 x:	There are no programme details available for this period
-sv:	Det finns ingen programinforamtion fˆr denna period
+sv:	Det finns ingen programinforamtion f√∂r denna period
 
 x:	No programme details
-sv:	Ingen programinformation tillg‰nglig
+sv:	Ingen programinformation tillg√§nglig
 

@@ -1,5 +1,5 @@
 l10n-vomp: hu Magyar
-* Translation by Pák Gergely
+* Translation by PÃ¡k Gergely
 
 x:	VDR
 hu:	VDR
@@ -11,47 +11,47 @@ x:	1. Live TV
 hu:	1. TV
 
 x:	2. Radio
-hu:	2. Rádió
+hu:	2. RÃ¡diÃ³
 
 x:	3. Recordings
-hu:	3. Felvett müsorok
+hu:	3. Felvett mÃ¼sorok
 
 x:	4. Timers
-hu:	4. Felvétel
+hu:	4. FelvÃ©tel
 
 x:	5. Options
-hu:	5. Beállítások
+hu:	5. BeÃ¡llÃ­tÃ¡sok
 
 x:	6. Options
-hu:	6. Beállítások
+hu:	6. BeÃ¡llÃ­tÃ¡sok
 
 x:	6. Reboot
-hu:	6. Újraindítás
+hu:	6. ÃšjraindÃ­tÃ¡s
 
 x:	7. Reboot
-hu:	7. Újraindítás
+hu:	7. ÃšjraindÃ­tÃ¡s
 
 x:	Downloading recordings list
-hu:	Felvétellista letöltése
+hu:	FelvÃ©tellista letÃ¶ltÃ©se
 
 x:	Recordings - %s
-hu:	Felvételek - %s
+hu:	FelvÃ©telek - %s
 
 x:	Recordings
-hu:	Felvételek
+hu:	FelvÃ©telek
 
 x:	<dir> %lu\t%s
 hu:	<dir> %lu\t%s
 
 x:	[ok] = menu
-hu:	[ok] = menü
+hu:	[ok] = menÃ¼
 
 x:	%lu%% used, %iGB free
-hu:	%lu%% felhasznált, %iGB szabad
+hu:	%lu%% felhasznÃ¡lt, %iGB szabad
 
 * Also used in channels list
 x:	%i to %i of %i
-hu:	%i - %i (összesen %i)
+hu:	%i - %i (Ã¶sszesen %i)
 
 * QUESTION *
 x:	Yes
@@ -62,73 +62,73 @@ hu:	Nem
 
 * RECORDING MENU *
 x:	Programme menu
-hu:	Müsor menü
+hu:	MÃ¼sor menÃ¼
 
 x:	Play
-hu:	Lejátszás
+hu:	LejÃ¡tszÃ¡s
 
 x:	Resume
-hu:	Folytatás
+hu:	FolytatÃ¡s
 
 x:	Summary
 hu:	Tartalom
 
 x:	Delete
-hu:	Törlés
+hu:	TÃ¶rlÃ©s
 
 x:	Programme summary
-hu:	Müsor tartalom
+hu:	MÃ¼sor tartalom
 
 x:	Summary unavailable
-hu:	Tartalom nem elérhetö
+hu:	Tartalom nem elÃ©rhetÃ¶
 
 x:	Delete recording
-hu:	Felvétel törlése
+hu:	FelvÃ©tel tÃ¶rlÃ©se
 
 x:	Are you sure you want to delete this recording?
-hu:	Biztosan törölni szeretné ezt a felvételt?
+hu:	Biztosan tÃ¶rÃ¶lni szeretnÃ© ezt a felvÃ©telt?
 
 * SERVER SELECT *
 x:	Choose a VDR server
-hu:	Válasszon egy VDR szervert
+hu:	VÃ¡lasszon egy VDR szervert
 
 * OPTION MENUS *
 x:	Options
-hu:	Beállitások
+hu:	BeÃ¡llitÃ¡sok
 
 x:	TV connection type
-hu:	TV csatlakozás tipusa
+hu:	TV csatlakozÃ¡s tipusa
 
 x:	Remote control type
-hu:	Távirányitó tipusa
+hu:	TÃ¡virÃ¡nyitÃ³ tipusa
 
 x:	TV aspect ratio
-hu:	TV képformátum
+hu:	TV kÃ©pformÃ¡tum
 
 x:	16:9 on 4:3 display mode
-hu:	16:9 a 4:3-as képernyön
+hu:	16:9 a 4:3-as kÃ©pernyÃ¶n
 
 x:	Power state after bootup
-hu:	Bekapcsolás utáni állapot
+hu:	BekapcsolÃ¡s utÃ¡ni Ã¡llapot
 
 x:	Display channels
-hu:	Csatornák megjelenítése
+hu:	CsatornÃ¡k megjelenÃ­tÃ©se
 
 x:	Language
 hu:	Nyelv
 
 x:	Press back to exit, <, > or [ok] to change
-hu:	[back] gombbal kilép, [<], [>] vagy [ok] gombbal választ
+hu:	[back] gombbal kilÃ©p, [<], [>] vagy [ok] gombbal vÃ¡laszt
 
 x:	VDR-Pri 0=OK !See forums!
-hu:	VDR-Pri 0=OK !lásd. fórum!
+hu:	VDR-Pri 0=OK !lÃ¡sd. fÃ³rum!
 
 * OPTION CHOICES *
 x:	Old
-hu:	Régi
+hu:	RÃ©gi
 
 x:	New
-hu:	Új
+hu:	Ãšj
 
 x:	RGB+composite
 hu:	RGB+composite
@@ -137,16 +137,16 @@ x:	S-Video
 hu:	S-Video
 
 x:	Chop sides
-hu:	Szélek levágva
+hu:	SzÃ©lek levÃ¡gva
 
 x:	Letterbox
 hu:	Letterbox
 
 x:	Last state
-hu:	Utolsó állapot
+hu:	UtolsÃ³ Ã¡llapot
 
 x:	All
-hu:	Összes
+hu:	Ã–sszes
 
 x:	FTA only
 hu:	Csak FTA
@@ -159,37 +159,37 @@ hu:	Ki
 
 * CHANNEL LISTS *
 x:	Channels
-hu:	Csatornák
+hu:	CsatornÃ¡k
 
 x:	Radio Stations
-hu:	Rádiócsatornák
+hu:	RÃ¡diÃ³csatornÃ¡k
 
 * BANNERS *
 x:	No channel data available
-hu:	Csatorna-adatok nem állnak rendelkezésre
+hu:	Csatorna-adatok nem Ã¡llnak rendelkezÃ©sre
 
 x:	info
-hu:	Infó
+hu:	InfÃ³
 
 x:	Channel unavailable
-hu:	A csatorna nem elérhetö
+hu:	A csatorna nem elÃ©rhetÃ¶
 
 * CONNECT SCREEN *
 x:	Locating server
-hu:	Szerver keresése
+hu:	Szerver keresÃ©se
 
 x:	Connecting to VDR
-hu:	Csatlakozás a VDR-hez
+hu:	CsatlakozÃ¡s a VDR-hez
 
 x:	Login failed
-hu:	Bejelentkezés sikertelen
+hu:	BejelentkezÃ©s sikertelen
 
 x:	Connection failed
-hu:	Kapcsolódás sikertelen
+hu:	KapcsolÃ³dÃ¡s sikertelen
 
 * COMMAND *
 x:	Connected, loading config
-hu:	Kapcsolódva, beállitások betöltése
+hu:	KapcsolÃ³dva, beÃ¡llitÃ¡sok betÃ¶ltÃ©se
 
 * EPG *
 x:	EPG
@@ -205,30 +205,30 @@ x:	Page down
 hu:	Le
 
 x:	-24 hours
-hu:	-24 óra
+hu:	-24 Ã³ra
 
 x:	+24 hours
-hu:	+24 óra
+hu:	+24 Ã³ra
 
 x:	Go: Preview
-hu:	Go: Betekintés
+hu:	Go: BetekintÃ©s
 
 x:	Guide / Back: Close
-hu:	Guide/Back: Bezárás
+hu:	Guide/Back: BezÃ¡rÃ¡s
 
 x:	Rec: Set timer
-hu:	Rec: Felvétel beállítása
+hu:	Rec: FelvÃ©tel beÃ¡llÃ­tÃ¡sa
 
 x:	Sel channel
-hu:	Csatornaválasztás
+hu:	CsatornavÃ¡lasztÃ¡s
 
 x:	There are no programme details available for this period
-hu:	Nincs programinformáció ehhez az idöszakhoz
+hu:	Nincs programinformÃ¡ciÃ³ ehhez az idÃ¶szakhoz
 
 x:	No programme details
-hu:	Nincs programinformáció
+hu:	Nincs programinformÃ¡ciÃ³
 
 * TIMERS *
 x:	Timers
-hu:	Felvétel
+hu:	FelvÃ©tel
 

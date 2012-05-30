@@ -62,7 +62,7 @@ it:	%i a %i di %i
 
 * QUESTION *
 x:	Yes
-it:	Sì
+it:	SÃ¬
 
 x:	No
 it:	Non
@@ -346,7 +346,7 @@ x:	Timer set successfully
 it:	Timer impostato
 
 x:	There is already a timer for this event
-it:	C'è gia un Timer per questo evento
+it:	C'Ã¨ gia un Timer per questo evento
 
 x:	Failure setting timer
 it:	Falito di impostare questo Timer
@@ -362,7 +362,7 @@ x:	No Media found
 it:	Non ho trovaro la media
 
 x:	no VDR connection
-it:	Non c'è una connesione al VDR
+it:	Non c'Ã¨ una connesione al VDR
 
 x:	Format(px)
 it:	Formatto(px)

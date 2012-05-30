@@ -5,7 +5,7 @@ x:	VDR
 fi:	VDR
 
 x:	Welcome
-fi:	‹dvˆzˆlj¸k
+fi:	√údv√∂z√∂lj√ºk
 
 x:	1. Live TV
 fi:	1. TV
@@ -26,10 +26,10 @@ x:	6. Options
 fi:	6. Asetukset
 
 x:	6. Reboot
-fi:	6. Uudelleenk‰ynnistys
+fi:	6. Uudelleenk√§ynnistys
 
 x:	7. Reboot
-fi:	7. Uudelleenk‰ynnistys
+fi:	7. Uudelleenk√§ynnistys
 
 x:	Downloading recordings list
 fi:	Ladataan tallennelistaa
@@ -47,15 +47,15 @@ x:	[ok] = menu
 fi:	[ok] = valikko
 
 x:	%lu%% used, %iGB free
-fi:	%lu%% k‰ytetty, %iGt vapaana
+fi:	%lu%% k√§ytetty, %iGt vapaana
 
 * Also used in channels list
 x:	%i to %i of %i
-fi:	%i - %i (yhteens‰ %i)
+fi:	%i - %i (yhteens√§ %i)
 
 * QUESTION *
 x:	Yes
-fi:	Kyll‰
+fi:	Kyll√§
 
 x:	No
 fi:	Ei
@@ -65,7 +65,7 @@ x:	Programme menu
 fi:	Ohjelmavalikko
 
 x:	Play
-fi:	N‰yt‰
+fi:	N√§yt√§
 
 x:	Resume
 fi:	Jatka
@@ -86,7 +86,7 @@ x:	Delete recording
 fi:	Poista tallenne
 
 x:	Are you sure you want to delete this recording?
-fi:	Oletko varma, ett‰ haluat poistaa t‰m‰n tallenteen?
+fi:	Oletko varma, ett√§ haluat poistaa t√§m√§n tallenteen?
 
 * SERVER SELECT *
 x:	Choose a VDR server
@@ -97,7 +97,7 @@ x:	Options
 fi:	Asetukset
 
 x:	TV connection type
-fi:	TV-liitynt‰
+fi:	TV-liitynt√§
 
 x:	Remote control type
 fi:	Kauko-ohjaimen tyyppi
@@ -106,13 +106,13 @@ x:	TV aspect ratio
 fi:	Kuvasuhde
 
 x:	16:9 on 4:3 display mode
-fi:	16:9 kuvasuhde 4:3 TV:ss‰
+fi:	16:9 kuvasuhde 4:3 TV:ss√§
 
 x:	Power state after bootup
-fi:	Tila k‰ynnistyksen j‰lkeen
+fi:	Tila k√§ynnistyksen j√§lkeen
 
 x:	Display channels
-fi:	N‰yt‰ kanavat
+fi:	N√§yt√§ kanavat
 
 x:	Language
 fi:	Kieli
@@ -152,7 +152,7 @@ x:	FTA only
 fi:	Vain FTA
 
 x:	On
-fi:	P‰‰ll‰
+fi:	P√§√§ll√§
 
 x:	Off
 fi:	Poissa
@@ -176,16 +176,16 @@ fi:	Kanava ei saatavilla
 
 * CONNECT SCREEN *
 x:	Locating server
-fi:	Etsit‰‰n palvelinta
+fi:	Etsit√§√§n palvelinta
 
 x:	Connecting to VDR
-fi:	Yhdistet‰‰n VDR:‰‰n
+fi:	Yhdistet√§√§n VDR:√§√§n
 
 x:	Login failed
-fi:	Sis‰‰nkirjautuminen ep‰onnistui
+fi:	Sis√§√§nkirjautuminen ep√§onnistui
 
 x:	Connection failed
-fi:	Yhteys ep‰onnistui
+fi:	Yhteys ep√§onnistui
 
 * COMMAND *
 x:	Connected, loading config
@@ -223,7 +223,7 @@ x:	Sel channel
 fi:	Valitse kanava
 
 x:	There are no programme details available for this period
-fi:	T‰lle ajanjaksolle ei saatavilla ohjelmatietoja
+fi:	T√§lle ajanjaksolle ei saatavilla ohjelmatietoja
 
 x:	No programme details
 fi:	Ei ohjelmatietoja

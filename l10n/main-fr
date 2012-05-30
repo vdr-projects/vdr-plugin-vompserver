@@ -1,4 +1,4 @@
-l10n-vomp: fr Fran�ais
+l10n-vomp: fr Français
 * Translation by jtk
 
 x:	VDR
@@ -97,7 +97,7 @@ x:	TV connection type
 fr:	Type de connection TV
 
 x:	Remote control type
-fr:	Type telecommande
+fr:	Type télécommande
 
 x:	TV aspect ratio
 fr:	Rapport TV

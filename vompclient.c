@@ -56,6 +56,10 @@ VompClient::VompClient(Config* cfgBase, char* tconfigDir, int tsocket)
   media=new MediaPlayer();
   mediaprovider=new ServerMediaFile(cfgBase,media);
   netLogFile = NULL;
+  charcoding=1; //latin1 is default
+  charconvsys=NULL;
+  charconvutf8=NULL;
+  setCharset(charcoding);
   
   rrproc.init();
 }
@@ -84,12 +88,37 @@ VompClient::~VompClient()
   
   delete media;
   delete mediaprovider;
+
+  if (charconvsys) delete charconvsys;
+  if (charconvutf8) delete charconvutf8;
+
   
   if (netLogFile)
   {
     fclose(netLogFile);
     netLogFile = NULL;
   }
+}
+
+void VompClient::setCharset(int charset)
+{
+   charcoding=charset;
+   cCharSetConv *oldcharconvsys=charconvsys;
+   cCharSetConv *oldcharconvutf8=charconvutf8;
+   switch (charcoding) {
+   case 2: //UTF-8
+   charconvsys=new cCharSetConv(NULL,"UTF-8");
+   charconvutf8=new cCharSetConv("UTF-8","UTF-8");
+   break;
+   case 1:
+   default://latin1
+   charconvsys=new cCharSetConv(NULL,"ISO-8859-1");
+   charconvutf8=new cCharSetConv("UTF-8","ISO-8859-1");
+   break;
+   };
+   if (oldcharconvsys) delete oldcharconvsys;
+   if (oldcharconvutf8) delete oldcharconvutf8;
+
 }
 
 void VompClient::incClients()
@@ -393,7 +422,7 @@ void VompClient::writeResumeData()
                           (char*)recplayer->getCurrentRecording()->FileName(),
                           recplayer->frameNumberFromPosition(recplayer->getLastPosition()) );*/
 
-  /* write to vdrdeveldevel resume file */
+  /* write to vdr resume file */
   int resume = recplayer->frameNumberFromPosition(recplayer->getLastPosition());
   char* ResumeIdC = config.getValueString("General", "ResumeId");
   int ResumeId;

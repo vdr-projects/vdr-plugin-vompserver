@@ -1,5 +1,5 @@
 l10n-vomp:de Deutsch
-* German translation by André Jagusch
+* German translation by AndrÃ© Jagusch
 
 x:	VDR
 de:	VDR
@@ -51,7 +51,7 @@ x:	<dir> %lu\t%s
 de:	<dir> %lu\t%s
 
 x:	[ok] = menu
-de:	[ok] = Menü
+de:	[ok] = MenÃ¼
 
 x:	%lu%% used, %iGB free
 de:	%lu%% belegt, %iGB frei
@@ -69,7 +69,7 @@ de:	Nein
 
 * RECORDING MENU *
 x:	Programme menu
-de:	Programm-Menü
+de:	Programm-MenÃ¼
 
 x:	Play
 de:	Wiedergeben
@@ -81,23 +81,23 @@ x:	Summary
 de:	Inhalt
 
 x:	Delete
-de:	Löschen
+de:	LÃ¶schen
 
 x:	Programme summary
 de:	Programminhalt
 
 x:	Summary unavailable
-de:	Inhalt nicht verfügbar
+de:	Inhalt nicht verfÃ¼gbar
 
 x:	Delete recording
-de:	Aufnahme löschen
+de:	Aufnahme lÃ¶schen
 
 x:	Are you sure you want to delete this recording?
-de:	Sind Sie sich sicher, dass Sie diese Aufnahme löschen möchten?
+de:	Sind Sie sich sicher, dass Sie diese Aufnahme lÃ¶schen mÃ¶chten?
 
 * SERVER SELECT *
 x:	Choose a VDR server
-de:	Wählen Sie einen VDR-Server
+de:	WÃ¤hlen Sie einen VDR-Server
 
 * OPTION MENUS *
 x:	Options
@@ -134,7 +134,7 @@ x:	Default end margin (minutes)
 de:	Standard End-Zeitpuffer (Min.)
 
 x:	Default priority
-de:	Standard Priorität
+de:	Standard PrioritÃ¤t
 
 x:	Default lifetime
 de:	Standard Lebenszeit
@@ -143,13 +143,13 @@ x:	Advanced Options
 de:	Erweiterte Einstellungen
 
 x:	TV connection type
-de:	TV-Anschlußart
+de:	TV-AnschluÃŸart
 
 x:	Remote control type
 de:	Fernbedienungstyp
 
 x:	TV aspect ratio
-de:	Seitenverhältnis
+de:	SeitenverhÃ¤ltnis
 
 x:	16:9 on 4:3 display mode
 de:	16:9 auf 4:3-Modus
@@ -158,7 +158,7 @@ x:	Power state after bootup
 de:	Einschalten nach Neustart
 
 x:	Display channels
-de:	Kanäle anzeigen
+de:	KanÃ¤le anzeigen
 
 x:	Language
 de:	Sprache
@@ -173,7 +173,7 @@ x:	VDR-Pri 0=OK !See forums!
 de:	VDR-Pri 0=OK !Siehe Forum!
 
 x:	TCP receive window size
-de:	TCP Empfangsgrösse
+de:	TCP EmpfangsgrÃ¶sse
 
 x:	Use WSS (PAL only)
 de:	Benutze WSS (nur PAL)
@@ -214,20 +214,20 @@ de:	Aus
 
 * CHANNEL LISTS *
 x:	Channels
-de:	Fernsehkanäle
+de:	FernsehkanÃ¤le
 
 x:	Radio Stations
-de:	Radiokanäle
+de:	RadiokanÃ¤le
 
 * BANNERS *
 x:	No channel data available
-de:	Keine Daten für diesen Kanal verfügbar
+de:	Keine Daten fÃ¼r diesen Kanal verfÃ¼gbar
 
 x:	info
 de:	Info
 
 x:	Channel unavailable
-de:	Kanal nicht verfügbar
+de:	Kanal nicht verfÃ¼gbar
 
 * CONNECT SCREEN *
 x:	Locating server
@@ -269,7 +269,7 @@ x:	Go: Preview
 de:	Go: Vorschau
 
 x:	Guide / Back: Close
-de:	Back:EPG schließen
+de:	Back:EPG schlieÃŸen
 
 x:	Rec: Set timer
 de:	Rec: Neuer Timer
@@ -278,7 +278,7 @@ x:	Sel channel
 de:	Umschalten
 
 x:	There are no programme details available for this period
-de:	Es sind keine Programminformationen für diesen Zeitraum verfügbar
+de:	Es sind keine Programminformationen fÃ¼r diesen Zeitraum verfÃ¼gbar
 
 x:	No programme details
 de:	Keine Programminformation
@@ -316,7 +316,7 @@ x:	Stop
 de:	Ende
 
 x:	Priority
-de:	Priorität
+de:	PrioritÃ¤t
 
 x:	Lifetime
 de:	Lebenszeit
@@ -331,7 +331,7 @@ x:	Move
 de:	Verschieben
 
 x:	Failed to delete recording
-de:	Löschen der Aufnahme fehlgeschlagen
+de:	LÃ¶schen der Aufnahme fehlgeschlagen
 
 x:	Failed to move recording
 de:	Verschieben der Aufnahme fehlgeschlagen
@@ -346,7 +346,7 @@ x:	Timer set successfully
 de:	Timer erfolgreich angelegt
 
 x:	There is already a timer for this event
-de:	Für dieses Ereignis existiert schon ein Timer
+de:	FÃ¼r dieses Ereignis existiert schon ein Timer
 
 x:	Failure setting timer
 de:	Fehler beim Anlegen des Timers
@@ -367,7 +367,7 @@ de:	Keine Verbindung zum VDR
 x:	Format(px)
 
 x:	Filesize
-de:	Dateigröße
+de:	DateigrÃ¶ÃŸe
 
 x:	Time
 de:	Zeit
@@ -388,7 +388,7 @@ de:	Playlist
 de*Wiedergabeliste??
 
 x:	unable to open audio file
-de:	kann die Audio Datei nicht öffnen
+de:	kann die Audio Datei nicht Ã¶ffnen
 
 x:	Rand
 de:	Zuf.
@@ -409,7 +409,7 @@ x:	Mono
 de:	Mono
 
 x:	Artist
-de:	Künstler
+de:	KÃ¼nstler
 
 x:	Year
 de:	Jahr

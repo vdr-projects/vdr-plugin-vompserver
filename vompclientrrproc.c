@@ -90,9 +90,35 @@ void VompClientRRProc::threadMethod()
 
   if (req_queue.size() != 0)
   {
-    log->log("RRProc", Log::ERR, "threadMethod err 1");     
-    threadUnlock();
-    return;
+/*
+-    log->log("RRProc", Log::ERR, "threadMethod err 1");     
+-    threadUnlock();
+-    return;
+
+That was how the code used to be.
+
+TODO: Work out why this happens.
+*/  
+  
+    log->log("RRProc", Log::ERR, "threadMethod startup with already queued packets");     
+    while (req_queue.size()) 
+    {
+      //log->log("RRProc", Log::DEBUG, "thread while");
+      req = req_queue.front();
+      req_queue.pop();
+      
+      threadUnlock(); // allow recvRequest to be queuing packets while we are working on this one
+      
+      if (!processPacket())
+      {
+        log->log("RRProc", Log::ERR, "processPacket exited with fail");     
+        return;
+      }
+      
+      threadLock();
+    } 
+    log->log("RRProc", Log::ERR, "threadMethod startup with already queued packets done.");     
+
   }
     
   while(1)  
@@ -241,6 +267,9 @@ bool VompClientRRProc::processPacket()
     case VDR_CLOSECHANNEL:
 	     result= processCloseMediaChannel();
 	     break;
+    case 37:
+      result = processSetCharset();
+      break;
 
   }
 
@@ -282,6 +311,25 @@ int VompClientRRProc::processLogin()
   
   return 1;
 }
+
+int VompClientRRProc::processSetCharset()
+{
+   int charset = ntohl(*(ULONG*)req->data);
+   if (charset>0 && charset<3) {
+        log->log("RRProc", Log::DEBUG, "Set charset to %d", charset);
+        x.setCharset(charset);
+        resp->addULONG(1);
+    } else {
+       log->log("RRProc", Log::DEBUG, "Invalid charset %d", charset);
+       resp->addULONG(0);
+    }
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+
+}
+
+    
+
 
 int VompClientRRProc::processConfigSave()
 {
@@ -342,7 +390,7 @@ int VompClientRRProc::processConfigLoad()
 
   if (value)
   {
-    resp->addString(value);
+    resp->addString(value);//client coding, do not touch
     log->log("RRProc", Log::DEBUG, "Written config load packet");
     delete[] value;
   }
@@ -561,8 +609,8 @@ int VompClientRRProc::processGetLanguageList()
   I18n::lang_code_list::const_iterator iter;
   for (iter = languages.begin(); iter != languages.end(); ++iter)
   {
-    resp->addString(iter->first.c_str());
-    resp->addString(iter->second.c_str());
+    resp->addString(iter->first.c_str()); // Source code is acsii
+    resp->addString(x.charconvutf8->Convert(iter->second.c_str())); //translate string can be any utf-8 character
   }
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
@@ -579,8 +627,8 @@ int VompClientRRProc::processGetLanguageContent()
   I18n::trans_table::const_iterator iter;
   for (iter = texts.begin(); iter != texts.end(); ++iter)
   {
-    resp->addString(iter->first.c_str());
-    resp->addString(iter->second.c_str());
+    resp->addString(iter->first.c_str());// source code is acsii since it is english
+    resp->addString(x.charconvutf8->Convert(iter->second.c_str())); // translate text can be any unicode string, it is stored as UTF-8
   }
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
@@ -609,8 +657,8 @@ int VompClientRRProc::processGetRecordingsList()
 #else
     resp->addULONG(recording->Start());
 #endif
-    resp->addString(recording->Name());
-    resp->addString(recording->FileName());
+    resp->addString(x.charconvsys->Convert(recording->Name())); //coding of recording name is system dependent
+    resp->addString(recording->FileName());//file name are not  visible by user do not touch
   }
 
   resp->finalise();
@@ -641,7 +689,7 @@ int VompClientRRProc::processDeleteRecording()
     {
       if (recording->Delete())
       {
-        // Copy svdrdeveldevelp's way of doing this, see if it works
+        // Copy svdrp's way of doing this, see if it works
 #if VDRVERSNUM > 10300
         ::Recordings.DelByName(recording->FileName());
 #endif
@@ -803,7 +851,7 @@ int VompClientRRProc::processMoveRecording()
 #endif
         // Success. Send a different packet from just a ulong
         resp->addULONG(1); // success
-        resp->addString(newDir);
+        resp->addString(newDir); //system depent do not convert
       }
       else
       {
@@ -863,7 +911,7 @@ int VompClientRRProc::processGetChannelsList()
 
       resp->addULONG(channel->Number());
       resp->addULONG(type);      
-      resp->addString(channel->Name());
+      resp->addString(x.charconvsys->Convert(channel->Name()));
 #if VDRVERSNUM < 10703
       resp->addULONG(2);
 #else
@@ -971,19 +1019,19 @@ int VompClientRRProc::processGetChannelPids()
   for (ULONG i = 0; i < numApids; i++)
   {
     resp->addULONG(channel->Apid(i));
-    resp->addString(channel->Alang(i));
+    resp->addString(x.charconvsys->Convert(channel->Alang(i)));
   }
   resp->addULONG(numDpids);
   for (ULONG i = 0; i < numDpids; i++)
   {
     resp->addULONG(channel->Dpid(i));
-    resp->addString(channel->Dlang(i));
+    resp->addString(x.charconvsys->Convert(channel->Dlang(i)));
   }
   resp->addULONG(numSpids);
   for (ULONG i = 0; i < numSpids; i++)
   {
     resp->addULONG(channel->Spid(i));
-    resp->addString(channel->Slang(i));
+    resp->addString(x.charconvsys->Convert(channel->Slang(i)));
   }
 #endif
   resp->addULONG(channel->Tpid());
@@ -1364,9 +1412,9 @@ int VompClientRRProc::processGetChannelSchedule()
     resp->addULONG(thisEventTime);
     resp->addULONG(thisEventDuration);
 
-    resp->addString(thisEventTitle);
-    resp->addString(thisEventSubTitle);
-    resp->addString(thisEventDescription);
+    resp->addString(x.charconvsys->Convert(thisEventTitle));
+    resp->addString(x.charconvsys->Convert(thisEventSubTitle));
+    resp->addString(x.charconvsys->Convert(thisEventDescription));
 
     atLeastOneEvent = true;
   }
@@ -1412,7 +1460,7 @@ int VompClientRRProc::processGetTimers()
     resp->addULONG(timer->StopTime());
     resp->addULONG(timer->Day());
     resp->addULONG(timer->WeekDays());
-    resp->addString(timer->File());
+    resp->addString(timer->File()); //Filename is system specific and not visible by user
   }
 
   resp->finalise();
@@ -1567,6 +1615,9 @@ int VompClientRRProc::processGetRecInfo()
   time_t timerStart = 0;
   time_t timerStop = 0;
   char* summary = NULL;
+  char* shorttext = NULL;
+  char* description = NULL;
+  bool newsummary=false;
   ULONG resumePoint = 0;
 
   if (!recording)
@@ -1652,13 +1703,24 @@ int VompClientRRProc::processGetRecInfo()
   summary = (char*)recording->Summary();
 #else
   const cRecordingInfo *Info = recording->Info();
-  summary = (char*)Info->ShortText();
+  shorttext = (char*)Info->ShortText();
+  description = (char*) (char*)Info->Description();
+  if (isempty(shorttext)) summary=description;
+  else if (isempty(description)) summary=shorttext;
+  else {
+     int length=strlen(description)+strlen(shorttext)+4;
+     summary=new char[length];
+     snprintf(summary,length,"%s\n\n%s",shorttext,description);
+     newsummary=true;
+  }
+  
   if (isempty(summary)) summary = (char*)Info->Description();
 #endif
   log->log("RRProc", Log::DEBUG, "GRI: S: %s", summary);
   if (summary)
   {
-    resp->addString(summary);
+    resp->addString(x.charconvsys->Convert(summary));
+    if (newsummary) delete [] summary;
   }
   else
   {
@@ -1697,7 +1759,7 @@ int VompClientRRProc::processGetRecInfo()
 
       if (component->language)
       {
-        resp->addString(component->language);
+        resp->addString(x.charconvsys->Convert(component->language));
       }
       else
       {
@@ -1705,7 +1767,7 @@ int VompClientRRProc::processGetRecInfo()
       }
       if (component->description)
       {
-        resp->addString(component->description);
+        resp->addString(x.charconvsys->Convert(component->description));
       }
       else
       {

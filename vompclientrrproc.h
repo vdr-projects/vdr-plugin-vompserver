@@ -91,6 +91,7 @@ class VompClientRRProc : public Thread
     int processCloseMediaChannel();
     int processGetLanguageList();
     int processGetLanguageContent();
+    int processSetCharset();
 
     void threadMethod();
 

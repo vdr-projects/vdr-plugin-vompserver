@@ -22,6 +22,7 @@
 #define RESPONSEPACKET_H
 
 #include "defines.h"
+#include <vdr/tools.h>
 
 class ResponsePacket
 {
