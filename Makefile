@@ -17,9 +17,9 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 
 CXX      ?= g++
 ifdef DEBUG
-CXXFLAGS ?= -g -Wall -Woverloaded-virtual -Wno-parentheses #-Werror
+CXXFLAGS ?= -g -Wall -Woverloaded-virtual -Wno-parentheses -Werror
 else
-CXXFLAGS ?= -O2 -Wall -Woverloaded-virtual -Wno-parentheses #-Werror
+CXXFLAGS ?= -O2 -Wall -Woverloaded-virtual -Wno-parentheses -Werror
 endif
 
 ### The directory environment:

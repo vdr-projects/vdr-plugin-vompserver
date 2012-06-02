@@ -20,7 +20,10 @@
 
 #include "recplayer.h"
 
+#ifndef _XOPEN_SOURCE
 #define _XOPEN_SOURCE 600
+#endif
+
 #include <fcntl.h>
 
 RecPlayer::RecPlayer(cRecording* rec)

@@ -116,6 +116,7 @@ void MVPReceiver::Receive(UCHAR* data, int length)
 
 void MVPReceiver::threadMethod()
 {
+  ULONG *p;
   ULONG headerLength = sizeof(ULONG) * 4;
   UCHAR buffer[streamChunkSize + headerLength];
   int amountReceived;
@@ -135,10 +136,10 @@ void MVPReceiver::threadMethod()
       amountReceived = processed.get(buffer+headerLength, streamChunkSize);
       pthread_mutex_unlock(&processedRingLock);
     
-      *(ULONG*)&buffer[0] = htonl(2); // stream channel
-      *(ULONG*)&buffer[4] = htonl(streamID);
-      *(ULONG*)&buffer[8] = htonl(0); // here insert flag: 0 = ok, data follows
-      *(ULONG*)&buffer[12] = htonl(amountReceived);
+      p = (ULONG*)&buffer[0]; *p = htonl(2); // stream channel
+      p = (ULONG*)&buffer[4]; *p = htonl(streamID);
+      p = (ULONG*)&buffer[8]; *p = htonl(0); // here insert flag: 0 = ok, data follows
+      p = (ULONG*)&buffer[12]; *p = htonl(amountReceived);
 
       tcp->sendPacket(buffer, amountReceived + headerLength);
     } while(processed.getContent() >= streamChunkSize);
@@ -147,12 +148,13 @@ void MVPReceiver::threadMethod()
 
 void MVPReceiver::sendStreamEnd()
 {
+  ULONG *p;
   ULONG bufferLength = sizeof(ULONG) * 4;
   UCHAR buffer[bufferLength];
-  *(ULONG*)&buffer[0] = htonl(2); // stream channel
-  *(ULONG*)&buffer[4] = htonl(streamID);
-  *(ULONG*)&buffer[8] = htonl(1); // stream end
-  *(ULONG*)&buffer[12] = htonl(0); // zero length, no more data
+  p = (ULONG*)&buffer[0]; *p = htonl(2); // stream channel
+  p = (ULONG*)&buffer[4]; *p = htonl(streamID);
+  p = (ULONG*)&buffer[8]; *p = htonl(1); // stream end
+  p = (ULONG*)&buffer[12]; *p = htonl(0); // zero length, no more data
   tcp->sendPacket(buffer, bufferLength);
 }
 

@@ -318,9 +318,10 @@ void VompClient::run2()
 
       log->log("Client", Log::DEBUG, "Received chan=%lu kats=%lu", channelID, kaTimeStamp);    
 
+      ULONG* p;
       UCHAR buffer[8];
-      *(ULONG*)&buffer[0] = htonl(3); // KA CHANNEL
-      *(ULONG*)&buffer[4] = htonl(kaTimeStamp);
+      p = (ULONG*)&buffer[0]; *p = htonl(3); // KA CHANNEL
+      p = (ULONG*)&buffer[4]; *p = htonl(kaTimeStamp);
       if (!tcp.sendPacket(buffer, 8))
       {
         log->log("Client", Log::ERR, "Could not send back KA reply");

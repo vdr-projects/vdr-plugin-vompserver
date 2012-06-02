@@ -262,15 +262,14 @@ bool VompClientRRProc::processPacket()
       result = processGetLanguageContent();
       break;
     case VDR_GETMEDIAINFO:
-	     result= processGetMediaInfo();
-	     break;
+	    result = processGetMediaInfo();
+	    break;
     case VDR_CLOSECHANNEL:
-	     result= processCloseMediaChannel();
-	     break;
+	    result = processCloseMediaChannel();
+	    break;
     case 37:
       result = processSetCharset();
       break;
-
   }
 
   delete resp;
@@ -314,22 +313,22 @@ int VompClientRRProc::processLogin()
 
 int VompClientRRProc::processSetCharset()
 {
-   int charset = ntohl(*(ULONG*)req->data);
-   if (charset>0 && charset<3) {
-        log->log("RRProc", Log::DEBUG, "Set charset to %d", charset);
-        x.setCharset(charset);
-        resp->addULONG(1);
-    } else {
-       log->log("RRProc", Log::DEBUG, "Invalid charset %d", charset);
-       resp->addULONG(0);
-    }
+  int charset = ntohl(*(ULONG*)req->data);
+  if (charset>0 && charset<3)
+  {
+    log->log("RRProc", Log::DEBUG, "Set charset to %d", charset);
+    x.setCharset(charset);
+    resp->addULONG(1);
+  }
+  else
+  {
+    log->log("RRProc", Log::DEBUG, "Invalid charset %d", charset);
+    resp->addULONG(0);
+  }
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
-
+  return 1;
 }
-
-    
-
 
 int VompClientRRProc::processConfigSave()
 {

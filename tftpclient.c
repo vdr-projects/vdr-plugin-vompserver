@@ -290,8 +290,9 @@ int TftpClient::openFile(char* requestedFile)
 
 int TftpClient::sendBlock()
 {
-  *(USHORT*)&buffer[0] = htons(3);
-  *(USHORT*)&buffer[2] = htons(blockNumber++);
+  USHORT* p;
+  p = (USHORT*)&buffer[0]; *p = htons(3);
+  p = (USHORT*)&buffer[2]; *p = htons(blockNumber++);
   bufferLength = 4 + fread(&buffer[4], 1, 512, file);
 
   if (bufferLength < 516) // 512 + 4 header

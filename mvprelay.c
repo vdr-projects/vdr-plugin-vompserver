@@ -95,6 +95,7 @@ void MVPRelay::threadMethod()
 
     // Construct reply packet
 
+    ULONG* p;
     UCHAR out[52];
     memset(out, 0, 52);
 
@@ -102,13 +103,15 @@ void MVPRelay::threadMethod()
     memcpy(out, in, 4);
 
     // Return magic number is 0xfafebabe
-    *(ULONG*)&out[4] = htonl(0xfafebabe);
+    p = (ULONG*)&out[4];
+    *p = htonl(0xfafebabe);
 
     // Copy client IP and port to reply
     memcpy(&out[16], &in[16], 6);
 
     // Insert server address
-    *(ULONG*)&out[24] = myIP;
+    p = (ULONG*)&out[24];
+    *p = myIP;
 
     // Send it
     ds.send(ds.getFromIPA(), peerPort, (char*)out, 52);
