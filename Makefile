@@ -30,7 +30,10 @@ TMPDIR = /tmp
 
 ### Make sure that necessary options are included:
 
+APIVERSNUM = $(shell grep 'define APIVERSNUM ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
+ifeq ($(shell test $(APIVERSNUM) -ge 10713; echo $$?),0) # thanks streamdev
 include $(VDRDIR)/Make.global
+endif
 
 ### Allow user defined options to overwrite defaults:
 
