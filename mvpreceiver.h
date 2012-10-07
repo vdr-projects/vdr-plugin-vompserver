@@ -38,6 +38,7 @@ class MVPReceiver : public cReceiver, public Thread
     virtual ~MVPReceiver();
     int init(TCP* tcp, ULONG streamID);
     bool isVdrActivated();
+    void detachMVPReceiver();
 
   private:
     MVPReceiver(cChannel* channel, cDevice* device);

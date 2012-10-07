@@ -1113,6 +1113,7 @@ int VompClientRRProc::processStopStreaming()
   log->log("RRProc", Log::DEBUG, "STOP STREAMING RECEIVED");
   if (x.lp)
   {
+    x.lp->detachMVPReceiver();
     delete x.lp;
     x.lp = NULL;
   }

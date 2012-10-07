@@ -78,9 +78,6 @@ int MVPReceiver::init(TCP* ttcp, ULONG tstreamID)
 
 MVPReceiver::~MVPReceiver()
 {
-  Detach();
-  threadStop();
-
   numMVPReceivers--;
   Log::getInstance()->log("MVPReceiver", Log::DEBUG, "num mvp receivers now down to %i", numMVPReceivers);
 }
@@ -104,6 +101,12 @@ void MVPReceiver::Activate(bool on)
 bool MVPReceiver::isVdrActivated()
 {
   return vdrActivated;
+}
+
+void MVPReceiver::detachMVPReceiver()
+{
+  threadStop();
+  Detach();
 }
 
 void MVPReceiver::Receive(UCHAR* data, int length)
@@ -170,4 +173,5 @@ int *MVPReceiver::mergeSpidsTpid(const int *spids,int tpid)
   destpids++;
   *destpids=0;
   return mergedSpidsTpid;
-}  
+}
+

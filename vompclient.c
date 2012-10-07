@@ -70,6 +70,7 @@ VompClient::~VompClient()
 #ifndef VOMPSTANDALONE  
   if (lp)
   {
+    lp->detachMVPReceiver();
     delete lp;
     lp = NULL;
   }
