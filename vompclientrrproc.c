@@ -42,6 +42,14 @@
 
 bool ResumeIDLock;
 
+#define VOMP_PROTOCOLL_VERSION 0x00000100
+// format is aabbccdd
+// cc is release protocol version, increase with every release, that changes protocoll
+// dd is development protocol version, set to zero at every release, 
+// increase for every protocoll change in git
+// bb not equal zero should indicate a non loggytronic protocoll
+// aa is reserved for future use
+
 VompClientRRProc::VompClientRRProc(VompClient& x)
  : x(x)
 {
@@ -301,6 +309,7 @@ int VompClientRRProc::processLogin()
 
   resp->addULONG(timeNow);
   resp->addLONG(timeOffset);
+  resp->addULONG(VOMP_PROTOCOLL_VERSION);
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   log->log("RRProc", Log::DEBUG, "written login reply len %lu", resp->getLen());
@@ -1034,6 +1043,57 @@ int VompClientRRProc::processGetChannelPids()
   }
 #endif
   resp->addULONG(channel->Tpid());
+  // Format of extended response, for compatibility with older client at the end
+  // {
+  //    atypes
+  // }
+  // {
+  //    dtypes
+  // }
+  // {
+  //    stypes
+  //    comppageid
+  //    ancpageids
+  // }
+#if VDRVERSNUM < 10300
+  if (numApids >= 1)
+  {
+    resp->addULONG(4);
+  }
+  if (numApids == 2)
+  {
+    resp->addULONG(4);
+  }
+#else
+  for (ULONG i = 0; i < numApids; i++)
+  {
+#if VDRVERSNUM < 10715
+    resp->addULONG(4);
+#else
+    resp->addULONG(channel->Atype(i));
+#endif
+  }
+  for (ULONG i = 0; i < numDpids; i++)
+  {
+#if VDRVERSNUM < 10715
+    resp->addULONG(0x6A /*AC3*/);
+#else
+    resp->addULONG(channel->Dtype(i));
+#endif
+  }
+  for (ULONG i = 0; i < numSpids; i++)
+  {
+#if VDRVERSNUM < 10715
+    resp->addULONG(0);
+    resp->addULONG(0);
+    resp->addULONG(0);
+#else
+    resp->addULONG(channel->SubtitlingType(i));
+    resp->addULONG(channel->CompositionPageId(i));
+    resp->addULONG(channel->AncillaryPageId(i));
+#endif
+  }
+#endif
 
 
   resp->finalise();
