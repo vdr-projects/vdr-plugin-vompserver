@@ -51,6 +51,10 @@ MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
   streamID = 0;
   tcp = NULL;
 
+#if VDRVERSNUM >= 10712
+  AddPid(channel->Tpid()); 
+#endif
+
 //  logger->log("MVPReceiver", Log::DEBUG, "Channel has VPID %i APID %i", channel->Vpid(), channel->Apid(0));
 
   if (!processed.init(1000000)) return;
