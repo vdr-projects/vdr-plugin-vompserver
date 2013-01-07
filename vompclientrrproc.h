@@ -52,6 +52,7 @@ class VompClientRRProc : public Thread
   public:
     VompClientRRProc(VompClient& x);
     ~VompClientRRProc();
+    static ULONG getProtocolVersion();
     
     bool init();
     bool recvRequest(RequestPacket*);
@@ -99,6 +100,7 @@ class VompClientRRProc : public Thread
     RequestPacket* req;
     RequestPacketQueue req_queue;
     ResponsePacket* resp;
+    static ULONG VOMP_PROTOCOL_VERSION;
     
     Log* log;
 };
