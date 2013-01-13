@@ -670,6 +670,7 @@ int VompClientRRProc::processGetRecordingsList()
 #else
     resp->addULONG(recording->Start());
 #endif
+    resp->addUCHAR(recording->IsNew() ? 1 : 0);
     resp->addString(x.charconvsys->Convert(recording->Name())); //coding of recording name is system dependent
     resp->addString(recording->FileName());//file name are not  visible by user do not touch
   }
