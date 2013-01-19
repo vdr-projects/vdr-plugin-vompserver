@@ -27,7 +27,7 @@
 #include "mvpserver.h"
 //#include "vompclient.h"
 
-static const char *VERSION        = "0.3.1";
+static const char *VERSION        = "0.4.0";
 static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
 
 #ifndef VOMPSTANDALONE
