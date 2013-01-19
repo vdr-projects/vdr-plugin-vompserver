@@ -1138,7 +1138,11 @@ int VompClientRRProc::processStartStreamingChannel()
   }
 
   // a bit of sanity..
+#if VDRVERSNUM < 10725
   if (priority < 0) priority = 0;
+#else 
+  if (priority < -99) priority = -99;
+#endif
   if (priority > 99) priority = 99;
 
   log->log("RRProc", Log::DEBUG, "Using live TV priority %i", priority);
