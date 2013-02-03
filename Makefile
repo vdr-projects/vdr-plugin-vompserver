@@ -26,13 +26,15 @@ TMPDIR ?= /tmp
 # VOMP INSERT for older VDRs
 ifeq ($(VDRDIR),)
   VDRDIR = ../../..
+endif
+ifeq ($(LIBDIR),)
   LIBDIR = ../../lib
 endif
 
 APIVERSNUM = $(shell grep 'define APIVERSNUM ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
-DOOLDINSTALL = 0
+DOOLDINSTALL =
 ifeq ($(shell test $(APIVERSNUM) -le 10734; echo $$?),0) # thanks streamdev
-DOOLDINSTALL = 1
+DOOLDINSTALL = yes
 endif
 # end insert
 
@@ -158,8 +160,9 @@ standalonebase:
 
 $(SOFILE): objects
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) $(OBJS2) -o $@
-	if [ -n "$(DOOLDINSTALL)" ]; then \
-cp $@ $(LIBDIR)/$@.$(APIVERSION) ; \
+	@if [ -n "$(DOOLDINSTALL)" ]; then \
+@cp $@ $(LIBDIR)/$@.$(APIVERSION) ; \
+@echo "done manual copy"; \
 fi
 
 vompserver-standalone: objectsstandalone
