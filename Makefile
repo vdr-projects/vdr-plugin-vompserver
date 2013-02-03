@@ -49,6 +49,11 @@ CXXFLAGS += -fPIC
 ### The version number of VDR's plugin API:
 
 APIVERSION = $(call PKGCFG,apiversion)
+# VOMP INSERT for older VDRs
+ifeq ($(APIVERSION),)
+  APIVERSION = $(shell sed -ne '/define APIVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
+endif
+# end VOMP INSERT
 
 ### Allow user defined options to overwrite defaults:
 
@@ -153,7 +158,7 @@ standalonebase:
 
 $(SOFILE): objects
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) $(OBJS2) -o $@
-	[ -n "$(DOOLDINSTALL)" ]; then \
+	if [ -n "$(DOOLDINSTALL)" ]; then \
 cp $@ $(LIBDIR)/$@.$(APIVERSION) ; \
 fi
 
