@@ -23,10 +23,28 @@ PLGCFG = $(call PKGCFG,plgcfg)
 #
 TMPDIR ?= /tmp
 
+# VOMP INSERT for older VDRs
+ifeq ($(VDRDIR),)
+  VDRDIR = ../../..
+  LIBDIR = ../../lib
+endif
+
+APIVERSNUM = $(shell grep 'define APIVERSNUM ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
+DOOLDINSTALL = 0
+ifeq ($(shell test $(APIVERSNUM) -le 10734; echo $$?),0) # thanks streamdev
+DOOLDINSTALL = 1
+endif
+# end insert
+
 ### The compiler options:
 
 export CFLAGS   = $(call PKGCFG,cflags)
 export CXXFLAGS = $(call PKGCFG,cxxflags)
+
+# VOMP INSERT
+CFLAGS += -fPIC
+CXXFLAGS += -fPIC
+# end insert
 
 ### The version number of VDR's plugin API:
 
@@ -56,6 +74,7 @@ INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include
 
 DEFINES += -D_GNU_SOURCE -DVOMPSERVER
 DEFINES += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
+
 # END-VOMP-INSERT
 
 
@@ -134,6 +153,9 @@ standalonebase:
 
 $(SOFILE): objects
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) $(OBJS2) -o $@
+	[ -n "$(DOOLDINSTALL)" ]; then \
+cp $@ $(LIBDIR)/$@.$(APIVERSION) ; \
+fi
 
 vompserver-standalone: objectsstandalone
 	$(CXX) $(CXXFLAGS) $(OBJS) -lpthread -o $@
