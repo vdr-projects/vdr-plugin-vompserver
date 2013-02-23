@@ -29,6 +29,7 @@ MVPServer::MVPServer()
 {
   // MH in case anbody has a better position :-)
   pthread_mutex_init(&threadClientMutex, NULL);
+  tcpServerPort = 0;
 }
 
 MVPServer::~MVPServer()
@@ -91,6 +92,12 @@ int MVPServer::run(char* tconfigDir)
     dsyslog("VOMP: Logging disabled");
   }
 
+  // Get UDP port number for discovery service
+
+  int fail = 1;
+  int udpport = config.getValueLong("General", "UDP port", &fail);
+  if (fail) udpport = 51051;  
+  
   // Work out a name for this server
 
   char* serverName;
@@ -100,13 +107,18 @@ int MVPServer::run(char* tconfigDir)
   if (!serverName) // If not, get the hostname
   {
     serverName = new char[1024];
-    if (gethostname(serverName, 1024)) // if not, just use "-"
+    if (gethostname(serverName, 1024)) // if not, set default
     {
-      strcpy(serverName, "-");
+      strcpy(serverName, "VOMP Server");
     }
   }
 
-  int udpSuccess = udpr.run(serverName);
+  // Get VOMP server TCP port to give to UDP replier to put in packets
+  fail = 1;
+  tcpServerPort = config.getValueLong("General", "TCP port", &fail);
+  if (fail) tcpServerPort = 3024;
+  
+  int udpSuccess = udpr.run(udpport, serverName, tcpServerPort);
 
   delete[] serverName;
 
@@ -232,7 +244,7 @@ void MVPServer::threadMethod()
 
   struct sockaddr_in address;
   address.sin_family = AF_INET;
-  address.sin_port = htons(3024);
+  address.sin_port = htons(tcpServerPort);
   address.sin_addr.s_addr = INADDR_ANY;
   socklen_t length = sizeof(address);
 

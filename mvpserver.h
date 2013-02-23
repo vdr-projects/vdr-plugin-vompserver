@@ -54,6 +54,7 @@ class MVPServer : public Thread
     MVPRelay mvprelay;
     int listeningSocket;
     char* configDir;
+    USHORT tcpServerPort;
 };
 
 #endif

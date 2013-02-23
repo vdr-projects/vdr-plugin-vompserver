@@ -42,13 +42,18 @@
 
 bool ResumeIDLock;
 
-#define VOMP_PROTOCOLL_VERSION 0x00000100
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION = 0x00000200;
 // format is aabbccdd
-// cc is release protocol version, increase with every release, that changes protocoll
+// cc is release protocol version, increase with every release, that changes protocol
 // dd is development protocol version, set to zero at every release, 
-// increase for every protocoll change in git
-// bb not equal zero should indicate a non loggytronic protocoll
+// increase for every protocol change in git
+// bb not equal zero should indicate a non loggytronic protocol
 // aa is reserved for future use
+
+ULONG VompClientRRProc::getProtocolVersion()
+{
+  return VOMP_PROTOCOL_VERSION;
+}
 
 VompClientRRProc::VompClientRRProc(VompClient& x)
  : x(x)
@@ -309,7 +314,7 @@ int VompClientRRProc::processLogin()
 
   resp->addULONG(timeNow);
   resp->addLONG(timeOffset);
-  resp->addULONG(VOMP_PROTOCOLL_VERSION);
+  resp->addULONG(VOMP_PROTOCOL_VERSION);
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   log->log("RRProc", Log::DEBUG, "written login reply len %lu", resp->getLen());
@@ -665,6 +670,7 @@ int VompClientRRProc::processGetRecordingsList()
 #else
     resp->addULONG(recording->Start());
 #endif
+    resp->addUCHAR(recording->IsNew() ? 1 : 0);
     resp->addString(x.charconvsys->Convert(recording->Name())); //coding of recording name is system dependent
     resp->addString(recording->FileName());//file name are not  visible by user do not touch
   }

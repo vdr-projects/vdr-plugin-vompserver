@@ -34,14 +34,15 @@ class UDPReplier : public Thread
     UDPReplier();
     virtual ~UDPReplier();
 
-    int run(char* tserverName);
+    int run(USHORT udpPort, char* serverName, USHORT serverPort);
     int shutdown();
 
   private:
     void threadMethod();
 
     DatagramSocket ds;
-    char* serverName;
+    char* message;
+    int messageLen;
 };
 
 #endif
