@@ -161,8 +161,8 @@ standalonebase:
 $(SOFILE): objects
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) $(OBJS2) -o $@
 	@if [ -n "$(DOOLDINSTALL)" ]; then \
-@cp $@ $(LIBDIR)/$@.$(APIVERSION) ; \
-@echo "done manual copy"; \
+cp $@ $(LIBDIR)/$@.$(APIVERSION) ; \
+echo "done manual copy"; \
 fi
 
 vompserver-standalone: objectsstandalone
