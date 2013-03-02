@@ -27,6 +27,7 @@
 #include <vdr/plugin.h>
 #include <vdr/timers.h>
 #include <vdr/menu.h>
+#include <vdr/remote.h>
 #include "recplayer.h"
 #include "mvpreceiver.h"
 #endif
@@ -42,7 +43,7 @@
 
 bool ResumeIDLock;
 
-ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION = 0x00000200;
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION = 0x00000301;
 // format is aabbccdd
 // cc is release protocol version, increase with every release, that changes protocol
 // dd is development protocol version, set to zero at every release, 
@@ -258,7 +259,10 @@ bool VompClientRRProc::processPacket()
     case 23:
       result = processDeleteTimer();
       break;
-#endif        
+    case 666:
+      result = processVDRShutdown();
+      break;
+#endif
     case VDR_GETMEDIALIST:
       result = processGetMediaList();
       break;
@@ -1938,6 +1942,17 @@ int VompClientRRProc::processGetMarks()
   return 1;
 }
 
+int VompClientRRProc::processVDRShutdown()
+{
+  log->log("RRProc", Log::DEBUG, "Trying to shutdown VDR");
+  VompClient::decClients(); // Temporarily make this client disappear
+  cRemote::Put(kPower);
+  VompClient::incClients();
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+  return 1;
+}
+  
 #endif // !VOMPSTANDALONE
 
 

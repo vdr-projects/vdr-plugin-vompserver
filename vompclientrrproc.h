@@ -81,6 +81,7 @@ class VompClientRRProc : public Thread
     int processGetChannelPids();
     int processDeleteTimer();
     int processReScanRecording();           // FIXME obselete
+    int processVDRShutdown();
 #endif
     int processLogin();
     int processConfigSave();
@@ -93,7 +94,7 @@ class VompClientRRProc : public Thread
     int processGetLanguageList();
     int processGetLanguageContent();
     int processSetCharset();
-
+    
     void threadMethod();
 
     VompClient& x;
