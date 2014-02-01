@@ -17,49 +17,28 @@ VERSION = $(shell grep 'static const char \*VERSION *=' $(PLUGIN).c | awk '{ pri
 
 # Use package data if installed...otherwise assume we're under the VDR source directory:
 PKGCFG = $(if $(VDRDIR),$(shell pkg-config --variable=$(1) $(VDRDIR)/vdr.pc),$(shell pkg-config --variable=$(1) vdr || pkg-config --variable=$(1) ../../../vdr.pc))
-LIBDIR = $(call PKGCFG,libdir)
-LOCDIR = $(call PKGCFG,locdir)
+LIBDIR = $(DESTDIR)$(call PKGCFG,libdir)
+LOCDIR = $(DESTDIR)$(call PKGCFG,locdir)
 PLGCFG = $(call PKGCFG,plgcfg)
 #
 TMPDIR ?= /tmp
-
-# VOMP INSERT for older VDRs
-ifeq ($(VDRDIR),)
-  VDRDIR = ../../..
-endif
-ifeq ($(LIBDIR),)
-  LIBDIR = ../../lib
-endif
-
-APIVERSNUM = $(shell grep 'define APIVERSNUM ' $(VDRDIR)/config.h | awk '{ print $$3 }' | sed -e 's/"//g')
-DOOLDINSTALL =
-ifeq ($(shell test $(APIVERSNUM) -le 10734; echo $$?),0) # thanks streamdev
-DOOLDINSTALL = yes
-endif
-# end insert
 
 ### The compiler options:
 
 export CFLAGS   = $(call PKGCFG,cflags)
 export CXXFLAGS = $(call PKGCFG,cxxflags)
 
-# VOMP INSERT
-CFLAGS += -fPIC
-CXXFLAGS += -fPIC
-# end insert
-
 ### The version number of VDR's plugin API:
 
 APIVERSION = $(call PKGCFG,apiversion)
-# VOMP INSERT for older VDRs
-ifeq ($(APIVERSION),)
-  APIVERSION = $(shell sed -ne '/define APIVERSION/s/^.*"\(.*\)".*$$/\1/p' $(VDRDIR)/config.h)
-endif
-# end VOMP INSERT
 
 ### Allow user defined options to overwrite defaults:
 
 -include $(PLGCFG)
+
+# VOMP-INSERT
+-include .standalone
+# END-VOMP-INSERT
 
 ### The name of the distribution archive:
 
@@ -77,13 +56,8 @@ INCLUDES +=
 DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 # VOMP-INSERT
-INCLUDES += -I$(VDRDIR)/include -I$(DVBDIR)/include
-
-DEFINES += -D_GNU_SOURCE -DVOMPSERVER
-DEFINES += -D_FILE_OFFSET_BITS=64 -D_LARGEFILE_SOURCE -D_LARGEFILE64_SOURCE
-
+DEFINES += -DVOMPSERVER
 # END-VOMP-INSERT
-
 
 ### The object files (add further files here):
 
@@ -109,14 +83,14 @@ standalone: standalonebase vompserver-standalone
 ### Implicit rules:
 
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) -o $@ $<
+	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) $<
 
 ### Dependencies:
 
 MAKEDEP = $(CXX) -MM -MG
 DEPFILE = .dependencies
 $(DEPFILE): Makefile
-	@$(MAKEDEP) $(CXXFLAGS) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) > $@
+	@$(MAKEDEP) $(DEFINES) $(INCLUDES) $(OBJS:%.o=%.c) > $@
 
 -include $(DEPFILE)
 
@@ -125,7 +99,7 @@ $(DEPFILE): Makefile
 PODIR     = po
 I18Npo    = $(wildcard $(PODIR)/*.po)
 I18Nmo    = $(addsuffix .mo, $(foreach file, $(I18Npo), $(basename $(file))))
-I18Nmsgs  = $(addprefix $(DESTDIR)$(LOCDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo, $(notdir $(foreach file, $(I18Npo), $(basename $(file))))))
+I18Nmsgs  = $(addprefix $(LOCDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLUGIN).mo, $(notdir $(foreach file, $(I18Npo), $(basename $(file))))))
 I18Npot   = $(PODIR)/$(PLUGIN).pot
 
 %.mo: %.po
@@ -138,7 +112,7 @@ $(I18Npot): $(wildcard *.c)
 	msgmerge -U --no-wrap --no-location --backup=none -q -N $@ $<
 	@touch $@
 
-$(I18Nmsgs): $(DESTDIR)$(LOCDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
+$(I18Nmsgs): $(LOCDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
 	install -D -m644 $< $@
 
 .PHONY: i18n
@@ -156,21 +130,18 @@ objects: $(OBJS) $(OBJS2)
 allbase:
 	( if [ -f .standalone ] ; then ( rm -f .standalone; make clean ; make objects ) ; else exit 0 ;fi )
 standalonebase:
-	( if [ ! -f .standalone ] ; then ( make clean; echo "DEFINES+=-DVOMPSTANDALONE" > .standalone; echo "DEFINES+=-D_FILE_OFFSET_BITS=64" >> .standalone; make objectsstandalone ) ; else exit 0 ;fi )
+	( if [ ! -f .standalone ] ; then ( make clean; echo "DEFINES+=-DVOMPSTANDALONE" > .standalone; make objectsstandalone ) ; else exit 0 ;fi )
+
 
 $(SOFILE): objects
 	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) $(OBJS2) -o $@
-	@if [ -n "$(DOOLDINSTALL)" ]; then \
-cp $@ $(LIBDIR)/$@.$(APIVERSION) ; \
-echo "done manual copy"; \
-fi
 
 vompserver-standalone: objectsstandalone
 	$(CXX) $(CXXFLAGS) $(OBJS) -lpthread -o $@
 	chmod u+x $@
 
 install-lib: $(SOFILE)
-	install -D $^ $(DESTDIR)$(LIBDIR)/$^.$(APIVERSION)
+	install -D $^ $(LIBDIR)/$^.$(APIVERSION)
 
 install: install-lib install-i18n
 
