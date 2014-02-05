@@ -657,7 +657,11 @@ int VompClientRRProc::processGetLanguageContent()
 int VompClientRRProc::processGetRecordingsList()
 {
   int FreeMB;
+#if APIVERSNUM > 20101
+  int Percent = cVideoDirectory::VideoDiskSpace(&FreeMB);
+#else
   int Percent = VideoDiskSpace(&FreeMB);
+#endif
   int Total = (FreeMB / (100 - Percent)) * 100;
   
   resp->addULONG(Total);
@@ -799,16 +803,26 @@ int VompClientRRProc::processMoveRecording()
 
       log->log("RRProc", Log::DEBUG, "datedirname: %s", dateDirName);
       log->log("RRProc", Log::DEBUG, "titledirname: %s", titleDirName);
+#if APIVERSNUM > 20101
+      log->log("RRProc", Log::DEBUG, "viddir: %s", cVideoDirectory::Name());
+#else
       log->log("RRProc", Log::DEBUG, "viddir: %s", VideoDirectory);
+#endif
 
       char* newPathConv = new char[strlen(newPath)+1];
       strcpy(newPathConv, newPath);
       ExchangeChars(newPathConv, true);
       log->log("RRProc", Log::DEBUG, "EC: %s", newPathConv);
 
+#if APIVERSNUM > 20101
+      char* newContainer = new char[strlen(cVideoDirectory::Name()) + strlen(newPathConv) + strlen(titleDirName) + 1];
+      log->log("RRProc", Log::DEBUG, "l10: %i", strlen(cVideoDirectory::Name()) + strlen(newPathConv) + strlen(titleDirName) + 1);
+      sprintf(newContainer, "%s%s%s", cVideoDirectory::Name(), newPathConv, titleDirName);
+#else
       char* newContainer = new char[strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1];
       log->log("RRProc", Log::DEBUG, "l10: %i", strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1);
       sprintf(newContainer, "%s%s%s", VideoDirectory, newPathConv, titleDirName);
+#endif
       delete[] newPathConv;
 
       log->log("RRProc", Log::DEBUG, "%s", newContainer);
