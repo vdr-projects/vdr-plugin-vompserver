@@ -78,9 +78,9 @@ class VompClient
 
   private:
     static int nr_clients;
-    void incClients();
-    void decClients();
-
+    static void incClients();
+    static void decClients();
+    
     static ULLONG ntohll(ULLONG a);
     static ULLONG htonll(ULLONG a);
     

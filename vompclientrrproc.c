@@ -27,6 +27,7 @@
 #include <vdr/plugin.h>
 #include <vdr/timers.h>
 #include <vdr/menu.h>
+#include <vdr/remote.h>
 #include "recplayer.h"
 #include "mvpreceiver.h"
 #endif
@@ -42,13 +43,18 @@
 
 bool ResumeIDLock;
 
-#define VOMP_PROTOCOLL_VERSION 0x00000100
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION = 0x00000300;
 // format is aabbccdd
-// cc is release protocol version, increase with every release, that changes protocoll
+// cc is release protocol version, increase with every release, that changes protocol
 // dd is development protocol version, set to zero at every release, 
-// increase for every protocoll change in git
-// bb not equal zero should indicate a non loggytronic protocoll
+// increase for every protocol change in git
+// bb not equal zero should indicate a non loggytronic protocol
 // aa is reserved for future use
+
+ULONG VompClientRRProc::getProtocolVersion()
+{
+  return VOMP_PROTOCOL_VERSION;
+}
 
 VompClientRRProc::VompClientRRProc(VompClient& x)
  : x(x)
@@ -253,7 +259,10 @@ bool VompClientRRProc::processPacket()
     case 23:
       result = processDeleteTimer();
       break;
-#endif        
+    case 666:
+      result = processVDRShutdown();
+      break;
+#endif
     case VDR_GETMEDIALIST:
       result = processGetMediaList();
       break;
@@ -309,7 +318,7 @@ int VompClientRRProc::processLogin()
 
   resp->addULONG(timeNow);
   resp->addLONG(timeOffset);
-  resp->addULONG(VOMP_PROTOCOLL_VERSION);
+  resp->addULONG(VOMP_PROTOCOL_VERSION);
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   log->log("RRProc", Log::DEBUG, "written login reply len %lu", resp->getLen());
@@ -648,7 +657,11 @@ int VompClientRRProc::processGetLanguageContent()
 int VompClientRRProc::processGetRecordingsList()
 {
   int FreeMB;
+#if APIVERSNUM > 20101
+  int Percent = cVideoDirectory::VideoDiskSpace(&FreeMB);
+#else
   int Percent = VideoDiskSpace(&FreeMB);
+#endif
   int Total = (FreeMB / (100 - Percent)) * 100;
   
   resp->addULONG(Total);
@@ -665,6 +678,7 @@ int VompClientRRProc::processGetRecordingsList()
 #else
     resp->addULONG(recording->Start());
 #endif
+    resp->addUCHAR(recording->IsNew() ? 1 : 0);
     resp->addString(x.charconvsys->Convert(recording->Name())); //coding of recording name is system dependent
     resp->addString(recording->FileName());//file name are not  visible by user do not touch
   }
@@ -789,16 +803,26 @@ int VompClientRRProc::processMoveRecording()
 
       log->log("RRProc", Log::DEBUG, "datedirname: %s", dateDirName);
       log->log("RRProc", Log::DEBUG, "titledirname: %s", titleDirName);
+#if APIVERSNUM > 20101
+      log->log("RRProc", Log::DEBUG, "viddir: %s", cVideoDirectory::Name());
+#else
       log->log("RRProc", Log::DEBUG, "viddir: %s", VideoDirectory);
+#endif
 
       char* newPathConv = new char[strlen(newPath)+1];
       strcpy(newPathConv, newPath);
       ExchangeChars(newPathConv, true);
       log->log("RRProc", Log::DEBUG, "EC: %s", newPathConv);
 
+#if APIVERSNUM > 20101
+      char* newContainer = new char[strlen(cVideoDirectory::Name()) + strlen(newPathConv) + strlen(titleDirName) + 1];
+      log->log("RRProc", Log::DEBUG, "l10: %i", strlen(cVideoDirectory::Name()) + strlen(newPathConv) + strlen(titleDirName) + 1);
+      sprintf(newContainer, "%s%s%s", cVideoDirectory::Name(), newPathConv, titleDirName);
+#else
       char* newContainer = new char[strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1];
       log->log("RRProc", Log::DEBUG, "l10: %i", strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1);
       sprintf(newContainer, "%s%s%s", VideoDirectory, newPathConv, titleDirName);
+#endif
       delete[] newPathConv;
 
       log->log("RRProc", Log::DEBUG, "%s", newContainer);
@@ -1932,6 +1956,17 @@ int VompClientRRProc::processGetMarks()
   return 1;
 }
 
+int VompClientRRProc::processVDRShutdown()
+{
+  log->log("RRProc", Log::DEBUG, "Trying to shutdown VDR");
+  VompClient::decClients(); // Temporarily make this client disappear
+  cRemote::Put(kPower);
+  VompClient::incClients();
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+  return 1;
+}
+  
 #endif // !VOMPSTANDALONE
 
 

@@ -18,11 +18,14 @@
     Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
+#include "vompclientrrproc.h"
+
 #include "udpreplier.h"
 
 UDPReplier::UDPReplier()
 {
-  serverName = NULL;
+  message = NULL;
+  messageLen = 0;
 }
 
 UDPReplier::~UDPReplier()
@@ -34,19 +37,59 @@ int UDPReplier::shutdown()
 {
   if (threadIsActive()) threadCancel();
 
-  if (serverName) delete[] serverName;
-  serverName = NULL;
+  if (message) delete[] message;
+  message = NULL;
   return 1;
 }
 
-int UDPReplier::run(char* tserverName)
+int UDPReplier::run(USHORT port, char* serverName, USHORT serverPort)
 {
   if (threadIsActive()) return 1;
 
-  serverName = new char[strlen(tserverName)+1];
-  strcpy(serverName, tserverName);
+  /*
+  VOMP Discovery Protocol V1
 
-  if (!ds.init(3024))
+  Client transmits: "VDP-0001\0<6-byte MAC>" on ports 51051-51055
+
+  Server responds:
+
+  Field 1 p0: 9 bytes "VDP-0002\0"
+  
+  Field 2 p9, 1 byte:
+
+  0 = no IP specified
+  4 = first 4 bytes of field 2 are IPv4 address of server
+  6 = field 2 16 bytes are IPv6 address of server
+
+  Field 3, p10, 16 bytes:
+  As described above. If field 1 is 0, this should be all zeros. If this is an IPv4 address, remaining bytes should be zeros.
+
+  Field 4 p26, 2 bytes:
+  Port number of server
+
+  Field 5 p28, 4 bytes:
+  VOMP protocol version (defined in vdr.cc)
+  
+  Field 6 p32, variable length
+  String of server name, null terminated
+  */
+  
+  messageLen = strlen(serverName) + 33;
+  message = new char[messageLen];
+  memset(message, 0, messageLen);
+  // by zeroing the packet, this sets no ip address return information
+  
+  strcpy(message, "VDP-0002");
+  
+  USHORT temp = htons(serverPort);
+  memcpy(&message[26], &temp, 2);
+  
+  ULONG temp2 = htonl(VompClientRRProc::getProtocolVersion());
+  memcpy(&message[28], &temp2, 4);
+  
+  strcpy(&message[32], serverName);
+
+  if (!ds.init(port))
   {
     shutdown();
     return 0;
@@ -70,10 +113,10 @@ void UDPReplier::threadMethod()
     retval = ds.waitforMessage(0);
     if (retval == 1) continue;
 
-    if (!strcmp(ds.getData(), "VOMP"))
+    if (!strncmp(ds.getData(), "VDP-0001", 8))
     {
       Log::getInstance()->log("UDPReplier", Log::DEBUG, "UDP request from %s", ds.getFromIPA());
-      ds.send(ds.getFromIPA(), 3024, serverName, strlen(serverName));
+      ds.send(ds.getFromIPA(), ds.getFromPort(), message, messageLen);
     }
   }
 }

@@ -1,22 +1,22 @@
 /*
-    Copyright 2004-2008 Chris Tallon
-
-    This file is part of VOMP.
-
-    VOMP is free software; you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation; either version 2 of the License, or
-    (at your option) any later version.
-
-    VOMP is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with VOMP; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-*/
+ *    Copyright 2004-2013 Chris Tallon
+ * 
+ *    This file is part of VOMP.
+ * 
+ *    VOMP is free software; you can redistribute it and/or modify
+ *    it under the terms of the GNU General Public License as published by
+ *    the Free Software Foundation; either version 2 of the License, or
+ *    (at your option) any later version.
+ * 
+ *    VOMP is distributed in the hope that it will be useful,
+ *    but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *    GNU General Public License for more details.
+ * 
+ *    You should have received a copy of the GNU General Public License
+ *    along with VOMP; if not, write to the Free Software
+ *    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ */
 
 #ifndef VOMPSTANDALONE
 #include <vdr/plugin.h>
@@ -27,12 +27,16 @@
 #include "mvpserver.h"
 //#include "vompclient.h"
 
-static const char *VERSION        = "0.3.1";
-static const char *DESCRIPTION    = "VDR on MVP plugin by Chris Tallon";
+static const char *VERSION        = "0.4.1";
+static const char *DESCRIPTION    = "Vompserver plugin by Chris Tallon";
+static const char *MAINMENUENTRY  = "Vompserver";
 
 #ifndef VOMPSTANDALONE
-class cPluginVompserver : public cPlugin
-{
+
+class cPluginVompserver : public cPlugin {
+private:
+  MVPServer mvpserver;
+  char* configDir;
 public:
   cPluginVompserver(void);
   virtual ~cPluginVompserver();
@@ -42,24 +46,74 @@ public:
   virtual bool ProcessArgs(int argc, char *argv[]);
   virtual bool Initialize(void);
   virtual bool Start(void);
-  virtual bool SetupParse(const char *Name, const char *Value);
-#if VDRVERSNUM > 10300
+  virtual void Stop(void);
+  virtual void Housekeeping(void);
+  virtual void MainThreadHook(void);
   virtual cString Active(void);
-#endif
-
-private:
-
-  MVPServer mvpserver;
-  char* configDir;
-};
+  virtual time_t WakeupTime(void);
+  virtual const char *MainMenuEntry(void) { return MAINMENUENTRY; }
+  virtual cOsdObject *MainMenuAction(void);
+  virtual cMenuSetupPage *SetupMenu(void);
+  virtual bool SetupParse(const char *Name, const char *Value);
+  virtual bool Service(const char *Id, void *Data = NULL);
+  virtual const char **SVDRPHelpPages(void);
+  virtual cString SVDRPCommand(const char *Command, const char *Option, int &ReplyCode);
+  };
 
 cPluginVompserver::cPluginVompserver(void)
 {
   // Initialize any member variables here.
   // DON'T DO ANYTHING ELSE THAT MAY HAVE SIDE EFFECTS, REQUIRE GLOBAL
   // VDR OBJECTS TO EXIST OR PRODUCE ANY OUTPUT!
-
+  
   configDir = NULL;
+}
+
+cPluginVompserver::~cPluginVompserver()
+{
+  // Clean up after yourself!
+  mvpserver.stop();
+  if (configDir) delete[] configDir;  
+}
+
+const char *cPluginVompserver::CommandLineHelp(void)
+{
+  // Return a string that describes all known command line options.
+  return "  -c dir    config path relative to VDR plugins config path\n";
+}
+
+bool cPluginVompserver::ProcessArgs(int argc, char *argv[])
+{
+  // Implement command line argument processing here if applicable.
+  
+  int c;
+  while ((c = getopt(argc, argv, "c:")) != -1)
+  {
+    if (c == 'c')
+    {
+      const char* vdrdeveldevelret = cPlugin::ConfigDirectory(optarg);
+      if (!vdrdeveldevelret)
+      {
+        dsyslog("VOMP: Could not get config dir from VDR");
+        return false;
+      }
+      
+      configDir = new char[strlen(vdrdeveldevelret)+1];
+      strcpy(configDir, vdrdeveldevelret);
+    }
+    else
+    {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
+bool cPluginVompserver::Initialize(void)
+{
+  // Initialize any background activities the plugin shall perform.
+  return true;
 }
 
 bool cPluginVompserver::Start(void)
@@ -83,52 +137,45 @@ bool cPluginVompserver::Start(void)
   else return false;
 }
 
-cPluginVompserver::~cPluginVompserver()
+void cPluginVompserver::Stop(void)
 {
-  // Clean up after yourself!
-  mvpserver.stop();
-  if (configDir) delete[] configDir;
+  // Stop any background activities the plugin is performing.
 }
 
-const char *cPluginVompserver::CommandLineHelp(void)
+void cPluginVompserver::Housekeeping(void)
 {
-  // Return a string that describes all known command line options.
-
-  return "  -c dir    config path relative to VDR plugins config path\n";
+  // Perform any cleanup or other regular tasks.
 }
 
-bool cPluginVompserver::ProcessArgs(int argc, char *argv[])
+void cPluginVompserver::MainThreadHook(void)
 {
-  // Implement command line argument processing here if applicable.
-
-  int c;
-  while ((c = getopt(argc, argv, "c:")) != -1)
-  {
-    if (c == 'c')
-    {
-      const char* vdrdeveldevelret = cPlugin::ConfigDirectory(optarg);
-      if (!vdrdeveldevelret)
-      {
-        dsyslog("VOMP: Could not get config dir from VDR");
-        return false;
-      }
-    
-      configDir = new char[strlen(vdrdeveldevelret)+1];
-      strcpy(configDir, vdrdeveldevelret);
-    }
-    else
-    {
-      return false;
-    }
-  }
-
-  return true;
+  // Perform actions in the context of the main program thread.
+  // WARNING: Use with great care - see PLUGINS.html!
 }
 
-bool cPluginVompserver::Initialize(void)
+cString cPluginVompserver::Active(void)
 {
-  // Initialize any background activities the plugin shall perform.
-  return true;
+  // Return a message string if shutdown should be postponed
+  if(VompClient::getNrClients() != 0) return tr("VOMP client(s) connected");
+  return NULL;
+}
+
+time_t cPluginVompserver::WakeupTime(void)
+{
+  // Return custom wakeup time for shutdown script
+  return 0;
+}
+
+cOsdObject *cPluginVompserver::MainMenuAction(void)
+{
+  // Perform the action when selected from the main VDR menu.
+  return NULL;
+}
+
+cMenuSetupPage *cPluginVompserver::SetupMenu(void)
+{
+  // Return a setup menu in case the plugin supports one.
+  return NULL;
 }
 
 bool cPluginVompserver::SetupParse(const char *Name, const char *Value)
@@ -137,31 +184,40 @@ bool cPluginVompserver::SetupParse(const char *Name, const char *Value)
   return false;
 }
 
-#if VDRVERSNUM > 10300
-
-cString cPluginVompserver::Active(void)
+bool cPluginVompserver::Service(const char *Id, void *Data)
 {
-  if(VompClient::getNrClients() != 0) return tr("VOMP client(s) connected");
+  // Handle custom service requests from other plugins
+  return false;
+}
+
+const char **cPluginVompserver::SVDRPHelpPages(void)
+{
+  // Return help text for SVDRP commands this plugin implements
   return NULL;
 }
 
-#endif
+cString cPluginVompserver::SVDRPCommand(const char *Command, const char *Option, int &ReplyCode)
+{
+  // Process SVDRP commands this plugin implements
+  return NULL;
+}
 
 VDRPLUGINCREATOR(cPluginVompserver); // Don't touch this!
+
 
 #else //VOMPSTANDALONE
 
 int main(int argc, char **argv) {
   char *cdir=".";
-    if (argc > 1) {
-      cdir=argv[1];
-    }
+  if (argc > 1) {
+    cdir=argv[1];
+  }
   std::cout << "Vompserver starting Version " << VERSION << " " << DESCRIPTION << std::endl;
   MVPServer server;
   if ( server.run(cdir) != 1) {
-	std::cerr << "unable to start vompserver" << std::endl;
-	return 1;
-    }
+    std::cerr << "unable to start vompserver" << std::endl;
+    return 1;
+  }
   while (1) sleep(1);
   return 0;
 }
