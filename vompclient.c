@@ -29,15 +29,17 @@
 #ifndef VOMPSTANDALONE
 #include <vdr/channels.h>
 #include <vdr/recording.h>
+#include <vdr/plugin.h>
 #include "recplayer.h"
 #include "mvpreceiver.h"
+#include "picturereader.h"
 #endif
 
 
 
 pthread_mutex_t threadClientMutex;
 int VompClient::nr_clients = 0;
-
+cPlugin *VompClient::scraper = NULL;
 
 VompClient::VompClient(Config* cfgBase, char* tconfigDir, int tsocket)
  : rrproc(*this), tcp(tsocket), i18n(tconfigDir)
@@ -46,6 +48,8 @@ VompClient::VompClient(Config* cfgBase, char* tconfigDir, int tsocket)
   lp = NULL;
   recplayer = NULL;
   recordingManager = NULL;
+  if (!scraper) scraper = cPluginManager::GetPlugin("scraper2vdr");
+  pict = new PictureReader(this);
 #endif
   log = Log::getInstance();
   loggedIn = false;
@@ -86,6 +90,8 @@ VompClient::~VompClient()
 #endif
   //if (loggedIn) cleanConfig();
   decClients();
+  
+  delete pict;
   
   delete media;
   delete mediaprovider;
@@ -237,6 +243,7 @@ void VompClient::run2()
 //  tcp.setSoKeepTime(3);
   tcp.setNonBlocking();
 
+  pict->init(&tcp);
   ULONG channelID;
   ULONG requestID;
   ULONG opcode;

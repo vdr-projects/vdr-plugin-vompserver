@@ -52,7 +52,8 @@ class VompClientRRProc : public Thread
   public:
     VompClientRRProc(VompClient& x);
     ~VompClientRRProc();
-    static ULONG getProtocolVersion();
+    static ULONG getProtocolVersionMin();
+    static ULONG getProtocolVersionMax();
     
     bool init();
     bool recvRequest(RequestPacket*);
@@ -82,6 +83,10 @@ class VompClientRRProc : public Thread
     int processDeleteTimer();
     int processReScanRecording();           // FIXME obselete
     int processVDRShutdown();
+    int processGetRecScraperEventType();
+    int processGetScraperMovieInfo();
+    int processGetScraperSeriesInfo();
+    int processLoadTvMedia();
 #endif
     int processLogin();
     int processConfigSave();
@@ -101,7 +106,8 @@ class VompClientRRProc : public Thread
     RequestPacket* req;
     RequestPacketQueue req_queue;
     ResponsePacket* resp;
-    static ULONG VOMP_PROTOCOL_VERSION;
+    static ULONG VOMP_PROTOCOL_VERSION_MIN;
+    static ULONG VOMP_PROTOCOL_VERSION_MAX;
     
     Log* log;
 };

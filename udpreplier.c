@@ -84,11 +84,11 @@ int UDPReplier::run(USHORT port, char* serverName, USHORT serverPort)
   USHORT temp = htons(serverPort);
   memcpy(&message[26], &temp, 2);
   
-  ULONG temp2 = htonl(VompClientRRProc::getProtocolVersion());
+  ULONG temp2 = htonl(VompClientRRProc::getProtocolVersionMin());
   memcpy(&message[28], &temp2, 4);
   
   strcpy(&message[32], serverName);
-
+  // Fix Me add also the maximum version somewhere
   if (!ds.init(port))
   {
     shutdown();

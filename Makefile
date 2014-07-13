@@ -68,7 +68,8 @@ OBJS += dsock.o mvpserver.o udpreplier.o bootpd.o tftpd.o i18n.o vompclient.o tc
                    ringbuffer.o mvprelay.o vompclientrrproc.o \
                    config.o log.o thread.o tftpclient.o \
                    media.o responsepacket.o \
-                   mediafile.o mediaplayer.o servermediafile.o serialize.o medialauncher.o
+                   mediafile.o mediaplayer.o servermediafile.o serialize.o medialauncher.o \
+                   picturereader.o
 
 OBJS2 = recplayer.o mvpreceiver.o
 # END-VOMP-INSERT
