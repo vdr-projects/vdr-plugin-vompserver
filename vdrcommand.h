@@ -15,7 +15,7 @@
 
     You should have received a copy of the GNU General Public License
     along with VOMP; if not, write to the Free Software
-    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 */
 
 #ifndef VDRCOMMAND_H
@@ -63,11 +63,17 @@ const static ULONG VDR_GETCHANNELPIDS      = 22;
 const static ULONG VDR_DELETETIMER         = 23;
 const static ULONG VDR_GETLANGUAGELIST     = 33;
 const static ULONG VDR_GETLANGUAGECONTENT  = 34;
+const static ULONG VDR_SETCHARSET          = 37;
 const static ULONG VDR_GETMEDIALIST        = 30;
 const static ULONG VDR_OPENMEDIA           = 31;
 const static ULONG VDR_GETMEDIABLOCK       = 32;
 const static ULONG VDR_GETMEDIAINFO        = 35;
 const static ULONG VDR_CLOSECHANNEL        = 36;
+const static ULONG VDR_GETRECSCRAPEREVENTTYPE = 38;
+const static ULONG VDR_GETSCRAPERMOVIEINFO = 39;
+const static ULONG VDR_GETSCRAPERSERIESINFO = 40;
+const static ULONG VDR_LOADTVMEDIA          =41;
+const static ULONG VDR_SHUTDOWN            = 666;
 
 class VDR_Command : public SerializableList {
   public:
