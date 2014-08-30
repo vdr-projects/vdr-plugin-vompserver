@@ -151,7 +151,21 @@ std::string PictureReader::getPictName(TVMediaRequest & req)
       
    
    } break;
-   
+   case 3: { // I do not know
+   // First get the recording
+      cRecordings Recordings;
+      Recordings.Load();
+      cRecording *recording = Recordings.GetByName((char*) req.primary_name.c_str());
+      ScraperGetPosterThumb getter;
+      getter.recording = recording;
+      getter.event = NULL;
+      if (x->scraper && recording) {
+        x->scraper->Service("GetPosterThumb",&getter);
+        return getter.poster.path;
+      } else {
+         return std::string("");
+      }
+   }; break;
    default:
      return std::string("");
      break;

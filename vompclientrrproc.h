@@ -87,6 +87,7 @@ class VompClientRRProc : public Thread
     int processGetScraperMovieInfo();
     int processGetScraperSeriesInfo();
     int processLoadTvMedia();
+    int processLoadTvMediaRecThumb();
 #endif
     int processLogin();
     int processConfigSave();

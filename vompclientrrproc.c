@@ -287,6 +287,9 @@ bool VompClientRRProc::processPacket()
     case VDR_LOADTVMEDIA:
       result = processLoadTvMedia();
     break;
+    case VDR_LOADTVMEDIARECTHUMB:
+      result = processLoadTvMediaRecThumb();
+    break;
 #endif
     case VDR_GETMEDIALIST:
       result = processGetMediaList();
@@ -2172,6 +2175,29 @@ int VompClientRRProc::processLoadTvMedia()
    
    return 1;
 }
+
+int VompClientRRProc::processLoadTvMediaRecThumb()
+{
+   TVMediaRequest tvreq;
+   tvreq.streamID = req->requestID;
+   tvreq.type = 3; // unknown but primary_name is set
+   tvreq.primary_id = 0;
+   tvreq.primary_name = std::string((const char*) req->data);
+   tvreq.secondary_id = 0;
+   tvreq.type_pict = 1;
+   tvreq.container = 0;
+   tvreq.container_member = 0;
+   log->log("RRProc", Log::DEBUG, "TVMedia request %d %s",req->requestID,req->data);
+   x.pict->addTVMediaRequest(tvreq);
+
+   
+   resp->finalise();
+
+   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+   
+   return 1;
+}
+
  
 
 

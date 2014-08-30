@@ -29,6 +29,7 @@
 #include "vompclient.h"
 #include "services/scraper2vdr.h"
 #include <queue>
+#include <string>
 
 struct TVMediaRequest{
    ULONG streamID;
@@ -38,6 +39,7 @@ struct TVMediaRequest{
    ULONG type_pict;
    ULONG container;
    ULONG container_member;
+   std::string primary_name;
 };
 
 class PictureReader : public Thread
