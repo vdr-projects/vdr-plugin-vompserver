@@ -88,6 +88,9 @@ class VompClientRRProc : public Thread
     int processGetScraperSeriesInfo();
     int processLoadTvMedia();
     int processLoadTvMediaRecThumb();
+    int processGetEventScraperEventType();
+    int processLoadTvMediaEventThumb();
+
 #endif
     int processLogin();
     int processConfigSave();

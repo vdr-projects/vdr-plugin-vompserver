@@ -290,6 +290,13 @@ bool VompClientRRProc::processPacket()
     case VDR_LOADTVMEDIARECTHUMB:
       result = processLoadTvMediaRecThumb();
     break;
+    case VDR_GETEVENTSCRAPEREVENTTYPE:
+      result = processGetEventScraperEventType();
+    break;
+    case VDR_LOADTVMEDIAEVENTTHUMB:
+      result = processLoadTvMediaEventThumb();
+    break;
+
 #endif
     case VDR_GETMEDIALIST:
       result = processGetMediaList();
@@ -2033,6 +2040,51 @@ int VompClientRRProc::processGetRecScraperEventType()
   return 1;
 }
 
+int VompClientRRProc::processGetEventScraperEventType()
+{
+  ScraperGetEventType call;
+  call.type = tNone;
+  ULONG channelid = ntohl(*(ULONG*)req->data);
+  ULONG eventid = ntohl(*(ULONG*)(req->data+4));
+  const cEvent *event = NULL; 
+  
+  cChannel* channel = x.channelFromNumber(channelid);
+
+#if VDRVERSNUM < 10300
+  cMutexLock MutexLock;
+  const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
+#else
+  cSchedulesLock MutexLock;
+  const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
+#endif
+  const cSchedule * Schedule;
+  if (Schedules && channel)
+  {
+     const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
+     if (Schedule) {
+        event = Schedule->GetEvent(eventid);
+    }
+  }
+    
+  if (event && x.scraper) 
+  {
+     call.event = event;
+     x.scraper->Service("GetEventType",&call);
+  }
+  resp->addUCHAR(call.type);
+  if (call.type == tMovie)
+  {
+     resp->addLONG(call.movieId);
+  } else if (call.type == tSeries){
+     resp->addLONG(call.seriesId);
+     resp->addLONG(call.episodeId);
+  }
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+
+  return 1;
+}
+
 #define ADDSTRING_TO_PAKET(y) if ((y)!=0)  resp->addString(x.charconvutf8->Convert(y)); else resp->addString(""); 
 
 int VompClientRRProc::processGetScraperMovieInfo()
@@ -2184,6 +2236,31 @@ int VompClientRRProc::processLoadTvMediaRecThumb()
    tvreq.primary_id = 0;
    tvreq.primary_name = std::string((const char*) req->data);
    tvreq.secondary_id = 0;
+   tvreq.type_pict = 1;
+   tvreq.container = 0;
+   tvreq.container_member = 0;
+   log->log("RRProc", Log::DEBUG, "TVMedia request %d %s",req->requestID,req->data);
+   x.pict->addTVMediaRequest(tvreq);
+
+   
+   resp->finalise();
+
+   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+   
+   return 1;
+}
+
+int VompClientRRProc::processLoadTvMediaEventThumb()
+{
+   TVMediaRequest tvreq;
+   tvreq.streamID = req->requestID;
+   tvreq.type = 4; // unknown but primary_id is set
+   UINT channelid = ntohl(*(ULONG*)req->data);
+   tvreq.primary_id = ntohl(*(ULONG*)(req->data+4));
+   tvreq.secondary_id = 0;
+   cChannel* channel = x.channelFromNumber(channelid);
+
+   if (channel) tvreq.primary_name = std::string((const char*)channel->GetChannelID().ToString());
    tvreq.type_pict = 1;
    tvreq.container = 0;
    tvreq.container_member = 0;

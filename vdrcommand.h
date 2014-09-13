@@ -74,6 +74,9 @@ const static ULONG VDR_GETSCRAPERMOVIEINFO = 39;
 const static ULONG VDR_GETSCRAPERSERIESINFO = 40;
 const static ULONG VDR_LOADTVMEDIA          =41;
 const static ULONG VDR_LOADTVMEDIARECTHUMB  =42;
+const static ULONG VDR_GETEVENTSCRAPEREVENTTYPE = 43;
+const static ULONG VDR_LOADTVMEDIAEVENTTHUMB  =44;
+
 const static ULONG VDR_SHUTDOWN            = 666;
 
 class VDR_Command : public SerializableList {

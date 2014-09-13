@@ -1,5 +1,6 @@
 #include "picturereader.h"
 #include <vdr/plugin.h>
+#include <vdr/channels.h>
 #include <sstream>
 
 
@@ -166,6 +167,30 @@ std::string PictureReader::getPictName(TVMediaRequest & req)
          return std::string("");
       }
    }; break;
+   case 4: { // I do not know
+   // First get the schedules
+      cSchedulesLock MutexLock;
+      const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
+      const cSchedule *Schedule = NULL;
+      if (Schedules)
+      {
+        Schedule = Schedules->GetSchedule(
+                  Channels.GetByChannelID(
+                       tChannelID::FromString(req.primary_name.c_str())));
+      }
+      cEvent *event = NULL;
+      if (Schedule) Schedule->GetEvent(req.primary_id);
+      ScraperGetPosterThumb getter;
+      getter.event = event;
+      getter.recording = NULL;
+      if (x->scraper && event) {
+        x->scraper->Service("GetPosterThumb",&getter);
+        return getter.poster.path;
+      } else {
+         return std::string("");
+      }
+   }; break;
+   
    default:
      return std::string("");
      break;
