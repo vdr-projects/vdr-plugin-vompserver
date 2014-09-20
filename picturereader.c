@@ -174,15 +174,16 @@ std::string PictureReader::getPictName(TVMediaRequest & req)
       const cSchedule *Schedule = NULL;
       if (Schedules)
       {
-        Schedule = Schedules->GetSchedule(
-                  Channels.GetByChannelID(
-                       tChannelID::FromString(req.primary_name.c_str())));
+        cChannel * channel = Channels.GetByChannelID(
+                       tChannelID::FromString(req.primary_name.c_str()));
+        Schedule = Schedules->GetSchedule(channel);
       }
-      cEvent *event = NULL;
-      if (Schedule) Schedule->GetEvent(req.primary_id);
+      const cEvent *event = NULL;
+      if (Schedule) event=Schedule->GetEvent(req.primary_id);
       ScraperGetPosterThumb getter;
       getter.event = event;
       getter.recording = NULL;
+
       if (x->scraper && event) {
         x->scraper->Service("GetPosterThumb",&getter);
         return getter.poster.path;
