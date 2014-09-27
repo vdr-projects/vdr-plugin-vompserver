@@ -296,7 +296,9 @@ bool VompClientRRProc::processPacket()
     case VDR_LOADTVMEDIAEVENTTHUMB:
       result = processLoadTvMediaEventThumb();
     break;
-
+    case VDR_LOADCHANNELLOGO:
+      result = processLoadChannelLogo();
+    break;
 #endif
     case VDR_GETMEDIALIST:
       result = processGetMediaList();
@@ -2021,7 +2023,7 @@ int VompClientRRProc::processGetRecScraperEventType()
   ScraperGetEventType call;
   call.type = tNone;
 
-  if (recording && x.scraper) 
+  if (recording && x.scrapQuery()) 
   {
      call.recording = recording;
      x.scraper->Service("GetEventType",&call);
@@ -2066,7 +2068,7 @@ int VompClientRRProc::processGetEventScraperEventType()
     }
   }
     
-  if (event && x.scraper) 
+  if (event && x.scrapQuery()) 
   {
      call.event = event;
      x.scraper->Service("GetEventType",&call);
@@ -2092,7 +2094,7 @@ int VompClientRRProc::processGetScraperMovieInfo()
    
    cMovie movie;
    movie.movieId = ntohl(*(ULONG*)req->data);
-   if (!x.scraper) {
+   if (!x.scrapQuery()) {
       log->log("RRProc", Log::DEBUG, "No Scraper, get SeriesInfo");
       return 0; //stupid, I have no scraper why are you still asking
    }
@@ -2143,7 +2145,7 @@ int VompClientRRProc::processGetScraperSeriesInfo()
    cSeries series;
    series.seriesId = ntohl(*(ULONG*)req->data);
    series.episodeId = ntohl(*(ULONG*)(req->data+4));
-   if (!x.scraper) {
+   if (!x.scrapQuery()) {
       log->log("RRProc", Log::DEBUG, "No Scraper, get SeriesInfo");
       return 0; //stupid, I have no scraper why are you still asking
    }
@@ -2265,6 +2267,31 @@ int VompClientRRProc::processLoadTvMediaEventThumb()
    tvreq.container = 0;
    tvreq.container_member = 0;
    log->log("RRProc", Log::DEBUG, "TVMedia request %d %s",req->requestID,req->data);
+   x.pict->addTVMediaRequest(tvreq);
+
+   
+   resp->finalise();
+
+   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+   
+   return 1;
+}
+
+int VompClientRRProc::processLoadChannelLogo()
+{
+   TVMediaRequest tvreq;
+   tvreq.streamID = req->requestID;
+   tvreq.type = 5; // channel logo
+   UINT channelid = ntohl(*(ULONG*)req->data);
+   tvreq.primary_id = channelid;
+   tvreq.secondary_id = 0;
+   cChannel* channel = x.channelFromNumber(channelid);
+
+   if (channel) tvreq.primary_name = std::string((const char*)channel->Name());
+   tvreq.type_pict = 1;
+   tvreq.container = 0;
+   tvreq.container_member = 0;
+   log->log("RRProc", Log::DEBUG, "TVMedia request %d %d %s",req->requestID,channelid, channel->Name());
    x.pict->addTVMediaRequest(tvreq);
 
    

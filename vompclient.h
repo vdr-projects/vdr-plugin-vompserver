@@ -71,7 +71,8 @@ class VompClient
   friend class PictureReader;
 
   public:
-    VompClient(Config* baseConfig, char* configDir, int tsocket);
+    VompClient(Config* baseConfig, char* configDir, char* logoDir, 
+	char* resourceDir,  int tsocket);
     ~VompClient();
 
     int run();
@@ -111,7 +112,11 @@ class VompClient
     cRecordings* recordingManager;
     RecPlayer* recplayer;
     static cPlugin * scraper;
+    static time_t lastScrapQuery;
+    static cPlugin*  scrapQuery();
     PictureReader * pict;
+    char *logoDir;
+    char *resourceDir;
 
 #endif
     MediaPlayer *media;
