@@ -30,10 +30,18 @@ MVPServer::MVPServer()
   // MH in case anbody has a better position :-)
   pthread_mutex_init(&threadClientMutex, NULL);
   tcpServerPort = 0;
+  logoDir = NULL;
+  resourceDir = NULL;
+  imageDir = NULL;
+  cacheDir = NULL;
 }
 
 MVPServer::~MVPServer()
 {
+  if (logoDir) delete[] logoDir;
+  if (resourceDir) delete[] resourceDir;
+  if (imageDir) delete[] imageDir;
+  if (cacheDir) delete[] cacheDir;
   stop();
 }
 
@@ -92,6 +100,56 @@ int MVPServer::run(char* tconfigDir)
     dsyslog("VOMP: Logging disabled");
   }
 
+  const char *bigresdir = cPlugin::ResourceDirectory();  
+  const char *bigcachedir = cPlugin::CacheDirectory();  
+  // get logo directory
+  logoDir =  config.getValueString("General", "Channel logo directory");
+  
+  if (logoDir) 
+  {
+    log.log("Main", Log::INFO, "LogoDir set %s", logoDir);
+  } else {
+    if (bigresdir) {
+	logoDir = new char[strlen(bigresdir)+1+7];
+	sprintf(logoDir,"%s/logos/",bigresdir);    
+	log.log("Main", Log::INFO, "No LogoDir set, default %s",logoDir);
+     } else {
+	log.log("Main", Log::INFO, "No LogoDir set, no res dir");
+     }
+        
+  }
+
+  // get epg Image directory
+  imageDir =  config.getValueString("General", "Epg image directory");
+  
+  if (imageDir) 
+  {
+    log.log("Main", Log::INFO, "ImageDir set %s", imageDir);
+  } else {
+    if (bigcachedir) {
+	imageDir = new char[strlen(bigcachedir)+1+11+3];
+	sprintf(imageDir,"%s/../epgimages/",bigcachedir);    
+	log.log("Main", Log::INFO, "No ImageDir set, default %s",imageDir);
+    } else {
+      	log.log("Main", Log::INFO, "No ImageDir set, no cache dir");
+    }
+  }
+
+  if (bigresdir) {
+    resourceDir = new char[strlen(bigresdir)+1];
+    strcpy(resourceDir,bigresdir);
+    log.log("Main", Log::INFO, "Resource directory is  %s",bigresdir);
+  } else {
+    log.log("Main", Log::INFO, "Resource directory is  not set");
+  }
+  
+  if (bigcachedir) {
+    cacheDir = new char[strlen(bigcachedir)+1];
+    strcpy(cacheDir,bigcachedir);
+    log.log("Main", Log::INFO, "Cache directory is  %s",bigcachedir);
+  } else {
+    log.log("Main", Log::INFO, "Cache directory is  not set");
+  }
   // Get UDP port number for discovery service
 
   int fail = 1;
@@ -272,7 +330,7 @@ void MVPServer::threadMethod()
   while(1)
   {
     clientSocket = accept(listeningSocket,(struct sockaddr *)&address, &length);
-    VompClient* m = new VompClient(&config, configDir, clientSocket);
+    VompClient* m = new VompClient(&config, configDir, logoDir, resourceDir, imageDir, cacheDir, clientSocket);
     m->run();
   }
 }

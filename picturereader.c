@@ -2,6 +2,7 @@
 #include <vdr/plugin.h>
 #include <vdr/channels.h>
 #include <sstream>
+#include <algorithm>
 
 
 PictureReader::PictureReader(VompClient *client)
@@ -35,6 +36,42 @@ void PictureReader::addTVMediaRequest(TVMediaRequest& req)
     pictures.push(req);
     threadSignal(); // Signal, that we have something to do!!!
     pthread_mutex_unlock(&pictureLock);
+}
+
+bool PictureReader::epgImageExists(int event)
+{
+    if (x->imageDir) {
+        std::ostringstream file;
+        file<< std::string(x->imageDir)<< event << std::string(".jpg");
+	if (!access(file.str().c_str() ,F_OK))
+	{
+	    return true;
+	}
+
+	std::ostringstream file2;
+	file2 << std::string(x->imageDir) << event << std::string("_0.jpg");
+	if (!access(file2.str().c_str() ,F_OK))
+	{
+	    return true;
+	}
+    } else if (x->cacheDir) {
+
+        std::ostringstream file;
+        file<<std::string(x->cacheDir)<<std::string("/../epgimages/")
+    		<< event << std::string(".jpg");
+	if (!access(file.str().c_str() ,F_OK))
+	{
+	    return true;
+	}
+	std::ostringstream file2;
+	file2<<std::string(x->cacheDir)<<std::string("/../epgimages/")<<
+	     event <<std::string("_0.jpg");
+	if (!access(file2.str().c_str() ,F_OK))
+	{
+	    return true;
+	}
+    }
+    return false; 
 }
 
 std::string PictureReader::getPictName(TVMediaRequest & req)
@@ -186,17 +223,69 @@ std::string PictureReader::getPictName(TVMediaRequest & req)
 
       if (x->scraper && event) {
         x->scraper->Service("GetPosterThumb",&getter);
-        return getter.poster.path;
-      } else {
-         return std::string("");
+        if (getter.poster.width) return getter.poster.path;
       }
+      if (x->imageDir) {
+        std::ostringstream file;
+        file<< std::string(x->imageDir)<< req.primary_id << std::string(".jpg");
+	if (!access(file.str().c_str() ,F_OK))
+	{
+	    return file.str();
+	}
+
+	std::ostringstream file2;
+	file2 << std::string(x->imageDir) << req.primary_id << std::string("_0.jpg");
+	if (!access(file2.str().c_str() ,F_OK))
+	{
+	    return file2.str();
+	}
+      } else if (x->cacheDir) {
+
+        std::ostringstream file;
+        file<<std::string(x->cacheDir)<<std::string("/../epgimages/")
+    		<<req.primary_id << std::string(".jpg");
+	if (!access(file.str().c_str() ,F_OK))
+	{
+	    return file.str();
+	}
+	std::ostringstream file2;
+	file2<<std::string(x->cacheDir)<<std::string("/../epgimages/")<<
+	     req.primary_id<<std::string("_0.jpg");
+	if (!access(file2.str().c_str() ,F_OK))
+	{
+	    return file2.str();
+	}
+      } 
+      return std::string("");
    }; break;
+   case 5: { // Channel logo
+	std::transform(req.primary_name.begin(),req.primary_name.end(),
+	    req.primary_name.begin(),::tolower);
+	if (x->logoDir) {
+	   std::string file=std::string(x->logoDir)+req.primary_name+std::string(".png");
+	   if (!access(file.c_str() ,F_OK))
+	   {
+	      return file;
+	   }
+	}
+	// if noopacity is there steal the logos
+	if (x->resourceDir) {
+	    std::string file=std::string(x->resourceDir)
+				+std::string("/skinnopacity/logos/")+req.primary_name+std::string(".png");
+	    if (!access(file.c_str() ,F_OK))
+	    {
+		return file;
+	    }
+	}
+	return std::string("");
+
    
+   }; break;
    default:
      return std::string("");
      break;
    };
-     
+   return std::string("");
    
 }
 

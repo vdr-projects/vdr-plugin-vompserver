@@ -2081,6 +2081,12 @@ int VompClientRRProc::processGetEventScraperEventType()
      resp->addLONG(call.seriesId);
      resp->addLONG(call.episodeId);
   }
+  if (x.pict->epgImageExists(eventid)) {
+     resp->addLONG(1);
+  } else {
+     resp->addLONG(0);
+  }
+    
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
 

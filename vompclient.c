@@ -43,7 +43,7 @@ cPlugin *VompClient::scraper = NULL;
 time_t  VompClient::lastScrapQuery = 0;
 
 VompClient::VompClient(Config* cfgBase, char* tconfigDir, char* tlogoDir, 
-	    char *tresourceDir, int tsocket)
+	    char *tresourceDir, char * timageDir, char * tcacheDir, int tsocket)
  : rrproc(*this), tcp(tsocket), i18n(tconfigDir)
 {
 #ifndef VOMPSTANDALONE
@@ -54,6 +54,8 @@ VompClient::VompClient(Config* cfgBase, char* tconfigDir, char* tlogoDir,
   if (!scraper) scrapQuery();
   logoDir = tlogoDir;
   resourceDir = tresourceDir;
+  imageDir = timageDir;
+  cacheDir = tcacheDir;
 #endif
   log = Log::getInstance();
   loggedIn = false;

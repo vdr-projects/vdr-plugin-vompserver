@@ -72,7 +72,7 @@ class VompClient
 
   public:
     VompClient(Config* baseConfig, char* configDir, char* logoDir, 
-	char* resourceDir,  int tsocket);
+	char* resourceDir, char* imageDir, char*cacheDir,  int tsocket);
     ~VompClient();
 
     int run();
@@ -116,7 +116,9 @@ class VompClient
     static cPlugin*  scrapQuery();
     PictureReader * pict;
     char *logoDir;
+    char *imageDir;
     char *resourceDir;
+    char *cacheDir;
 
 #endif
     MediaPlayer *media;

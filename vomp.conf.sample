@@ -34,3 +34,13 @@
 
 # MVPRelay enabled = yes
 
+# Change the following to the directory, where the channel logos reside,
+# all png and the channel name in lower case
+# if not set a logo directory below the plugin directory is used
+
+# Channel logo directory = /logodir
+
+# Change the following to the directory, where the EPG image reside,
+# if not set a image directory is try to be set automatically
+
+# Epg image directory = /EpgImage

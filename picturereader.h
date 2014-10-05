@@ -50,6 +50,7 @@ class PictureReader : public Thread
     int init(TCP* tcp);
     void detachMVPReceiver();
     void addTVMediaRequest(TVMediaRequest&);
+    bool epgImageExists(int event);
 
   private:
 
