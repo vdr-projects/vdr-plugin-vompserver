@@ -337,6 +337,7 @@ bool VompClientRRProc::processPacket()
   return false;
 }
 
+
 int VompClientRRProc::processLogin()
 {
   if (req->dataLength != 6) return 0;
@@ -357,6 +358,16 @@ int VompClientRRProc::processLogin()
   resp->addLONG(timeOffset);
   resp->addULONG(VOMP_PROTOCOL_VERSION_MIN);
   resp->addULONG(VOMP_PROTOCOL_VERSION_MAX);
+  
+  // also send information about languages
+  resp->addULONG(I18nLanguages()->Size());
+  resp->addLONG(Setup.DisplaySubtitles);
+  for (int i=0;i < I18nLanguages()->Size(); i++) {
+    resp->addLONG(Setup.AudioLanguages[i]);
+    resp->addLONG(Setup.SubtitleLanguages[i]);
+    resp->addString(I18nLanguageCode(i));
+  }
+  
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   log->log("RRProc", Log::DEBUG, "written login reply len %lu", resp->getLen());
