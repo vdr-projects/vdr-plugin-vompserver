@@ -76,7 +76,7 @@ void RecPlayer::scan()
     segments[i] = new Segment();
     segments[i]->start = totalLength;
     fseek(file, 0, SEEK_END);
-    totalLength += ftell(file);
+    totalLength += ftello(file);
     totalFrames = indexFile->Last();
     log->log("RecPlayer", Log::DEBUG, "File %i found, totalLength now %llu, numFrames = %lu", i, totalLength, totalFrames);
     segments[i]->end = totalLength;
@@ -168,7 +168,7 @@ unsigned long RecPlayer::getBlock(unsigned char* buffer, ULLONG position, unsign
   ULONG yetToGet = amount;
   ULONG got = 0;
   ULONG getFromThisSegment = 0;
-  ULONG filePosition;
+  ULLONG filePosition;
 
   while(got < amount)
   {
@@ -186,7 +186,7 @@ unsigned long RecPlayer::getBlock(unsigned char* buffer, ULLONG position, unsign
       getFromThisSegment = segments[segmentNumber]->end - currentPosition;
 
     filePosition = currentPosition - segments[segmentNumber]->start;
-    fseek(file, filePosition, SEEK_SET);
+    fseeko(file, filePosition, SEEK_SET);
     if (fread(&buffer[got], getFromThisSegment, 1, file) != 1) return 0; // umm, big problem.
  
     // Tell linux not to bother keeping the data in the FS cache
