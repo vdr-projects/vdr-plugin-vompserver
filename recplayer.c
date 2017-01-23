@@ -132,7 +132,7 @@ ULONG RecPlayer::getLengthFrames()
 
 unsigned long RecPlayer::getBlock(unsigned char* buffer, ULLONG position, unsigned long amount)
 {
-  if ((amount > totalLength) || (amount > 500000))
+  if ((amount > totalLength) || (amount > 1000000))
   {
     log->log("RecPlayer", Log::DEBUG, "Amount %lu requested and rejected", amount);
     return 0;
