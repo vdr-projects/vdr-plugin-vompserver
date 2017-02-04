@@ -57,7 +57,7 @@ MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
 
 //  logger->log("MVPReceiver", Log::DEBUG, "Channel has VPID %i APID %i", channel->Vpid(), channel->Apid(0));
 
-  if (!processed.init(1000000)) return;
+  if (!processed.init(6000000)) return; // Ringbuffer increased for better performance 
   pthread_mutex_init(&processedRingLock, NULL);
 
   // OK

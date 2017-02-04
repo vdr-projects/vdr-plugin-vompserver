@@ -30,6 +30,7 @@
 #include <vdr/remote.h>
 #include "recplayer.h"
 #include "mvpreceiver.h"
+#include "services/scraper2vdr.h"
 #endif
 
 #include "vompclientrrproc.h"
@@ -40,20 +41,32 @@
 #include "servermediafile.h"
 #include "i18n.h"
 #include "vdrcommand.h"
+#include "picturereader.h"
 
 bool ResumeIDLock;
 
-ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION = 0x00000300;
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MIN = 0x00000301;
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MAX = 0x00000302;
 // format is aabbccdd
 // cc is release protocol version, increase with every release, that changes protocol
 // dd is development protocol version, set to zero at every release, 
 // increase for every protocol change in git
 // bb not equal zero should indicate a non loggytronic protocol
 // aa is reserved for future use
+// VOMP_PROTOCOL_VERSION_MIN is the protocol version minimal supported by the server
+// VOMP_PROTOCOL_VERSION_MAX is the protocol version maximal supported by the server
+// This allows to run older clients from a new server
+// Increase the minimal protocol version everytime you break compatibility for a certain 
+// command. 
 
-ULONG VompClientRRProc::getProtocolVersion()
+ULONG VompClientRRProc::getProtocolVersionMin()
 {
-  return VOMP_PROTOCOL_VERSION;
+  return VOMP_PROTOCOL_VERSION_MIN;
+}
+
+ULONG VompClientRRProc::getProtocolVersionMax()
+{
+  return VOMP_PROTOCOL_VERSION_MAX;
 }
 
 VompClientRRProc::VompClientRRProc(VompClient& x)
@@ -262,6 +275,30 @@ bool VompClientRRProc::processPacket()
     case 666:
       result = processVDRShutdown();
       break;
+    case VDR_GETRECSCRAPEREVENTTYPE:
+      result = processGetRecScraperEventType();
+    break;
+    case VDR_GETSCRAPERMOVIEINFO:
+      result = processGetScraperMovieInfo();
+    break;
+    case VDR_GETSCRAPERSERIESINFO:
+      result = processGetScraperSeriesInfo();
+    break;
+    case VDR_LOADTVMEDIA:
+      result = processLoadTvMedia();
+    break;
+    case VDR_LOADTVMEDIARECTHUMB:
+      result = processLoadTvMediaRecThumb();
+    break;
+    case VDR_GETEVENTSCRAPEREVENTTYPE:
+      result = processGetEventScraperEventType();
+    break;
+    case VDR_LOADTVMEDIAEVENTTHUMB:
+      result = processLoadTvMediaEventThumb();
+    break;
+    case VDR_LOADCHANNELLOGO:
+      result = processLoadChannelLogo();
+    break;
 #endif
     case VDR_GETMEDIALIST:
       result = processGetMediaList();
@@ -300,6 +337,7 @@ bool VompClientRRProc::processPacket()
   return false;
 }
 
+
 int VompClientRRProc::processLogin()
 {
   if (req->dataLength != 6) return 0;
@@ -318,7 +356,18 @@ int VompClientRRProc::processLogin()
 
   resp->addULONG(timeNow);
   resp->addLONG(timeOffset);
-  resp->addULONG(VOMP_PROTOCOL_VERSION);
+  resp->addULONG(VOMP_PROTOCOL_VERSION_MIN);
+  resp->addULONG(VOMP_PROTOCOL_VERSION_MAX);
+  
+  // also send information about languages
+  resp->addULONG(I18nLanguages()->Size());
+  resp->addLONG(Setup.DisplaySubtitles);
+  for (int i=0;i < I18nLanguages()->Size(); i++) {
+    resp->addLONG(Setup.AudioLanguages[i]);
+    resp->addLONG(Setup.SubtitleLanguages[i]);
+    resp->addString(I18nLanguageCode(i));
+  }
+  
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   log->log("RRProc", Log::DEBUG, "written login reply len %lu", resp->getLen());
@@ -667,7 +716,7 @@ int VompClientRRProc::processGetRecordingsList()
   resp->addULONG(Total);
   resp->addULONG(FreeMB);
   resp->addULONG(Percent);
-
+  
   cRecordings Recordings;
   Recordings.Load();
 
@@ -1694,7 +1743,7 @@ int VompClientRRProc::processDeleteTimer()
 int VompClientRRProc::processGetRecInfo()
 {
   // data is a pointer to the fileName string
-
+  
   cRecordings Recordings;
   Recordings.Load(); // probably have to do this
 
@@ -1705,6 +1754,7 @@ int VompClientRRProc::processGetRecInfo()
   char* summary = NULL;
   char* shorttext = NULL;
   char* description = NULL;
+  char* title = NULL;
   bool newsummary=false;
   ULONG resumePoint = 0;
 
@@ -1872,7 +1922,16 @@ int VompClientRRProc::processGetRecInfo()
   framespersec = Info->FramesPerSecond();
 #endif
   resp->adddouble(framespersec);
-
+  title = (char*)Info->Title();
+  if (title) 
+  {
+    resp->addString(x.charconvsys->Convert(title));
+  }
+  else
+  {
+      resp->addString(x.charconvsys->Convert(recording->Name()));
+  }
+  
   // Done. send it
 
   resp->finalise();
@@ -1966,7 +2025,303 @@ int VompClientRRProc::processVDRShutdown()
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   return 1;
 }
+
+int VompClientRRProc::processGetRecScraperEventType()
+{
+  Recordings.Load(); // probably have to do this
+
+  cRecording *recording = Recordings.GetByName((char*)req->data);
+  ScraperGetEventType call;
+  call.type = tNone;
+
+  if (recording && x.scrapQuery()) 
+  {
+     call.recording = recording;
+     x.scraper->Service("GetEventType",&call);
+  }
+  resp->addUCHAR(call.type);
+  if (call.type == tMovie)
+  {
+     resp->addLONG(call.movieId);
+  } else if (call.type == tSeries){
+     resp->addLONG(call.seriesId);
+     resp->addLONG(call.episodeId);
+  }
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+
+  return 1;
+}
+
+int VompClientRRProc::processGetEventScraperEventType()
+{
+  ScraperGetEventType call;
+  call.type = tNone;
+  ULONG channelid = ntohl(*(ULONG*)req->data);
+  ULONG eventid = ntohl(*(ULONG*)(req->data+4));
+  const cEvent *event = NULL; 
+  
+  cChannel* channel = x.channelFromNumber(channelid);
+
+#if VDRVERSNUM < 10300
+  cMutexLock MutexLock;
+  const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
+#else
+  cSchedulesLock MutexLock;
+  const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
+#endif
+  const cSchedule * Schedule;
+  if (Schedules && channel)
+  {
+     const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
+     if (Schedule) {
+        event = Schedule->GetEvent(eventid);
+    }
+  }
+    
+  if (event && x.scrapQuery()) 
+  {
+     call.event = event;
+     x.scraper->Service("GetEventType",&call);
+  }
+  resp->addUCHAR(call.type);
+  if (call.type == tMovie)
+  {
+     resp->addLONG(call.movieId);
+  } else if (call.type == tSeries){
+     resp->addLONG(call.seriesId);
+     resp->addLONG(call.episodeId);
+  }
+  if (x.pict->epgImageExists(eventid)) {
+     resp->addLONG(1);
+  } else {
+     resp->addLONG(0);
+  }
+    
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+
+  return 1;
+}
+
+#define ADDSTRING_TO_PAKET(y) if ((y)!=0)  resp->addString(x.charconvutf8->Convert(y)); else resp->addString(""); 
+
+int VompClientRRProc::processGetScraperMovieInfo()
+{
+   
+   cMovie movie;
+   movie.movieId = ntohl(*(ULONG*)req->data);
+   if (!x.scrapQuery()) {
+      log->log("RRProc", Log::DEBUG, "No Scraper, get SeriesInfo");
+      return 0; //stupid, I have no scraper why are you still asking
+   }
+   x.scraper->Service("GetMovie",&movie);
+   
+
+   ADDSTRING_TO_PAKET(movie.title.c_str());
+   ADDSTRING_TO_PAKET(movie.originalTitle.c_str());
+   ADDSTRING_TO_PAKET(movie.tagline.c_str());
+   ADDSTRING_TO_PAKET(movie.overview.c_str());
+   resp->addUCHAR(movie.adult);
+   ADDSTRING_TO_PAKET(movie.collectionName.c_str());
+
+   resp->addLONG(movie.budget);
+   resp->addLONG(movie.revenue);
+   ADDSTRING_TO_PAKET(movie.genres.c_str());
+   ADDSTRING_TO_PAKET(movie.homepage.c_str());
+   ADDSTRING_TO_PAKET(movie.releaseDate.c_str());
+   resp->addLONG(movie.runtime);
+   resp->adddouble(movie.popularity);
+   resp->adddouble(movie.voteAverage);
+   resp->addULONG(movie.poster.width);
+   resp->addULONG(movie.poster.height);
+   resp->addULONG(movie.fanart.width);
+   resp->addULONG(movie.fanart.height);
+   resp->addULONG(movie.collectionPoster.width);
+   resp->addULONG(movie.collectionPoster.height);
+   resp->addULONG(movie.collectionFanart.width);
+   resp->addULONG(movie.collectionFanart.height);
+   resp->addULONG(movie.actors.size());
+   for (ULONG acty=0; acty < movie.actors.size(); acty++) {
+       ADDSTRING_TO_PAKET(movie.actors[acty].name.c_str());
+       ADDSTRING_TO_PAKET(movie.actors[acty].role.c_str());
+       resp->addULONG(movie.actors[acty].actorThumb.width);
+       resp->addULONG(movie.actors[acty].actorThumb.height);
+   }
+  resp->finalise();
+  
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+
+  
+  return 1;
+
+}
+
+int VompClientRRProc::processGetScraperSeriesInfo()
+{
+   cSeries series;
+   series.seriesId = ntohl(*(ULONG*)req->data);
+   series.episodeId = ntohl(*(ULONG*)(req->data+4));
+   if (!x.scrapQuery()) {
+      log->log("RRProc", Log::DEBUG, "No Scraper, get SeriesInfo");
+      return 0; //stupid, I have no scraper why are you still asking
+   }
+   x.scraper->Service("GetSeries",&series);
+   
+   ADDSTRING_TO_PAKET(series.name.c_str());
+   ADDSTRING_TO_PAKET(series.overview.c_str());
+   ADDSTRING_TO_PAKET(series.firstAired.c_str());
+   ADDSTRING_TO_PAKET(series.network.c_str());
+   ADDSTRING_TO_PAKET(series.genre.c_str());
+   resp->adddouble(series.rating);
+   ADDSTRING_TO_PAKET(series.status.c_str());
+   
+   resp->addLONG(series.episode.number);
+   resp->addLONG(series.episode.season);
+   ADDSTRING_TO_PAKET(series.episode.name.c_str());
+   ADDSTRING_TO_PAKET(series.episode.firstAired.c_str());
+   ADDSTRING_TO_PAKET(series.episode.guestStars.c_str());
+   ADDSTRING_TO_PAKET(series.episode.overview.c_str());
+   resp->adddouble(series.episode.rating);
+   resp->addULONG(series.episode.episodeImage.width);
+   resp->addULONG(series.episode.episodeImage.height);
+   
+   ULONG num_actors = series.actors.size();
+   resp->addULONG(num_actors);
+   for (ULONG acty=0; acty < num_actors; acty++) {
+       ADDSTRING_TO_PAKET(series.actors[acty].name.c_str());
+       ADDSTRING_TO_PAKET(series.actors[acty].role.c_str());
+       resp->addULONG(series.actors[acty].actorThumb.width);
+       resp->addULONG(series.actors[acty].actorThumb.height);
+   }
+   ULONG num_posters = series.posters.size();
+   resp->addULONG(num_posters);
+   for (ULONG medias = 0; medias < num_posters; medias++ ) {
+       cTvMedia media=series.posters[medias];
+       resp->addULONG(media.width);
+       resp->addULONG(media.height);
+   }
+
+   ULONG num_banners = series.banners.size();
+   resp->addULONG(num_banners);
+   for (ULONG medias = 0; medias < num_banners; medias++ ) {
+       cTvMedia media=series.banners[medias];
+       resp->addULONG(media.width);
+       resp->addULONG(media.height);
+   }
+   ULONG num_fanarts = series.fanarts.size();
+   resp->addULONG(num_fanarts);
+   for (ULONG medias = 0; medias < num_fanarts; medias++ ) {
+       cTvMedia media=series.fanarts[medias];
+       resp->addULONG(media.width);
+       resp->addULONG(media.height);
+   }
+   resp->addULONG(series.seasonPoster.width);
+   resp->addULONG(series.seasonPoster.height);
+   
+   resp->finalise();
+
+   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+   
+   return 1;
+}
+
+int VompClientRRProc::processLoadTvMedia()
+{
+   TVMediaRequest tvreq;
+   tvreq.streamID = req->requestID;
+   tvreq.type = ntohl(*(ULONG*)req->data);
+   tvreq.primary_id = ntohl(*(ULONG*)(req->data+4));
+   tvreq.secondary_id = ntohl(*(ULONG*)(req->data+8));
+   tvreq.type_pict = ntohl(*(ULONG*)(req->data+12));
+   tvreq.container = ntohl(*(ULONG*)(req->data+16));
+   tvreq.container_member = ntohl(*(ULONG*)(req->data+20));
+   log->log("RRProc", Log::DEBUG, "TVMedia request %d",req->requestID);
+   x.pict->addTVMediaRequest(tvreq);
+
+   
+   resp->finalise();
+
+   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+   
+   return 1;
+}
+
+int VompClientRRProc::processLoadTvMediaRecThumb()
+{
+   TVMediaRequest tvreq;
+   tvreq.streamID = req->requestID;
+   tvreq.type = 3; // unknown but primary_name is set
+   tvreq.primary_id = 0;
+   tvreq.primary_name = std::string((const char*) req->data);
+   tvreq.secondary_id = 0;
+   tvreq.type_pict = 1;
+   tvreq.container = 0;
+   tvreq.container_member = 0;
+   log->log("RRProc", Log::DEBUG, "TVMedia request %d %s",req->requestID,req->data);
+   x.pict->addTVMediaRequest(tvreq);
+
+   
+   resp->finalise();
+
+   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+   
+   return 1;
+}
+
+int VompClientRRProc::processLoadTvMediaEventThumb()
+{
+   TVMediaRequest tvreq;
+   tvreq.streamID = req->requestID;
+   tvreq.type = 4; // unknown but primary_id is set
+   UINT channelid = ntohl(*(ULONG*)req->data);
+   tvreq.primary_id = ntohl(*(ULONG*)(req->data+4));
+   tvreq.secondary_id = 0;
+   cChannel* channel = x.channelFromNumber(channelid);
+
+   if (channel) tvreq.primary_name = std::string((const char*)channel->GetChannelID().ToString());
+   tvreq.type_pict = 1;
+   tvreq.container = 0;
+   tvreq.container_member = 0;
+   log->log("RRProc", Log::DEBUG, "TVMedia request %d %s",req->requestID,req->data);
+   x.pict->addTVMediaRequest(tvreq);
+
+   
+   resp->finalise();
+
+   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+   
+   return 1;
+}
+
+int VompClientRRProc::processLoadChannelLogo()
+{
+   TVMediaRequest tvreq;
+   tvreq.streamID = req->requestID;
+   tvreq.type = 5; // channel logo
+   UINT channelid = ntohl(*(ULONG*)req->data);
+   tvreq.primary_id = channelid;
+   tvreq.secondary_id = 0;
+   cChannel* channel = x.channelFromNumber(channelid);
+
+   if (channel) tvreq.primary_name = std::string((const char*)channel->Name());
+   tvreq.type_pict = 1;
+   tvreq.container = 0;
+   tvreq.container_member = 0;
+   log->log("RRProc", Log::DEBUG, "TVMedia request %d %d %s",req->requestID,channelid, channel->Name());
+   x.pict->addTVMediaRequest(tvreq);
+
+   
+   resp->finalise();
+
+   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+   
+   return 1;
+}
+
+ 
+
+
   
 #endif // !VOMPSTANDALONE
-
 

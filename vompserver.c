@@ -74,6 +74,7 @@ cPluginVompserver::~cPluginVompserver()
   // Clean up after yourself!
   mvpserver.stop();
   if (configDir) delete[] configDir;  
+
 }
 
 const char *cPluginVompserver::CommandLineHelp(void)
@@ -91,15 +92,15 @@ bool cPluginVompserver::ProcessArgs(int argc, char *argv[])
   {
     if (c == 'c')
     {
-      const char* vdrdeveldevelret = cPlugin::ConfigDirectory(optarg);
-      if (!vdrdeveldevelret)
+      const char* vdrret = cPlugin::ConfigDirectory(optarg);
+      if (!vdrret)
       {
         dsyslog("VOMP: Could not get config dir from VDR");
         return false;
       }
       
-      configDir = new char[strlen(vdrdeveldevelret)+1];
-      strcpy(configDir, vdrdeveldevelret);
+      configDir = new char[strlen(vdrret)+1];
+      strcpy(configDir, vdrret);
     }
     else
     {
@@ -122,14 +123,14 @@ bool cPluginVompserver::Start(void)
   
   if (!configDir)
   {
-    const char* vdrdeveldevelret = cPlugin::ConfigDirectory("vompserver");
-    if (!vdrdeveldevelret)
+    const char* vdrret = cPlugin::ConfigDirectory("vompserver");
+    if (!vdrret)
     {
       dsyslog("VOMP: Could not get config dir from VDR");
       return false;
     }
-    configDir = new char[strlen(vdrdeveldevelret)+1];
-    strcpy(configDir, vdrdeveldevelret);
+    configDir = new char[strlen(vdrret)+1];
+    strcpy(configDir, vdrret);
   }
   
   int success = mvpserver.run(configDir);

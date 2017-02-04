@@ -49,6 +49,7 @@ class RecPlayer;
 class MVPReceiver;
 class cChannel;
 class cRecordings;
+class cPlugin;
 #endif
 
 #include "defines.h"
@@ -62,13 +63,16 @@ class ResponsePacket;
 class ServerMediaFile;
 class SerializeBuffer;
 class MediaPlayer;
+class PictureReader;
 
 class VompClient
 {
   friend class VompClientRRProc;
+  friend class PictureReader;
 
   public:
-    VompClient(Config* baseConfig, char* configDir, int tsocket);
+    VompClient(Config* baseConfig, char* configDir, char* logoDir, 
+	char* resourceDir, char* imageDir, char*cacheDir,  int tsocket);
     ~VompClient();
 
     int run();
@@ -107,6 +111,15 @@ class VompClient
     MVPReceiver* lp;
     cRecordings* recordingManager;
     RecPlayer* recplayer;
+    static cPlugin * scraper;
+    static time_t lastScrapQuery;
+    static cPlugin*  scrapQuery();
+    PictureReader * pict;
+    char *logoDir;
+    char *imageDir;
+    char *resourceDir;
+    char *cacheDir;
+
 #endif
     MediaPlayer *media;
     ServerMediaFile *mediaprovider;
@@ -115,6 +128,7 @@ class VompClient
     int charcoding; // 1= latin1 2= UTF-8
     cCharSetConv *charconvutf8;
     cCharSetConv *charconvsys;
+    
     
 };
 

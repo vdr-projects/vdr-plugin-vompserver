@@ -29,23 +29,33 @@
 #ifndef VOMPSTANDALONE
 #include <vdr/channels.h>
 #include <vdr/recording.h>
+#include <vdr/plugin.h>
 #include "recplayer.h"
 #include "mvpreceiver.h"
+#include "picturereader.h"
 #endif
 
 
 
 pthread_mutex_t threadClientMutex;
 int VompClient::nr_clients = 0;
+cPlugin *VompClient::scraper = NULL;
+time_t  VompClient::lastScrapQuery = 0;
 
-
-VompClient::VompClient(Config* cfgBase, char* tconfigDir, int tsocket)
+VompClient::VompClient(Config* cfgBase, char* tconfigDir, char* tlogoDir, 
+	    char *tresourceDir, char * timageDir, char * tcacheDir, int tsocket)
  : rrproc(*this), tcp(tsocket), i18n(tconfigDir)
 {
 #ifndef VOMPSTANDALONE
   lp = NULL;
   recplayer = NULL;
   recordingManager = NULL;
+  pict = new PictureReader(this);
+  if (!scraper) scrapQuery();
+  logoDir = tlogoDir;
+  resourceDir = tresourceDir;
+  imageDir = timageDir;
+  cacheDir = tcacheDir;
 #endif
   log = Log::getInstance();
   loggedIn = false;
@@ -87,6 +97,8 @@ VompClient::~VompClient()
   //if (loggedIn) cleanConfig();
   decClients();
   
+  delete pict;
+  
   delete media;
   delete mediaprovider;
 
@@ -99,6 +111,16 @@ VompClient::~VompClient()
     fclose(netLogFile);
     netLogFile = NULL;
   }
+}
+
+cPlugin *VompClient::scrapQuery()
+{
+    if (scraper) return scraper;
+    if ((time(NULL)-lastScrapQuery) > 5*60) {
+	lastScrapQuery = time(NULL); 
+	  if (!scraper) scraper = cPluginManager::GetPlugin("scraper2vdr");
+   }
+   return scraper;
 }
 
 void VompClient::setCharset(int charset)
@@ -237,6 +259,7 @@ void VompClient::run2()
 //  tcp.setSoKeepTime(3);
   tcp.setNonBlocking();
 
+  pict->init(&tcp);
   ULONG channelID;
   ULONG requestID;
   ULONG opcode;
@@ -394,7 +417,7 @@ cChannel* VompClient::channelFromNumber(ULONG channelNumber)
   {
     if (!channel->GroupSep())
     {
-      log->log("Client", Log::DEBUG, "Looking for channel %lu::: number: %i name: '%s'", channelNumber, channel->Number(), channel->Name());
+//      log->log("Client", Log::DEBUG, "Looking for channel %lu::: number: %i name: '%s'", channelNumber, channel->Number(), channel->Name());
 
       if (channel->Number() == (int)channelNumber)
       {
@@ -404,7 +427,7 @@ cChannel* VompClient::channelFromNumber(ULONG channelNumber)
 #else
         int apid1 = channel->Apid(0);
 #endif
-        log->log("Client", Log::DEBUG, "Found channel number %lu, vpid = %i, apid1 = %i", channelNumber, vpid, apid1);
+//        log->log("Client", Log::DEBUG, "Found channel number %lu, vpid = %i, apid1 = %i", channelNumber, vpid, apid1);
         return channel;
       }
     }
