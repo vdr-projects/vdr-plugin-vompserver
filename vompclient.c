@@ -417,19 +417,8 @@ cChannel* VompClient::channelFromNumber(ULONG channelNumber)
   {
     if (!channel->GroupSep())
     {
-//      log->log("Client", Log::DEBUG, "Looking for channel %lu::: number: %i name: '%s'", channelNumber, channel->Number(), channel->Name());
-
-      if (channel->Number() == (int)channelNumber)
-      {
-        int vpid = channel->Vpid();
-#if VDRVERSNUM < 10300
-        int apid1 = channel->Apid1();
-#else
-        int apid1 = channel->Apid(0);
-#endif
-//        log->log("Client", Log::DEBUG, "Found channel number %lu, vpid = %i, apid1 = %i", channelNumber, vpid, apid1);
-        return channel;
-      }
+//    log->log("Client", Log::DEBUG, "Looking for channel %lu::: number: %i name: '%s'", channelNumber, channel->Number(), channel->Name());
+      if (channel->Number() == (int)channelNumber) return channel;
     }
   }
 

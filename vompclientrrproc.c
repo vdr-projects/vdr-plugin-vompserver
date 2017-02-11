@@ -2070,7 +2070,6 @@ int VompClientRRProc::processGetEventScraperEventType()
   cSchedulesLock MutexLock;
   const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
 #endif
-  const cSchedule * Schedule;
   if (Schedules && channel)
   {
      const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());

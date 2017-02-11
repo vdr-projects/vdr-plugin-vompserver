@@ -121,13 +121,19 @@ MediaList* MediaFile::getMediaList(const MediaURI * parent){
   const char *dirname=parent->getName();
   //open the directory and read out the entries
   DIR *d=opendir(dirname);
+  if (d == NULL) return rt;
   struct dirent *e;
+
+  /* readdir_r is now deprecated in favour of readdir (which is effectively thread safe)
   union { // according to "The GNU C Library Reference Manual"
     struct dirent d;
     char b[offsetof(struct dirent, d_name) + NAME_MAX + 1];
     } u;
 
   while (d != NULL && (readdir_r(d,&u.d,&e) == 0) && e != NULL) {
+  */
+
+  while (e = readdir(d)) {
     const char * fname=e->d_name;
     if ( fname == NULL) continue;
     if (strcmp(fname,".") == 0) continue;
@@ -141,9 +147,9 @@ MediaList* MediaFile::getMediaList(const MediaURI * parent){
       if (m) delete m;
     }
   }
-  if (d != NULL) closedir(d);
+  closedir(d);
   return rt;
-  }
+}
 
 
 int MediaFile::openMedium(ULONG channel, const MediaURI * uri, ULLONG * size, ULONG xsize, ULONG ysize) {

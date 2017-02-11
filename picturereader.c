@@ -83,8 +83,8 @@ std::string PictureReader::getPictName(TVMediaRequest & req)
 
    switch (req.type) {
    case 0: { //serie
-      if (series.seriesId != req.primary_id ||
-          series.episodeId != req.secondary_id) {
+      if (series.seriesId != (int)req.primary_id ||
+          series.episodeId != (int)req.secondary_id) {
           series.actors.clear();
           series.posters.clear();
           series.banners.clear();
@@ -147,7 +147,7 @@ std::string PictureReader::getPictName(TVMediaRequest & req)
        return std::string("");
    } break;
    case 1: { //movie
-      if (movie.movieId != req.primary_id ) {
+      if (movie.movieId != (int)req.primary_id ) {
           movie.actors.clear();
           movie.movieId = req.primary_id;
           x->scraper->Service("GetMovie",&movie);
@@ -295,7 +295,6 @@ void PictureReader::threadMethod()
   ULONG *p;
   ULONG headerLength = sizeof(ULONG) * 4;
   UCHAR buffer[headerLength];
-  int amountReceived;
 
 //   threadSetKillable(); ??
 

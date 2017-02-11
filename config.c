@@ -137,7 +137,7 @@ FILE* Config::copyToHere(long position)
 
   while (newPos < position)
   {
-    fgets(buffer, BUFFER_LENGTH-1, file);
+    if (!fgets(buffer, BUFFER_LENGTH-1, file)) break;
     fputs(buffer, newFile);
     newPos += strlen(buffer);
   }
@@ -183,7 +183,8 @@ int Config::deleteValue(const char* section, char* key)
   }
 
   FILE* newFile = copyToHere(ftell(file) - lastLineLength);
-  fgets(buffer, BUFFER_LENGTH-1, file);
+
+  if (  fgets(buffer, BUFFER_LENGTH-1, file)  );
 
   return copyRest(newFile);
 }
@@ -226,7 +227,7 @@ int Config::setValueString(const char* section, const char* key, const char* new
         return 0;
       }
 
-      fgets(buffer, BUFFER_LENGTH-1, file);
+      if (  fgets(buffer, BUFFER_LENGTH-1, file)  );
       fprintf(newFile, "%s = %s\n", key, newValue);
       return copyRest(newFile);
     }
