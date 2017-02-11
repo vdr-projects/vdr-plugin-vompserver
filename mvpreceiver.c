@@ -2,7 +2,7 @@
 
 int MVPReceiver::numMVPReceivers = 0;
 
-MVPReceiver* MVPReceiver::create(cChannel* channel, int priority)
+MVPReceiver* MVPReceiver::create(const cChannel* channel, int priority)
 {
 #if VDRVERSNUM < 10500
   bool NeedsDetachReceivers;
@@ -34,7 +34,7 @@ MVPReceiver* MVPReceiver::create(cChannel* channel, int priority)
   return m;
 }
 
-MVPReceiver::MVPReceiver(cChannel* channel, cDevice* device)
+MVPReceiver::MVPReceiver(const cChannel* channel, cDevice* device)
 #if VDRVERSNUM < 10300
 : cReceiver(channel->Ca(), 0, 7, channel->Vpid(), channel->Ppid(), channel->Apid1(), channel->Apid2(), channel->Dpid1(), channel->Dpid2(), channel->Tpid())
 #elif VDRVERSNUM < 10500

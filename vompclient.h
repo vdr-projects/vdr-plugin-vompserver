@@ -105,7 +105,6 @@ class VompClient
     //void cleanConfig();
 
 #ifndef VOMPSTANDALONE
-    cChannel* channelFromNumber(ULONG channelNumber);
     void writeResumeData();
 
     MVPReceiver* lp;

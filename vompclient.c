@@ -409,27 +409,6 @@ ULLONG VompClient::htonll(ULLONG a)
 
 #ifndef VOMPSTANDALONE
 
-cChannel* VompClient::channelFromNumber(ULONG channelNumber)
-{
-  cChannel* channel = NULL;
-
-  for (channel = Channels.First(); channel; channel = Channels.Next(channel))
-  {
-    if (!channel->GroupSep())
-    {
-//    log->log("Client", Log::DEBUG, "Looking for channel %lu::: number: %i name: '%s'", channelNumber, channel->Number(), channel->Name());
-      if (channel->Number() == (int)channelNumber) return channel;
-    }
-  }
-
-  if (!channel)
-  {
-    log->log("Client", Log::DEBUG, "Channel not found");
-  }
-
-  return channel;
-}
-
 void VompClient::writeResumeData()
 {
   /*config.setValueLong("ResumeData",

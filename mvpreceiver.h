@@ -34,14 +34,14 @@
 class MVPReceiver : public cReceiver, public Thread
 {
   public:
-    static MVPReceiver* create(cChannel*, int priority);
+    static MVPReceiver* create(const cChannel*, int priority);
     virtual ~MVPReceiver();
     int init(TCP* tcp, ULONG streamID);
     bool isVdrActivated();
     void detachMVPReceiver();
 
   private:
-    MVPReceiver(cChannel* channel, cDevice* device);
+    MVPReceiver(const cChannel* channel, cDevice* device);
 
     Log* logger;
     bool vdrActivated;

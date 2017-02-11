@@ -1013,7 +1013,7 @@ int VompClientRRProc::processGetChannelPids()
 {
   ULONG channelNumber = ntohl(*(ULONG*)req->data);
 
-  cChannel* channel = x.channelFromNumber(channelNumber);
+  const cChannel* channel = Channels.GetByNumber(channelNumber);
   if (!channel)
   {
     resp->addULONG(0);
@@ -1188,7 +1188,7 @@ int VompClientRRProc::processStartStreamingChannel()
   log->log("RRProc", Log::DEBUG, "req->dataLength = %i", req->dataLength);
   ULONG channelNumber = ntohl(*(ULONG*)req->data);
 
-  cChannel* channel = x.channelFromNumber(channelNumber);
+  const cChannel* channel = Channels.GetByNumber(channelNumber);
   if (!channel)
   {
     resp->addULONG(0);
@@ -1450,7 +1450,7 @@ int VompClientRRProc::processGetChannelSchedule()
 
   log->log("RRProc", Log::DEBUG, "get schedule called for channel %lu", channelNumber);
 
-  cChannel* channel = x.channelFromNumber(channelNumber);
+  const cChannel* channel = Channels.GetByNumber(channelNumber);
   if (!channel)
   {
     resp->addULONG(0);
@@ -2061,7 +2061,7 @@ int VompClientRRProc::processGetEventScraperEventType()
   ULONG eventid = ntohl(*(ULONG*)(req->data+4));
   const cEvent *event = NULL; 
   
-  cChannel* channel = x.channelFromNumber(channelid);
+  const cChannel* channel = Channels.GetByNumber(channelNumber);
 
 #if VDRVERSNUM < 10300
   cMutexLock MutexLock;
@@ -2276,7 +2276,7 @@ int VompClientRRProc::processLoadTvMediaEventThumb()
    UINT channelid = ntohl(*(ULONG*)req->data);
    tvreq.primary_id = ntohl(*(ULONG*)(req->data+4));
    tvreq.secondary_id = 0;
-   cChannel* channel = x.channelFromNumber(channelid);
+   const cChannel* channel = Channels.GetByNumber(channelNumber);
 
    if (channel) tvreq.primary_name = std::string((const char*)channel->GetChannelID().ToString());
    tvreq.type_pict = 1;
@@ -2301,13 +2301,13 @@ int VompClientRRProc::processLoadChannelLogo()
    UINT channelid = ntohl(*(ULONG*)req->data);
    tvreq.primary_id = channelid;
    tvreq.secondary_id = 0;
-   cChannel* channel = x.channelFromNumber(channelid);
+   const cChannel* channel = Channels.GetByNumber(channelNumber);
 
    if (channel) tvreq.primary_name = std::string((const char*)channel->Name());
    tvreq.type_pict = 1;
    tvreq.container = 0;
    tvreq.container_member = 0;
-   log->log("RRProc", Log::DEBUG, "TVMedia request %d %d %s",req->requestID,channelid, channel->Name());
+   if (channel) log->log("RRProc", Log::DEBUG, "TVMedia request %d %d %s",req->requestID,channelid, channel->Name());
    x.pict->addTVMediaRequest(tvreq);
 
    
