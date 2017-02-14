@@ -2061,7 +2061,7 @@ int VompClientRRProc::processGetEventScraperEventType()
   ULONG eventid = ntohl(*(ULONG*)(req->data+4));
   const cEvent *event = NULL; 
   
-  const cChannel* channel = Channels.GetByNumber(channelNumber);
+  const cChannel* channel = Channels.GetByNumber(channelid);
 
 #if VDRVERSNUM < 10300
   cMutexLock MutexLock;
@@ -2276,7 +2276,7 @@ int VompClientRRProc::processLoadTvMediaEventThumb()
    UINT channelid = ntohl(*(ULONG*)req->data);
    tvreq.primary_id = ntohl(*(ULONG*)(req->data+4));
    tvreq.secondary_id = 0;
-   const cChannel* channel = Channels.GetByNumber(channelNumber);
+   const cChannel* channel = Channels.GetByNumber(channelid);
 
    if (channel) tvreq.primary_name = std::string((const char*)channel->GetChannelID().ToString());
    tvreq.type_pict = 1;
@@ -2301,7 +2301,7 @@ int VompClientRRProc::processLoadChannelLogo()
    UINT channelid = ntohl(*(ULONG*)req->data);
    tvreq.primary_id = channelid;
    tvreq.secondary_id = 0;
-   const cChannel* channel = Channels.GetByNumber(channelNumber);
+   const cChannel* channel = Channels.GetByNumber(channelid);
 
    if (channel) tvreq.primary_name = std::string((const char*)channel->Name());
    tvreq.type_pict = 1;
