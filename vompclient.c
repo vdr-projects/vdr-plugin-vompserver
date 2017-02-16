@@ -49,7 +49,6 @@ VompClient::VompClient(Config* cfgBase, char* tconfigDir, char* tlogoDir,
 #ifndef VOMPSTANDALONE
   lp = NULL;
   recplayer = NULL;
-  recordingManager = NULL;
   pict = new PictureReader(this);
   if (!scraper) scrapQuery();
   logoDir = tlogoDir;
@@ -89,9 +88,7 @@ VompClient::~VompClient()
     writeResumeData();
 
     delete recplayer;
-    delete recordingManager;
     recplayer = NULL;
-    recordingManager = NULL;
   }
 #endif
   //if (loggedIn) cleanConfig();

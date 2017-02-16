@@ -191,9 +191,14 @@ std::string PictureReader::getPictName(TVMediaRequest & req)
    } break;
    case 3: { // I do not know
    // First get the recording
-      cRecordings Recordings;
-      Recordings.Load();
-      cRecording *recording = Recordings.GetByName((char*) req.primary_name.c_str());
+#if VDRVERSNUM >= 20301
+      LOCK_RECORDINGS_READ;
+      const cRecordings* tRecordings = Recordings;
+#else
+      cThreadLock RecordingsLock(&Recordings);
+      cRecordings* tRecordings = &Recordings;
+#endif
+      const cRecording *recording = tRecordings->GetByName((char*) req.primary_name.c_str());
       ScraperGetPosterThumb getter;
       getter.recording = recording;
       getter.event = NULL;
@@ -206,14 +211,31 @@ std::string PictureReader::getPictName(TVMediaRequest & req)
    }; break;
    case 4: { // I do not know
    // First get the schedules
+
+#if VDRVERSNUM >= 20301
+  LOCK_CHANNELS_READ;
+  const cChannels* tChannels = Channels;
+#else
+  cChannels* tChannels = &Channels;
+#endif
+
+
+#if VDRVERSNUM < 10300
+      cMutexLock MutexLock;
+      const cSchedules *tSchedules = cSIProcessor::Schedules(MutexLock);
+#elif VDRVERSNUM < 20301
       cSchedulesLock MutexLock;
-      const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
+      const cSchedules *tSchedules = cSchedules::Schedules(MutexLock);
+#else
+      LOCK_SCHEDULES_READ;
+      const cSchedules *tSchedules = Schedules;
+#endif
+
       const cSchedule *Schedule = NULL;
-      if (Schedules)
+      if (tSchedules)
       {
-        cChannel * channel = Channels.GetByChannelID(
-                       tChannelID::FromString(req.primary_name.c_str()));
-        Schedule = Schedules->GetSchedule(channel);
+        const cChannel* channel = tChannels->GetByChannelID(tChannelID::FromString(req.primary_name.c_str()));
+        Schedule = tSchedules->GetSchedule(channel);
       }
       const cEvent *event = NULL;
       if (Schedule) event=Schedule->GetEvent(req.primary_id);

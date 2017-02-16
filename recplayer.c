@@ -26,7 +26,7 @@
 
 #include <fcntl.h>
 
-RecPlayer::RecPlayer(cRecording* rec)
+RecPlayer::RecPlayer(const cRecording* rec)
 {
   log = Log::getInstance();
   file = NULL;
@@ -206,7 +206,7 @@ ULLONG RecPlayer::getLastPosition()
   return lastPosition;
 }
 
-cRecording* RecPlayer::getCurrentRecording()
+const cRecording* RecPlayer::getCurrentRecording()
 {
   return recording;
 }

@@ -49,7 +49,7 @@ int Ringbuffer::init(size_t size)
   return 1;
 }
 
-int Ringbuffer::put(UCHAR* from, size_t amount)
+int Ringbuffer::put(const UCHAR* from, size_t amount)
 {
   if (amount > capacity) return 0;
 

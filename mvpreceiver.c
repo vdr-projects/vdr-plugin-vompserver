@@ -113,6 +113,7 @@ void MVPReceiver::detachMVPReceiver()
   Detach();
 }
 
+
 void MVPReceiver::Receive(UCHAR* data, int length)
 {
   pthread_mutex_lock(&processedRingLock);
@@ -120,6 +121,14 @@ void MVPReceiver::Receive(UCHAR* data, int length)
   if (processed.getContent() > streamChunkSize) threadSignal();
   pthread_mutex_unlock(&processedRingLock);
 }
+void MVPReceiver::Receive(const UCHAR* data, int length)
+{
+  pthread_mutex_lock(&processedRingLock);
+  processed.put(data, length);
+  if (processed.getContent() > streamChunkSize) threadSignal();
+  pthread_mutex_unlock(&processedRingLock);
+}
+
 
 void MVPReceiver::threadMethod()
 {

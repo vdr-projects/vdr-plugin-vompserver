@@ -48,7 +48,6 @@
 class RecPlayer;
 class MVPReceiver;
 class cChannel;
-class cRecordings;
 class cPlugin;
 #endif
 
@@ -108,7 +107,6 @@ class VompClient
     void writeResumeData();
 
     MVPReceiver* lp;
-    cRecordings* recordingManager;
     RecPlayer* recplayer;
     static cPlugin * scraper;
     static time_t lastScrapQuery;

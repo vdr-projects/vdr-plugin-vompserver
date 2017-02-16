@@ -59,6 +59,39 @@ ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MAX = 0x00000302;
 // Increase the minimal protocol version everytime you break compatibility for a certain 
 // command. 
 
+
+/* Locking information from VDR:
+
+  + Instead of directly accessing the global variables Timers, Channels or Recordings,
+    they need to set up a cStateKey variable and call the proper getter function,
+    as in
+      cStateKey StateKey;
+      if (const cTimers *Timers = cTimers::GetTimersRead(StateKey)) {
+         // access the timers
+         StateKey.Remove();
+         }
+    and
+      cStateKey StateKey;
+      if (cTimers *Timers = cTimers::GetTimersWrite(StateKey)) {
+         // access the timers
+         StateKey.Remove();
+         }
+    See timers.h, thread.h and tools.h for details on this new locking mechanism.
+  + There are convenience macros for easily accessing these lists without having
+    to explicitly set up a cStateKey and calling its Remove() function. These macros
+    have the form LOCK_*_READ/WRITE (with '*' being TIMERS, CHANNELS, SCHEDULES or
+    RECORDINGS). Simply put such a macro before the point where you need to access
+    the respective list, and there will be a pointer named Timers, Channels, Schedules
+    or Recordings, respectively, which is valid until the end of the current block.
+  + If a plugin needs to access several of the global lists in parallel, locking must
+    always be done in the sequence Timers, Channels, Recordings, Schedules. This is
+    necessary to make sure that different threads that need to lock several lists at
+    the same time don't end up in a deadlock.
+
+    */
+
+// TODO: Use VDRs recording->ChangeName(option)) for move recording ?
+
 ULONG VompClientRRProc::getProtocolVersionMin()
 {
   return VOMP_PROTOCOL_VERSION_MIN;
@@ -716,11 +749,16 @@ int VompClientRRProc::processGetRecordingsList()
   resp->addULONG(Total);
   resp->addULONG(FreeMB);
   resp->addULONG(Percent);
-  
-  cRecordings Recordings;
-  Recordings.Load();
 
-  for (cRecording *recording = Recordings.First(); recording; recording = Recordings.Next(recording))
+#if VDRVERSNUM >= 20301
+  LOCK_RECORDINGS_READ;
+  const cRecordings* tRecordings = Recordings;
+#else
+  cThreadLock RecordingsLock(&Recordings);
+  const cRecordings* tRecordings = &Recordings;
+#endif
+
+  for (const cRecording *recording = tRecordings->First(); recording; recording = tRecordings->Next(recording))
   {
 #if VDRVERSNUM < 10721
     resp->addULONG(recording->start);
@@ -744,10 +782,15 @@ int VompClientRRProc::processDeleteRecording()
 {
   // data is a pointer to the fileName string
 
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
+#if VDRVERSNUM >= 20301
+  LOCK_RECORDINGS_WRITE;
+  cRecordings* tRecordings = Recordings;
+#else
+  cThreadLock RecordingsLock(&Recordings);
+  cRecordings* tRecordings = &Recordings;
+#endif
 
-  cRecording* recording = Recordings.GetByName((char*)req->data);
+  cRecording* recording = tRecordings->GetByName((char*)req->data);
 
   log->log("RRProc", Log::DEBUG, "recording pointer %p", recording);
 
@@ -755,13 +798,17 @@ int VompClientRRProc::processDeleteRecording()
   {
     log->log("RRProc", Log::DEBUG, "deleting recording: %s", recording->Name());
 
+// TODO: Switch to using: cRecording::IsInUse(void) const
     cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
     if (!rc)
     {
       if (recording->Delete())
       {
+#if VDRVERSNUM >= 20301
+         tRecordings->DelByName(recording->FileName());
+         tRecordings->SetModified();
+#elif VDRVERSNUM > 10300
         // Copy svdrp's way of doing this, see if it works
-#if VDRVERSNUM > 10300
         ::Recordings.DelByName(recording->FileName());
 #endif
         resp->addULONG(1);
@@ -803,15 +850,22 @@ int VompClientRRProc::processMoveRecording()
   }
   if (!newPath) return 0;
 
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
 
-  cRecording* recording = Recordings.GetByName((char*)fileName);
+#if VDRVERSNUM >= 20301
+  LOCK_RECORDINGS_WRITE;
+  cRecordings* tRecordings = Recordings;
+#else
+  cThreadLock RecordingsLock(&Recordings);
+  cRecordings* tRecordings = &Recordings;
+#endif
+
+  cRecording* recording = tRecordings->GetByName((char*)fileName);
 
   log->log("RRProc", Log::DEBUG, "recording pointer %p", recording);
 
   if (recording)
   {
+    // TODO: Switch to using: int cRecording::IsInUse(void) const
     cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
     if (!rc)
     {
@@ -906,6 +960,7 @@ int VompClientRRProc::processMoveRecording()
         return 1;
       }
 
+
       // Ok, the directory container has been made, or it pre-existed.
 
       char* newDir = new char[strlen(newContainer) + 1 + strlen(dateDirName) + 1];
@@ -922,12 +977,10 @@ int VompClientRRProc::processMoveRecording()
         log->log("RRProc", Log::DEBUG, "len: %i, cp: %i, strlen: %i, oldtitledir: %s", k+1, k, strlen(oldTitleDir), oldTitleDir);
         rmdir(oldTitleDir); // can't do anything about a fail result at this point.
         delete[] oldTitleDir;
-      }
 
-      if (renameret == 0)
-      {
-#if VDRVERSNUM > 10311
-        // Tell VDR
+#if VDRVERSNUM >= 20301
+        tRecordings->SetModified();
+#elif VDRVERSNUM > 10311
         ::Recordings.Update();
 #endif
         // Success. Send a different packet from just a ulong
@@ -972,7 +1025,14 @@ int VompClientRRProc::processGetChannelsList()
   int allChans = 1;
   if (chanConfig) allChans = strcasecmp(chanConfig, "FTA only");
 
-  for (cChannel *channel = Channels.First(); channel; channel = Channels.Next(channel))
+#if VDRVERSNUM >= 20301
+  LOCK_CHANNELS_READ;
+  const cChannels* tChannels = Channels;
+#else
+  const cChannels* tChannels = &Channels;
+#endif
+
+  for (const cChannel *channel = tChannels->First(); channel; channel = tChannels->Next(channel))
   {
 #if VDRVERSNUM < 10300
     if (!channel->GroupSep() && (!channel->Ca() || allChans))
@@ -1013,7 +1073,14 @@ int VompClientRRProc::processGetChannelPids()
 {
   ULONG channelNumber = ntohl(*(ULONG*)req->data);
 
-  const cChannel* channel = Channels.GetByNumber(channelNumber);
+#if VDRVERSNUM >= 20301
+  LOCK_CHANNELS_READ;
+  const cChannels* tChannels = Channels;
+#else
+  cChannels* tChannels = &Channels;
+#endif
+
+  const cChannel* channel = tChannels->GetByNumber(channelNumber);
   if (!channel)
   {
     resp->addULONG(0);
@@ -1188,7 +1255,14 @@ int VompClientRRProc::processStartStreamingChannel()
   log->log("RRProc", Log::DEBUG, "req->dataLength = %i", req->dataLength);
   ULONG channelNumber = ntohl(*(ULONG*)req->data);
 
-  const cChannel* channel = Channels.GetByNumber(channelNumber);
+#if VDRVERSNUM >= 20301
+  LOCK_CHANNELS_READ;
+  const cChannels* tChannels = Channels;
+#else
+  cChannels* tChannels = &Channels;
+#endif
+
+  const cChannel* channel = tChannels->GetByNumber(channelNumber);
   if (!channel)
   {
     resp->addULONG(0);
@@ -1259,9 +1333,7 @@ int VompClientRRProc::processStopStreaming()
     x.writeResumeData();
 
     delete x.recplayer;
-    delete x.recordingManager;
     x.recplayer = NULL;
-    x.recordingManager = NULL;
   }
 
   resp->addULONG(1);
@@ -1316,10 +1388,15 @@ int VompClientRRProc::processStartStreamingRecording()
 {
   // data is a pointer to the fileName string
 
-  x.recordingManager = new cRecordings;
-  x.recordingManager->Load();
+#if VDRVERSNUM >= 20301
+  LOCK_RECORDINGS_READ;
+  const cRecordings* tRecordings = Recordings;
+#else
+  cThreadLock RecordingsLock(&Recordings);
+  cRecordings* tRecordings = &Recordings;
+#endif
 
-  cRecording* recording = x.recordingManager->GetByName((char*)req->data);
+  const cRecording* recording = tRecordings->GetByName((char*)req->data);
 
   log->log("RRProc", Log::DEBUG, "recording pointer %p", recording);
 
@@ -1341,11 +1418,7 @@ int VompClientRRProc::processStartStreamingRecording()
     
     log->log("RRProc", Log::DEBUG, "written totalLength");
   }
-  else
-  {
-    delete x.recordingManager;
-    x.recordingManager = NULL;
-  }
+
   return 1;
 }
 
@@ -1450,7 +1523,14 @@ int VompClientRRProc::processGetChannelSchedule()
 
   log->log("RRProc", Log::DEBUG, "get schedule called for channel %lu", channelNumber);
 
-  const cChannel* channel = Channels.GetByNumber(channelNumber);
+#if VDRVERSNUM >= 20301
+  LOCK_CHANNELS_READ;
+  const cChannels* tChannels = Channels;
+#else
+  cChannels* tChannels = &Channels;
+#endif
+
+  const cChannel* channel = tChannels->GetByNumber(channelNumber);
   if (!channel)
   {
     resp->addULONG(0);
@@ -1465,12 +1545,16 @@ int VompClientRRProc::processGetChannelSchedule()
 
 #if VDRVERSNUM < 10300
   cMutexLock MutexLock;
-  const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
-#else
+  const cSchedules *tSchedules = cSIProcessor::Schedules(MutexLock);
+#elif VDRVERSNUM < 20301
   cSchedulesLock MutexLock;
-  const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
+  const cSchedules *tSchedules = cSchedules::Schedules(MutexLock);
+#else
+  LOCK_SCHEDULES_READ;
+  const cSchedules *tSchedules = Schedules;
 #endif
-  if (!Schedules)
+
+  if (!tSchedules)
   {
     resp->addULONG(0);
     resp->finalise();
@@ -1482,7 +1566,7 @@ int VompClientRRProc::processGetChannelSchedule()
 
   log->log("RRProc", Log::DEBUG, "Got schedule!s! object");
 
-  const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
+  const cSchedule *Schedule = tSchedules->GetSchedule(channel->GetChannelID());
   if (!Schedule)
   {
     resp->addULONG(0);
@@ -1574,14 +1658,21 @@ int VompClientRRProc::processGetChannelSchedule()
 
 int VompClientRRProc::processGetTimers()
 {
-  cTimer *timer;
-  int numTimers = Timers.Count();
+#if VDRVERSNUM >= 20301
+  LOCK_TIMERS_READ;
+  const cTimers* tTimers = Timers;
+#else
+  const cTimers* tTimers = &Timers;
+#endif
+
+  const cTimer *timer;
+  int numTimers = tTimers->Count();
 
   resp->addULONG(numTimers);
 
   for (int i = 0; i < numTimers; i++)
   {
-    timer = Timers.Get(i);
+    timer = tTimers->Get(i);
 
 #if VDRVERSNUM < 10300
     resp->addULONG(timer->Active());
@@ -1646,36 +1737,43 @@ int VompClientRRProc::processSetTimer()
   log->log("RRProc", Log::DEBUG, "%s", timerString);
 
   cTimer *timer = new cTimer;
-  if (timer->Parse((char*)timerString))
-  {
-    cTimer *t = Timers.GetTimer(timer);
-    if (!t)
-    {
-      Timers.Add(timer);
-#if VDRVERSNUM < 10300
-      Timers.Save();
-#else
-      Timers.SetModified();
-#endif
-      resp->addULONG(0);
-      resp->finalise();
-      x.tcp.sendPacket(resp->getPtr(), resp->getLen());
-      return 1; // FIXME - cTimer* timer is leaked here!
-    }
-    else
-    {
-      resp->addULONG(1);
-      resp->finalise();
-      x.tcp.sendPacket(resp->getPtr(), resp->getLen());
-    }
-  }
-  else
+  if (!timer->Parse((char*)timerString))
   {
     resp->addULONG(2);
     resp->finalise();
     x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+    delete timer;
+    return 1;
   }
-  delete timer;
+
+#if VDRVERSNUM >= 20301
+  LOCK_TIMERS_WRITE;
+  cTimers* tTimers = Timers;
+#else
+  cTimers* tTimers = &Timers;
+#endif
+
+  cTimer *t = tTimers->GetTimer(timer);
+  if (t)
+  {
+    resp->addULONG(1);
+    resp->finalise();
+    x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+    delete timer;
+    return 1;
+  }
+
+  timer->ClrFlags(tfRecording);
+  tTimers->Add(timer);
+#if VDRVERSNUM < 10300
+  tTimers->Save();
+#elif VDRVERSNUM < 20301
+  tTimers->SetModified();
+#endif
+
+  resp->addULONG(0);
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   return 1;
 }
 
@@ -1691,9 +1789,16 @@ int VompClientRRProc::processDeleteTimer()
   INT delDay = ntohl(*(ULONG*)&req->data[position]); position += 4;  
   INT delStart = ntohl(*(ULONG*)&req->data[position]); position += 4;  
   INT delStop = ntohl(*(ULONG*)&req->data[position]); position += 4;
-    
+
+#if VDRVERSNUM >= 20301
+  LOCK_TIMERS_WRITE;
+  cTimers* tTimers = Timers;
+#else
+  cTimers* tTimers = &Timers;
+#endif
+
   cTimer* ti = NULL;
-  for (ti = Timers.First(); ti; ti = Timers.Next(ti))
+  for (ti = tTimers->First(); ti; ti = tTimers->Next(ti))
   {
     if  ( (ti->Channel()->Number() == delChannel)
      &&   ((ti->WeekDays() && (ti->WeekDays() == delWeekdays)) || (!ti->WeekDays() && (ti->Day() == delDay)))
@@ -1709,45 +1814,49 @@ int VompClientRRProc::processDeleteTimer()
     x.tcp.sendPacket(resp->getPtr(), resp->getLen());
     return 1;
   }
-          
-  if (!Timers.BeingEdited())
-  {
-    if (!ti->Recording())
-    {
-      Timers.Del(ti);
-      Timers.SetModified();
-      resp->addULONG(10);
-      resp->finalise();
-      x.tcp.sendPacket(resp->getPtr(), resp->getLen());
-      return 1;
-    }
-    else
-    {
-      log->log("RRProc", Log::ERR, "Unable to delete timer - timer is running");
-      resp->addULONG(3);
-      resp->finalise();
-      x.tcp.sendPacket(resp->getPtr(), resp->getLen());
-      return 1;
-    }  
-  }
-  else
+
+#if VDRVERSNUM < 20301
+// I suppose with the new locking this just can't happen
+  if (tTimers->BeingEdited())
   {
     log->log("RRProc", Log::ERR, "Unable to delete timer - timers being edited at VDR");
     resp->addULONG(1);
     resp->finalise();
     x.tcp.sendPacket(resp->getPtr(), resp->getLen());
     return 1;
-  }  
+  }
+#endif
+
+  if (ti->Recording())
+  {
+    log->log("RRProc", Log::ERR, "Unable to delete timer - timer is running");
+    resp->addULONG(3);
+    resp->finalise();
+    x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+    return 1;
+  }
+
+  tTimers->Del(ti);
+  tTimers->SetModified();
+
+  resp->addULONG(10);
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+  return 1;
 }
 
 int VompClientRRProc::processGetRecInfo()
 {
   // data is a pointer to the fileName string
-  
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
+#if VDRVERSNUM >= 20301
+  LOCK_RECORDINGS_READ;
+  const cRecordings* tRecordings = Recordings;
+#else
+  cThreadLock RecordingsLock(&Recordings);
+  cRecordings* tRecordings = &Recordings;
+#endif
 
-  cRecording *recording = Recordings.GetByName((char*)req->data);
+  const cRecording *recording = tRecordings->GetByName((char*)req->data);
 
   time_t timerStart = 0;
   time_t timerStop = 0;
@@ -1970,17 +2079,20 @@ int VompClientRRProc::processReScanRecording()
 int VompClientRRProc::processGetMarks()
 {
   // data is a pointer to the fileName string
+#if VDRVERSNUM >= 20301
+  LOCK_RECORDINGS_READ;
+  const cRecordings* tRecordings = Recordings;
+#else
+  cThreadLock RecordingsLock(&Recordings);
+  cRecordings* tRecordings = &Recordings;
+#endif
 
-  cMarks Marks;
-  cRecordings Recordings;
-  Recordings.Load(); // probably have to do this
-
-  cRecording *recording = Recordings.GetByName((char*)req->data);
-
+  const cRecording *recording = tRecordings->GetByName((char*)req->data);
   log->log("RRProc", Log::DEBUG, "recording pointer %p", recording);
 
   if (recording)
   {
+    cMarks Marks;
 #if VDRVERSNUM < 10703
     Marks.Load(recording->FileName());
 #else
@@ -2028,22 +2140,30 @@ int VompClientRRProc::processVDRShutdown()
 
 int VompClientRRProc::processGetRecScraperEventType()
 {
-  Recordings.Load(); // probably have to do this
+#if VDRVERSNUM >= 20301
+  LOCK_RECORDINGS_READ;
+  const cRecordings* tRecordings = Recordings;
+#else
+  cThreadLock RecordingsLock(&Recordings);
+  cRecordings* tRecordings = &Recordings;
+#endif
 
-  cRecording *recording = Recordings.GetByName((char*)req->data);
+  const cRecording *recording = tRecordings->GetByName((char*)req->data);
   ScraperGetEventType call;
   call.type = tNone;
 
   if (recording && x.scrapQuery()) 
   {
      call.recording = recording;
-     x.scraper->Service("GetEventType",&call);
+     x.scraper->Service("GetEventType", &call);
   }
   resp->addUCHAR(call.type);
   if (call.type == tMovie)
   {
      resp->addLONG(call.movieId);
-  } else if (call.type == tSeries){
+  }
+  else if (call.type == tSeries)
+  {
      resp->addLONG(call.seriesId);
      resp->addLONG(call.episodeId);
   }
@@ -2060,19 +2180,30 @@ int VompClientRRProc::processGetEventScraperEventType()
   ULONG channelid = ntohl(*(ULONG*)req->data);
   ULONG eventid = ntohl(*(ULONG*)(req->data+4));
   const cEvent *event = NULL; 
-  
-  const cChannel* channel = Channels.GetByNumber(channelid);
+
+#if VDRVERSNUM >= 20301
+  LOCK_CHANNELS_READ;
+  const cChannels* tChannels = Channels;
+#else
+  cChannels* tChannels = &Channels;
+#endif
+
+  const cChannel* channel = tChannels->GetByNumber(channelid);
 
 #if VDRVERSNUM < 10300
   cMutexLock MutexLock;
-  const cSchedules *Schedules = cSIProcessor::Schedules(MutexLock);
-#else
+  const cSchedules *tSchedules = cSIProcessor::Schedules(MutexLock);
+#elif VDRVERSNUM < 20301
   cSchedulesLock MutexLock;
-  const cSchedules *Schedules = cSchedules::Schedules(MutexLock);
+  const cSchedules *tSchedules = cSchedules::Schedules(MutexLock);
+#else
+  LOCK_SCHEDULES_READ;
+  const cSchedules *tSchedules = Schedules;
 #endif
-  if (Schedules && channel)
+
+  if (tSchedules && channel)
   {
-     const cSchedule *Schedule = Schedules->GetSchedule(channel->GetChannelID());
+     const cSchedule *Schedule = tSchedules->GetSchedule(channel->GetChannelID());
      if (Schedule) {
         event = Schedule->GetEvent(eventid);
     }
@@ -2276,7 +2407,15 @@ int VompClientRRProc::processLoadTvMediaEventThumb()
    UINT channelid = ntohl(*(ULONG*)req->data);
    tvreq.primary_id = ntohl(*(ULONG*)(req->data+4));
    tvreq.secondary_id = 0;
-   const cChannel* channel = Channels.GetByNumber(channelid);
+
+#if VDRVERSNUM >= 20301
+  LOCK_CHANNELS_READ;
+  const cChannels* tChannels = Channels;
+#else
+  cChannels* tChannels = &Channels;
+#endif
+
+   const cChannel* channel = tChannels->GetByNumber(channelid);
 
    if (channel) tvreq.primary_name = std::string((const char*)channel->GetChannelID().ToString());
    tvreq.type_pict = 1;
@@ -2301,7 +2440,15 @@ int VompClientRRProc::processLoadChannelLogo()
    UINT channelid = ntohl(*(ULONG*)req->data);
    tvreq.primary_id = channelid;
    tvreq.secondary_id = 0;
-   const cChannel* channel = Channels.GetByNumber(channelid);
+
+#if VDRVERSNUM >= 20301
+  LOCK_CHANNELS_READ;
+  const cChannels* tChannels = Channels;
+#else
+  cChannels* tChannels = &Channels;
+#endif
+
+   const cChannel* channel = tChannels->GetByNumber(channelid);
 
    if (channel) tvreq.primary_name = std::string((const char*)channel->Name());
    tvreq.type_pict = 1;
@@ -2318,7 +2465,6 @@ int VompClientRRProc::processLoadChannelLogo()
    return 1;
 }
 
- 
 
 
   

@@ -33,7 +33,7 @@ class Ringbuffer
     Ringbuffer();
     ~Ringbuffer();
     int init(size_t size);
-    int put(UCHAR* from, size_t amount);
+    int put(const UCHAR* from, size_t amount);
     int get(UCHAR* to, size_t amount);
     int getContent();
 

@@ -56,7 +56,8 @@ class MVPReceiver : public cReceiver, public Thread
 
     // cReciever stuff
     void Activate(bool On);
-    void Receive(UCHAR *Data, int Length);
+    void Receive(UCHAR *Data, int Length); // VDR 2.2.0
+    void Receive(const UCHAR *Data, int Length); // > VDR 2.2.0
     void sendStreamEnd();
 
     static int numMVPReceivers;

@@ -37,14 +37,14 @@ class Segment
 class RecPlayer
 {
   public:
-    RecPlayer(cRecording* rec);
+    RecPlayer(const cRecording* rec);
     ~RecPlayer();
     ULLONG getLengthBytes();
     ULONG getLengthFrames();
     unsigned long getBlock(unsigned char* buffer, ULLONG position, unsigned long amount);
     int openFile(int index);
     ULLONG getLastPosition();
-    cRecording* getCurrentRecording();
+    const cRecording* getCurrentRecording();
     void scan();
     ULLONG positionFromFrameNumber(ULONG frameNumber);
     ULONG frameNumberFromPosition(ULLONG position);
@@ -52,7 +52,7 @@ class RecPlayer
 
   private:
     Log* log;
-    cRecording* recording;
+    const cRecording* recording;
     cIndexFile* indexFile;
     FILE* file;
     int fileOpen;
