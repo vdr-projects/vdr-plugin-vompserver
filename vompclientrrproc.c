@@ -45,7 +45,7 @@
 
 bool ResumeIDLock;
 
-ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MIN = 0x00000400;
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MIN = 0x00000301;
 ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MAX = 0x00000400;
 // format is aabbccdd
 // cc is release protocol version, increase with every release, that changes protocol
