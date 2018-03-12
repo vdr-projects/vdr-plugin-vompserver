@@ -912,9 +912,9 @@ int VompClientRRProc::processMoveRecording()
       log->log("RRProc", Log::DEBUG, "viddir: %s", VideoDirectory);
 #endif
 
-      char* newPathConv = new char[strlen(newPath)+1];
+      char* newPathConv = (char*)malloc(strlen(newPath)+1);
       strcpy(newPathConv, newPath);
-      ExchangeChars(newPathConv, true);
+      newPathConv = ExchangeChars(newPathConv, true);
       log->log("RRProc", Log::DEBUG, "EC: %s", newPathConv);
 
 #if APIVERSNUM > 20101
@@ -926,7 +926,7 @@ int VompClientRRProc::processMoveRecording()
       log->log("RRProc", Log::DEBUG, "l10: %i", strlen(VideoDirectory) + strlen(newPathConv) + strlen(titleDirName) + 1);
       sprintf(newContainer, "%s%s%s", VideoDirectory, newPathConv, titleDirName);
 #endif
-      delete[] newPathConv;
+      free(newPathConv);
 
       log->log("RRProc", Log::DEBUG, "%s", newContainer);
 

@@ -75,7 +75,7 @@ void RecPlayer::scan()
 
     segments[i] = new Segment();
     segments[i]->start = totalLength;
-    fseek(file, 0, SEEK_END);
+    fseeko(file, 0, SEEK_END);
     totalLength += ftello(file);
     totalFrames = indexFile->Last();
     log->log("RecPlayer", Log::DEBUG, "File %i found, totalLength now %llu, numFrames = %lu", i, totalLength, totalFrames);
