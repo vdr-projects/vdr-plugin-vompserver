@@ -65,6 +65,7 @@ class VompClientRRProc : public Thread
 #ifndef VOMPSTANDALONE
     int processGetRecordingsList();
     int processDeleteRecording();
+    int processDeleteRecResume();
     int processMoveRecording();
     int processGetChannelsList();
     int processStartStreamingChannel();

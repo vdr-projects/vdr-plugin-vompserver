@@ -45,8 +45,8 @@
 
 bool ResumeIDLock;
 
-ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MIN = 0x00000301;
-ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MAX = 0x00000400;
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MIN = 0x00000302;
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MAX = 0x00000401;
 // format is aabbccdd
 // cc is release protocol version, increase with every release, that changes protocol
 // dd is development protocol version, set to zero at every release, 
@@ -245,6 +245,9 @@ bool VompClientRRProc::processPacket()
       break;
     case 3:
       result = processDeleteRecording();
+      break;
+    case 4:
+      result = processDeleteRecResume();
       break;
     case 5:
       result = processGetChannelsList();
@@ -831,6 +834,50 @@ int VompClientRRProc::processDeleteRecording()
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   
+  return 1;
+}
+
+int VompClientRRProc::processDeleteRecResume()
+{
+  // data is a pointer to the fileName string
+
+#if VDRVERSNUM < 20301
+  resp->addULONG(5);  // Not supported
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+  return 1;
+#endif
+
+  cStateKey StateKey;
+  const cRecordings* Recordings = cRecordings::GetRecordingsRead(StateKey);
+  const cRecording* recording = Recordings->GetByName((char*)req->data);
+
+  if (recording)
+  {
+    log->log("RRProc", Log::DEBUG, "deleting recording resume : %s", recording->Name());
+
+    cResumeFile ResumeFile(recording->FileName(), recording->IsPesRecording());
+    StateKey.Remove();
+
+    if (ResumeFile.Read() >= 0)
+    {
+      ResumeFile.Delete();
+      resp->addULONG(1);  // success
+    }
+    else
+    {
+      resp->addULONG(2);  // failed, no resume point saved
+    }
+  }
+  else
+  {
+    StateKey.Remove();
+    resp->addULONG(4);  // failed to find recording
+  }
+
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+
   return 1;
 }
 

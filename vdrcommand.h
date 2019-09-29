@@ -42,6 +42,7 @@ const static ULONG VDR_RESPONSE_FLAG =0x1000000;
 const static ULONG VDR_LOGIN               = 1;
 const static ULONG VDR_GETRECORDINGLIST    = 2;
 const static ULONG VDR_DELETERECORDING     = 3;
+const static ULONG VDR_DELETERECRESUME     = 4;
 const static ULONG VDR_GETCHANNELLIST      = 5;
 const static ULONG VDR_STREAMCHANNEL       = 6;
 const static ULONG VDR_GETBLOCK            = 7;
