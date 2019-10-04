@@ -46,7 +46,7 @@
 bool ResumeIDLock;
 
 ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MIN = 0x00000302;
-ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MAX = 0x00000401;
+ULONG VompClientRRProc::VOMP_PROTOCOL_VERSION_MAX = 0x00000402;
 // format is aabbccdd
 // cc is release protocol version, increase with every release, that changes protocol
 // dd is development protocol version, set to zero at every release, 
@@ -235,7 +235,7 @@ bool VompClientRRProc::processPacket()
   int result = 0;
 
   switch(req->opcode)
-  {
+  {  // FIXME use defined names in vdrcommand.h for these cases
     case 1:
       result = processLogin();
       break;
@@ -298,6 +298,9 @@ bool VompClientRRProc::processPacket()
       break;
     case 20:
       result = processGetRecInfo();
+      break;
+    case 24:
+      result = processGetRecInfo2();
       break;
     case 21:
       result = processGetMarks();
@@ -1936,6 +1939,7 @@ int VompClientRRProc::processGetRecInfo()
     string: description
   }
   8 bytes: frames per second
+  string: title/name
   */
 
   // Get current timer
@@ -2098,8 +2102,235 @@ int VompClientRRProc::processGetRecInfo()
   return 1;
 }
 
+// TODO Remove getrecinfo(1) for version 0.6.0 and rename getrecinfo2 to getrecinfo
 
+int VompClientRRProc::processGetRecInfo2()
+{
+  // data is a pointer to the fileName string
+#if VDRVERSNUM >= 20301
+  LOCK_RECORDINGS_READ;
+  const cRecordings* tRecordings = Recordings;
+#else
+  cThreadLock RecordingsLock(&Recordings);
+  cRecordings* tRecordings = &Recordings;
+#endif
 
+  const cRecording *recording = tRecordings->GetByName((char*)req->data);
+
+  time_t timerStart = 0;
+  time_t timerStop = 0;
+  char* summary = NULL;
+  char* shorttext = NULL;
+  char* description = NULL;
+  char* title = NULL;
+  bool newsummary=false;
+  ULONG resumePoint = 0;
+
+  if (!recording)
+  {
+    log->log("RRProc", Log::ERR, "GetRecInfo found no recording");
+    resp->addULONG(0);
+    resp->finalise();
+    x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+    return 1;
+  }
+
+  /* Return packet:
+  4 bytes: start time for timer
+  4 bytes: end time for timer
+  4 bytes: resume point
+  string: summary
+  4 bytes: num components
+  {
+    1 byte: stream
+    1 byte: type
+    string: language
+    string: description
+  }
+  8 bytes: frames per second
+  string: title/name
+  // new stuff starts here
+  string: channel name
+  4 bytes: duration
+  4 bytes : filesize
+  4 bytes : priority
+  4 bytes : lifetime
+  */
+
+  // Get current timer
+
+  cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
+  if (rc)
+  {
+    timerStart = rc->Timer()->StartTime();
+    timerStop = rc->Timer()->StopTime();
+    log->log("RRProc", Log::DEBUG, "GRI: RC: %lu %lu", timerStart, timerStop);
+  }
+
+  resp->addULONG(timerStart);
+  resp->addULONG(timerStop);
+
+  // Get resume point
+
+/*  char* value = x.config.getValueString("ResumeData", (char*)req->data);
+  if (value)
+  {
+    resumePoint = strtoul(value, NULL, 10);
+    delete[] value;
+  }*/
+
+  char* ResumeIdC = x.config.getValueString("General", "ResumeId");
+  int ResumeId;
+  if (ResumeIdC) {
+    ResumeId = atoi(ResumeIdC);
+    delete[] ResumeIdC;
+  }
+  else
+    ResumeId = 0;  //default if not defined in vomp-MAC.conf
+
+  while (ResumeIDLock)
+    cCondWait::SleepMs(100);
+  ResumeIDLock = true;
+  int OldSetupResumeID = Setup.ResumeID;
+  Setup.ResumeID = ResumeId;				//UGLY: quickly change resumeid
+#if VDRVERSNUM < 10703
+  cResumeFile ResumeFile(recording->FileName());	//get corresponding resume file
+#else
+  cResumeFile ResumeFile(recording->FileName(), recording->IsPesRecording()); //get corresponding resume file
+#endif
+  Setup.ResumeID = OldSetupResumeID;			//and restore it back
+  ResumeIDLock = false;
+
+  int resume = ResumeFile.Read();
+  //isyslog("VOMPDEBUG: resumePoint = %i, resume = %i, ResumeId = %i",resumePoint, resume, ResumeId);
+  if (resume >= 0)
+    resumePoint = ResumeFile.Read();
+
+  log->log("RRProc", Log::DEBUG, "GRI: RP: %lu", resumePoint);
+
+  resp->addULONG(resumePoint);
+
+  // Get summary
+
+#if VDRVERSNUM < 10300
+  summary = (char*)recording->Summary();
+#else
+  const cRecordingInfo *Info = recording->Info();
+  shorttext = (char*)Info->ShortText();
+  description = (char*) (char*)Info->Description();
+  if (isempty(shorttext)) summary=description;
+  else if (isempty(description)) summary=shorttext;
+  else {
+     int length=strlen(description)+strlen(shorttext)+4;
+     summary=new char[length];
+     snprintf(summary,length,"%s\n\n%s",shorttext,description);
+     newsummary=true;
+  }
+
+  if (isempty(summary)) summary = (char*)Info->Description();
+#endif
+  log->log("RRProc", Log::DEBUG, "GRI: S: %s", summary);
+  if (summary)
+  {
+    resp->addString(x.charconvsys->Convert(summary));
+    if (newsummary) delete [] summary;
+  }
+  else
+  {
+    resp->addString("");
+  }
+
+  // Get channels
+
+#if VDRVERSNUM < 10300
+
+  // Send 0 for numchannels - this signals the client this info is not available
+  resp->addULONG(0);
+
+#else
+  const cComponents* components = Info->Components();
+
+  log->log("RRProc", Log::DEBUG, "GRI: D1: %p", components);
+
+  if (!components)
+  {
+    resp->addULONG(0);
+  }
+  else
+  {
+    resp->addULONG(components->NumComponents());
+
+    tComponent* component;
+    for (int i = 0; i < components->NumComponents(); i++)
+    {
+      component = components->Component(i);
+
+      log->log("RRProc", Log::DEBUG, "GRI: C: %i %u %u %s %s", i, component->stream, component->type, component->language, component->description);
+
+      resp->addUCHAR(component->stream);
+      resp->addUCHAR(component->type);
+
+      if (component->language)
+      {
+        resp->addString(x.charconvsys->Convert(component->language));
+      }
+      else
+      {
+        resp->addString("");
+      }
+      if (component->description)
+      {
+        resp->addString(x.charconvsys->Convert(component->description));
+      }
+      else
+      {
+        resp->addString("");
+      }
+    }
+  }
+
+#endif
+  double framespersec;
+#if VDRVERSNUM < 10703
+  framespersec = FRAMESPERSEC;
+#else
+  framespersec = Info->FramesPerSecond();
+#endif
+  resp->adddouble(framespersec);
+  title = (char*)Info->Title();
+  if (title)
+  {
+    resp->addString(x.charconvsys->Convert(title));
+  }
+  else
+  {
+      resp->addString(x.charconvsys->Convert(recording->Name()));
+  }
+
+  // New stuff
+  if (Info->ChannelName())
+  {
+    resp->addString(x.charconvsys->Convert(Info->ChannelName()));
+  }
+  else
+  {
+    resp->addString("");
+  }
+
+  resp->addULONG(recording->LengthInSeconds());
+  resp->addULONG(recording->FileSizeMB());
+  resp->addULONG(recording->Priority());
+  resp->addULONG(recording->Lifetime());
+
+  // Done. send it
+
+  resp->finalise();
+  x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+
+  log->log("RRProc", Log::DEBUG, "Written getrecinfo");
+
+  return 1;
+}
 
 // FIXME obselete
 

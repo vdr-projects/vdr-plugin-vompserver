@@ -59,6 +59,7 @@ const static ULONG VDR_FRAMEFROMPOS        = 17;
 const static ULONG VDR_MOVERECORDING       = 18;
 const static ULONG VDR_GETNEXTIFRAME       = 19;
 const static ULONG VDR_GETRECINFO          = 20;
+const static ULONG VDR_GETRECINFO2         = 24;
 const static ULONG VDR_GETMARKS            = 21;
 const static ULONG VDR_GETCHANNELPIDS      = 22;
 const static ULONG VDR_DELETETIMER         = 23;

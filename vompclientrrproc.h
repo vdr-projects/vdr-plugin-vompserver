@@ -79,6 +79,7 @@ class VompClientRRProc : public Thread
     int processFrameNumberFromPosition();
     int processGetIFrame();
     int processGetRecInfo();
+    int processGetRecInfo2();
     int processGetMarks();
     int processGetChannelPids();
     int processDeleteTimer();
