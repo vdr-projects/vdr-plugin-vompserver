@@ -1,5 +1,5 @@
 /*
-    Copyright 2008 Chris Tallon
+    Copyright 2019 Chris Tallon
 
     This file is part of VOMP.
 
@@ -1467,6 +1467,16 @@ int VompClientRRProc::processStartStreamingRecording()
     x.tcp.sendPacket(resp->getPtr(), resp->getLen());
     
     log->log("RRProc", Log::DEBUG, "written totalLength");
+  }
+  else
+  {
+    // No such recording exists
+    resp->addULLONG(0);
+    resp->addULONG(0);
+    resp->addUCHAR(false);
+    resp->finalise();
+    x.tcp.sendPacket(resp->getPtr(), resp->getLen());
+    log->log("RRProc", Log::DEBUG, "start streaming recording failed");
   }
 
   return 1;
