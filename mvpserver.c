@@ -300,6 +300,7 @@ void MVPServer::threadMethod()
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
+  /*
   struct sockaddr_in address;
   address.sin_family = AF_INET;
   address.sin_port = htons(tcpServerPort);
@@ -307,6 +308,17 @@ void MVPServer::threadMethod()
   socklen_t length = sizeof(address);
 
   listeningSocket = socket(AF_INET, SOCK_STREAM, 0);
+  */
+
+  struct sockaddr_in6 address;
+  address.sin6_family = AF_INET6;
+  address.sin6_port = htons(tcpServerPort);
+  address.sin6_addr = in6addr_any;
+  socklen_t length = sizeof(address);
+
+  listeningSocket = socket(AF_INET6, SOCK_STREAM, 0);
+
+
   if (listeningSocket < 0)
   {
     log.log("MVPServer", Log::CRIT, "Could not get TCP socket in vompserver");
