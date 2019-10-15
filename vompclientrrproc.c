@@ -849,7 +849,7 @@ int VompClientRRProc::processDeleteRecResume()
   resp->finalise();
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
   return 1;
-#endif
+#else
 
   cStateKey StateKey;
   const cRecordings* Recordings = cRecordings::GetRecordingsRead(StateKey);
@@ -882,6 +882,8 @@ int VompClientRRProc::processDeleteRecResume()
   x.tcp.sendPacket(resp->getPtr(), resp->getLen());
 
   return 1;
+
+#endif
 }
 
 int VompClientRRProc::processMoveRecording()
