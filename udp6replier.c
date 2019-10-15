@@ -1,5 +1,5 @@
 /*
-    Copyright 2004-2005 Chris Tallon
+    Copyright 2019 Chris Tallon
 
     This file is part of VOMP.
 
@@ -14,26 +14,29 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with VOMP; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+    along with VOMP.  If not, see <https://www.gnu.org/licenses/>.
 */
+
+#include <stdio.h>
+#include <string.h>
+#include <arpa/inet.h>
 
 #include "vompclientrrproc.h"
 
-#include "udpreplier.h"
+#include "udp6replier.h"
 
-UDPReplier::UDPReplier()
+UDP6Replier::UDP6Replier()
 {
   message = NULL;
   messageLen = 0;
 }
 
-UDPReplier::~UDPReplier()
+UDP6Replier::~UDP6Replier()
 {
   shutdown();
 }
 
-int UDPReplier::shutdown()
+int UDP6Replier::shutdown()
 {
   if (threadIsActive()) threadCancel();
 
@@ -42,7 +45,7 @@ int UDPReplier::shutdown()
   return 1;
 }
 
-int UDPReplier::run(USHORT port, char* serverName, USHORT serverPort)
+int UDP6Replier::run(USHORT port, char* serverName, USHORT serverPort)
 {
   if (threadIsActive()) return 1;
 
@@ -51,12 +54,12 @@ int UDPReplier::run(USHORT port, char* serverName, USHORT serverPort)
 
   Client transmits: "VDP-0001\0<6-byte MAC>"...
   ... for IPv4: broadcasts on ports 51051-51055
-  ... for IPv6: multicasts to ff15:766f:6d70:2064:6973:636f:7665:7279 port 51051
+  ... for IPv6: multicasts to ff15:766f:6d70:2064:6973:636f:7665:7279 port 51056
 
   Server responds:
 
   Field 1 p0: 9 bytes "VDP-0002\0"
-
+  
   Field 2 p9, 1 byte:
 
   0 = no IP specified
@@ -71,7 +74,7 @@ int UDPReplier::run(USHORT port, char* serverName, USHORT serverPort)
 
   Field 5 p28, 4 bytes:
   VOMP protocol version (defined in vdr.cc)
-
+  
   Field 6 p32, variable length
   String of server name, null terminated
   */
@@ -103,11 +106,11 @@ int UDPReplier::run(USHORT port, char* serverName, USHORT serverPort)
     return 0;
   }
 
-  Log::getInstance()->log("UDPReplier", Log::DEBUG, "UDP replier started");
+  Log::getInstance()->log("UDP6Replier", Log::DEBUG, "UDP replier started");
   return 1;
 }
 
-void UDPReplier::threadMethod()
+void UDP6Replier::threadMethod()
 {
   int retval;
   while(1)
@@ -117,7 +120,7 @@ void UDPReplier::threadMethod()
 
     if (!strncmp(ds.getData(), "VDP-0001", 8))
     {
-      Log::getInstance()->log("UDPReplier", Log::DEBUG, "UDP request from %s", ds.getFromIPA());
+      Log::getInstance()->log("UDP6Replier", Log::DEBUG, "UDP6 request from %s", ds.getFromIPA());
       ds.send(ds.getFromIPA(), ds.getFromPort(), message, messageLen);
     }
   }

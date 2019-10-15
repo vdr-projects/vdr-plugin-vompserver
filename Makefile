@@ -64,8 +64,8 @@ DEFINES += -DVOMPSERVER
 OBJS = $(PLUGIN).o
 
 # VOMP-INSERT
-OBJS += dsock.o mvpserver.o udpreplier.o bootpd.o tftpd.o i18n.o vompclient.o tcp.o \
-                   ringbuffer.o mvprelay.o vompclientrrproc.o \
+OBJS += dsock.o dsock6.o mvpserver.o udpreplier.o udp6replier.o bootpd.o tftpd.o i18n.o \
+		   vompclient.o tcp.o ringbuffer.o mvprelay.o vompclientrrproc.o \
                    config.o log.o thread.o tftpclient.o \
                    media.o responsepacket.o \
                    mediafile.o mediaplayer.o servermediafile.o serialize.o medialauncher.o \

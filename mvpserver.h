@@ -27,6 +27,7 @@
 
 #include "defines.h"
 #include "udpreplier.h"
+#include "udp6replier.h"
 #include "mvprelay.h"
 #include "bootpd.h"
 #include "tftpd.h"
@@ -49,6 +50,7 @@ class MVPServer : public Thread
     Log log;
     Config config;
     UDPReplier udpr;
+    UDP6Replier udpr6;
     Bootpd bootpd;
     Tftpd tftpd;
     MVPRelay mvprelay;

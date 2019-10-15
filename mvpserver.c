@@ -1,5 +1,5 @@
 /*
-    Copyright 2004-2005 Chris Tallon
+    Copyright 2004-2019 Chris Tallon
 
     This file is part of VOMP.
 
@@ -14,8 +14,7 @@
     GNU General Public License for more details.
 
     You should have received a copy of the GNU General Public License
-    along with VOMP; if not, write to the Free Software
-    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+    along with VOMP.  If not, see <https://www.gnu.org/licenses/>.
 */
 
 #include "mvpserver.h"
@@ -24,6 +23,8 @@
 #endif
 
 extern pthread_mutex_t threadClientMutex;
+
+#define UDP6PORT 51056
 
 MVPServer::MVPServer()
 {
@@ -51,6 +52,7 @@ int MVPServer::stop()
   close(listeningSocket);
 
   udpr.shutdown();
+  udpr6.shutdown();
   bootpd.shutdown();
   tftpd.shutdown();
   mvprelay.shutdown();
@@ -177,12 +179,20 @@ int MVPServer::run(char* tconfigDir)
   if (fail) tcpServerPort = 3024;
   
   int udpSuccess = udpr.run(udpport, serverName, tcpServerPort);
+  int udp6Success = udpr6.run(UDP6PORT, serverName, tcpServerPort);
 
   delete[] serverName;
 
   if (!udpSuccess)
   {
     log.log("Main", Log::CRIT, "Could not start UDP replier");
+    stop();
+    return 0;
+  }
+
+  if (!udp6Success)
+  {
+    log.log("Main", Log::CRIT, "Could not start UDP6 replier");
     stop();
     return 0;
   }
