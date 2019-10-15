@@ -53,10 +53,10 @@ SOFILE = libvdr-$(PLUGIN).so
 
 INCLUDES +=
 
-DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"' -D__STL_CONFIG_H
+DEFINES += -DPLUGIN_NAME_I18N='"$(PLUGIN)"'
 
 # VOMP-INSERT
-DEFINES += -DVOMPSERVER
+DEFINES += -D__STL_CONFIG_H -DVOMPSERVER
 # END-VOMP-INSERT
 
 ### The object files (add further files here):
@@ -84,7 +84,8 @@ standalone: standalonebase vompserver-standalone
 ### Implicit rules:
 
 %.o: %.c
-	$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) -o $@ $<
+	@echo CC $@
+	$(Q)$(CXX) $(CXXFLAGS) -c $(DEFINES) $(INCLUDES) -o $@ $<
 
 ### Dependencies:
 
@@ -104,13 +105,16 @@ I18Nmsgs  = $(addprefix $(DESTDIR)$(LOCDIR)/, $(addsuffix /LC_MESSAGES/vdr-$(PLU
 I18Npot   = $(PODIR)/$(PLUGIN).pot
 
 %.mo: %.po
-	msgfmt -c -o $@ $<
+	@echo MO $@
+	$(Q)msgfmt -c -o $@ $<
 
 $(I18Npot): $(wildcard *.c)
-	xgettext -C -cTRANSLATORS --no-wrap --no-location -k -ktr -ktrNOOP --package-name=vdr-$(PLUGIN) --package-version=$(VERSION) --msgid-bugs-address='<see README>' -o $@ `ls $^`
+	@echo GT $@
+	$(Q)xgettext -C -cTRANSLATORS --no-wrap --no-location -k -ktr -ktrNOOP --package-name=vdr-$(PLUGIN) --package-version=$(VERSION) --msgid-bugs-address='<see README>' -o $@ `ls $^`
 
 %.po: $(I18Npot)
-	msgmerge -U --no-wrap --no-location --backup=none -q -N $@ $<
+	@echo PO $@
+	$(Q)msgmerge -U --no-wrap --no-location --backup=none -q -N $@ $<
 	@touch $@
 
 $(I18Nmsgs): $(DESTDIR)$(LOCDIR)/%/LC_MESSAGES/vdr-$(PLUGIN).mo: $(PODIR)/%.mo
@@ -123,7 +127,7 @@ install-i18n: $(I18Nmsgs)
 
 ### Targets:
 
-# rest of file modified for vomp
+# VOMP-INSERT
 
 objectsstandalone: $(OBJS)
 objects: $(OBJS) $(OBJS2)
@@ -133,13 +137,14 @@ allbase:
 standalonebase:
 	( if [ ! -f .standalone ] ; then ( make clean; echo "DEFINES+=-DVOMPSTANDALONE" > .standalone; make objectsstandalone ) ; else exit 0 ;fi )
 
-
 $(SOFILE): objects
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) $(OBJS2) -o $@
+	@echo LD $@
+	$(Q)$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(OBJS) $(OBJS2) -o $@
 
 vompserver-standalone: objectsstandalone
 	$(CXX) $(CXXFLAGS) $(OBJS) -lpthread -o $@
 	chmod u+x $@
+# END-VOMP-INSERT
 
 install-lib: $(SOFILE)
 	install -D $^ $(DESTDIR)$(LIBDIR)/$^.$(APIVERSION)
@@ -156,4 +161,7 @@ dist: $(I18Npo) clean
 
 clean:
 	@-rm -f $(PODIR)/*.mo $(PODIR)/*.pot
-	@-rm -f $(OBJS) $(OBJS2) $(DEPFILE) *.so *.tgz core* *~ .standalone vompserver-standalone
+	@-rm -f $(OBJS) $(DEPFILE) *.so *.tgz core* *~
+# VOMP-INSERT
+	@-rm -f $(OBJS2) .standalone vompserver-standalone
+# END-VOMP-INSERT
