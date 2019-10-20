@@ -10,6 +10,20 @@
 
 # Server name = My-Server
 
+## Server TCP port. Default: 3024
+## Will be transmitted to clients in UDP discovery protocol
+
+# TCP port = 3024
+
+## UDP discovery protocol port number
+## Defaults to 51051
+## For IPv4 this must be between 51051 and 51055,
+## clients will broadcast to all 5 ports
+## This allows multiple VDRs on the same IP address
+## For IPv6 the port is 51056 and cannot be changed
+
+# UDP port = 51051
+
 ## Enable this to start the built in Bootp server
 ## Required to boot the MVP if you have not got a
 ## DHCP server that can tell the MVP its boot file
