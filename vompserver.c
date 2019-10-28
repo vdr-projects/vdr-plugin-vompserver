@@ -1,5 +1,5 @@
 /*
- *    Copyright 2004-2013 Chris Tallon
+ *    Copyright 2004-2019 Chris Tallon
  * 
  *    This file is part of VOMP.
  * 
@@ -27,7 +27,7 @@
 #include "mvpserver.h"
 //#include "vompclient.h"
 
-static const char *VERSION        = "0.5.0";
+static const char *VERSION        = "0.5.1";
 static const char *DESCRIPTION    = "Vompserver plugin by Chris Tallon";
 static const char *MAINMENUENTRY  = "Vompserver";
 
