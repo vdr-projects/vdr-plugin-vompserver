@@ -915,7 +915,7 @@ int VompClientRRProc::processMoveRecording()
 
   log->log("RRProc", Log::DEBUG, "recording pointer %p", recording);
 
-  if (recording)
+  if (recording) // FIXME rewrite these error conditions!
   {
     // TODO: Switch to using: int cRecording::IsInUse(void) const
     cRecordControl *rc = cRecordControls::GetRecordControl(recording->FileName());
@@ -1031,7 +1031,7 @@ int VompClientRRProc::processMoveRecording()
         delete[] oldTitleDir;
 
 #if VDRVERSNUM >= 20301
-        tRecordings->SetModified();
+        tRecordings->Update();
 #elif VDRVERSNUM > 10311
         ::Recordings.Update();
 #endif
