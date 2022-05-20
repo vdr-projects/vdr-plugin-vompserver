@@ -255,7 +255,7 @@ ULONG RecPlayer::frameNumberFromPosition(ULLONG position)
     if ((position >= segments[segmentNumber]->start) && (position < segments[segmentNumber]->end)) break;
     // position is in this block
   }
-  ULONG askposition = position - segments[segmentNumber]->start;
+  ULLONG askposition = position - segments[segmentNumber]->start;
   return indexFile->Get((int)segmentNumber, askposition);
 
 }
